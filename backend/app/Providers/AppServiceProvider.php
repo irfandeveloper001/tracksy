@@ -14,7 +14,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Schema::defaultStringLength(191);
+        // Set default string length for migrations (will be applied when database is ready)
+        if ($this->app->bound('db')) {
+            try {
+                Schema::defaultStringLength(191);
+            } catch (\Exception $e) {
+                // Database not configured yet, will be set when migrations run
+            }
+        }
     }
 }
 

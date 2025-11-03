@@ -35,13 +35,40 @@ class BookingController extends Controller
             'trip_date' => 'required|date|after_or_equal:today',
         ]);
 
-        // TODO: Check seat availability
-        // TODO: Create booking
-        // TODO: Assign seat
-        // TODO: Generate booking reference
-        // TODO: Send confirmation notification
+        // Check seat availability
+        $existingBooking = Booking::where('bus_id', $request->bus_id)
+            ->where('seat_number', $request->seat_number)
+            ->where('trip_date', $request->trip_date)
+            ->where('status', '!=', 'cancelled')
+            ->first();
 
-        return $this->successResponse(null, 'Booking created', 201);
+        if ($existingBooking) {
+            return $this->errorResponse('Seat already booked for this date', null, 422);
+        }
+
+        // Generate booking reference
+        $bookingReference = 'BK-' . strtoupper(uniqid());
+
+        // Create booking
+        $booking = Booking::create([
+            'student_id' => $student->id,
+            'bus_id' => $request->bus_id,
+            'seat_number' => $request->seat_number,
+            'trip_date' => $request->trip_date,
+            'booking_reference' => $bookingReference,
+            'status' => 'confirmed',
+        ]);
+
+        // Create seat assignment
+        \App\Models\SeatAssignment::create([
+            'booking_id' => $booking->id,
+            'bus_id' => $request->bus_id,
+            'seat_number' => $request->seat_number,
+            'trip_date' => $request->trip_date,
+            'status' => 'reserved',
+        ]);
+
+        return $this->successResponse($booking, 'Booking created successfully', 201);
     }
 
     public function show($id)
