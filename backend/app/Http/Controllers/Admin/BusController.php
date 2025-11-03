@@ -27,9 +27,27 @@ class BusController extends Controller
 
     public function store(Request $request)
     {
-        // Create new bus
-        // TODO: Implement validation
-        // TODO: Implement bus creation
+        $request->validate([
+            'bus_number' => 'required|string|unique:buses',
+            'license_plate' => 'required|string|unique:buses',
+            'bus_type' => 'required|in:standard,premium',
+            'capacity' => 'required|integer|min:1|max:100',
+            'current_route_id' => 'nullable|exists:routes,id',
+            'current_driver_id' => 'nullable|exists:users,id',
+            'status' => 'nullable|in:active,inactive,maintenance,emergency',
+        ]);
+
+        $bus = Bus::create($request->only([
+            'bus_number',
+            'license_plate',
+            'bus_type',
+            'capacity',
+            'current_route_id',
+            'current_driver_id',
+            'status',
+        ]));
+
+        return $this->successResponse($bus, 'Bus created successfully', 201);
     }
 
     public function show($id)
@@ -44,15 +62,37 @@ class BusController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Update bus
-        // TODO: Implement validation
-        // TODO: Implement bus update
+        $bus = Bus::findOrFail($id);
+
+        $request->validate([
+            'bus_number' => 'sometimes|string|unique:buses,bus_number,' . $id,
+            'license_plate' => 'sometimes|string|unique:buses,license_plate,' . $id,
+            'bus_type' => 'sometimes|in:standard,premium',
+            'capacity' => 'sometimes|integer|min:1|max:100',
+            'current_route_id' => 'nullable|exists:routes,id',
+            'current_driver_id' => 'nullable|exists:users,id',
+            'status' => 'sometimes|in:active,inactive,maintenance,emergency',
+        ]);
+
+        $bus->update($request->only([
+            'bus_number',
+            'license_plate',
+            'bus_type',
+            'capacity',
+            'current_route_id',
+            'current_driver_id',
+            'status',
+        ]));
+
+        return $this->successResponse($bus, 'Bus updated successfully');
     }
 
     public function destroy($id)
     {
-        // Delete bus
-        // TODO: Implement soft delete
+        $bus = Bus::findOrFail($id);
+        $bus->delete();
+
+        return $this->successResponse(null, 'Bus deleted successfully');
     }
 
     public function getLocation($id)

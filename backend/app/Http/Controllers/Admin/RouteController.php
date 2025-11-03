@@ -18,9 +18,37 @@ class RouteController extends Controller
 
     public function store(Request $request)
     {
-        // Create new route
-        // TODO: Implement validation
-        // TODO: Implement route creation with stops
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'start_point' => 'required|string',
+            'end_point' => 'required|string',
+            'distance' => 'nullable|numeric|min:0',
+            'estimated_duration' => 'nullable|integer|min:0',
+            'stops' => 'nullable|array',
+            'stops.*.stop_id' => 'required|exists:stops,id',
+            'stops.*.order' => 'required|integer|min:1',
+            'stops.*.estimated_time' => 'nullable|integer|min:0',
+        ]);
+
+        $route = Route::create($request->only([
+            'name',
+            'start_point',
+            'end_point',
+            'distance',
+            'estimated_duration',
+        ]));
+
+        // Attach stops if provided
+        if ($request->has('stops')) {
+            foreach ($request->stops as $stopData) {
+                $route->stops()->attach($stopData['stop_id'], [
+                    'order' => $stopData['order'],
+                    'estimated_time' => $stopData['estimated_time'] ?? null,
+                ]);
+            }
+        }
+
+        return $this->successResponse($route->load('stops'), 'Route created successfully', 201);
     }
 
     public function show($id)
@@ -33,15 +61,50 @@ class RouteController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Update route
-        // TODO: Implement validation
-        // TODO: Implement route update
+        $route = Route::findOrFail($id);
+
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'start_point' => 'sometimes|string',
+            'end_point' => 'sometimes|string',
+            'distance' => 'nullable|numeric|min:0',
+            'estimated_duration' => 'nullable|integer|min:0',
+            'is_active' => 'sometimes|boolean',
+            'stops' => 'nullable|array',
+            'stops.*.stop_id' => 'required|exists:stops,id',
+            'stops.*.order' => 'required|integer|min:1',
+            'stops.*.estimated_time' => 'nullable|integer|min:0',
+        ]);
+
+        $route->update($request->only([
+            'name',
+            'start_point',
+            'end_point',
+            'distance',
+            'estimated_duration',
+            'is_active',
+        ]));
+
+        // Update stops if provided
+        if ($request->has('stops')) {
+            $route->stops()->detach();
+            foreach ($request->stops as $stopData) {
+                $route->stops()->attach($stopData['stop_id'], [
+                    'order' => $stopData['order'],
+                    'estimated_time' => $stopData['estimated_time'] ?? null,
+                ]);
+            }
+        }
+
+        return $this->successResponse($route->load('stops'), 'Route updated successfully');
     }
 
     public function destroy($id)
     {
-        // Delete route
-        // TODO: Implement soft delete
+        $route = Route::findOrFail($id);
+        $route->delete();
+
+        return $this->successResponse(null, 'Route deleted successfully');
     }
 
     public function getStops($id)

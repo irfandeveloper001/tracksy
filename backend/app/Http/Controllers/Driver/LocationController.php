@@ -37,8 +37,8 @@ class LocationController extends Controller
             'recorded_at' => now(),
         ]);
 
-        // TODO: Broadcast location update event
-        // event(new BusLocationUpdated($location));
+        // Broadcast location update event
+        event(new \App\Events\BusLocationUpdated($location));
 
         return $this->successResponse($location);
     }

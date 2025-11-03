@@ -10,24 +10,81 @@ class TripController extends Controller
 {
     public function start(Request $request)
     {
-        // Start a new trip
-        // TODO: Implement trip start logic
-        // - Validate driver and bus
-        // - Create trip record
-        // - Initialize location tracking
-        // - Broadcast trip started event
+        $driver = auth()->user();
+        $bus = $driver->assignedBus;
+
+        if (!$bus) {
+            return $this->errorResponse('No bus assigned to driver', null, 400);
+        }
+
+        $request->validate([
+            'route_id' => 'required|exists:routes,id',
+            'start_location' => 'nullable|array',
+            'start_location.latitude' => 'required_with:start_location|numeric',
+            'start_location.longitude' => 'required_with:start_location|numeric',
+        ]);
+
+        // Check if driver has active trip
+        $activeTrip = Trip::where('driver_id', $driver->id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if ($activeTrip) {
+            return $this->errorResponse('Driver already has an active trip', null, 422);
+        }
+
+        $trip = Trip::create([
+            'driver_id' => $driver->id,
+            'bus_id' => $bus->id,
+            'route_id' => $request->route_id,
+            'start_time' => now(),
+            'start_location' => $request->start_location ?? null,
+            'status' => 'in_progress',
+        ]);
+
+        // Update bus status
+        $bus->update([
+            'status' => 'active',
+            'current_route_id' => $request->route_id,
+        ]);
+
+        // Broadcast trip started event
+        event(new \App\Events\TripStarted($trip));
+
+        return $this->successResponse($trip->load(['bus', 'route', 'stops']), 'Trip started successfully', 201);
     }
 
     public function end($id, Request $request)
     {
-        // End a trip
         $trip = Trip::findOrFail($id);
         
-        // TODO: Implement trip end logic
-        // - Calculate trip statistics
-        // - Update trip status
-        // - Store final location
-        // - Broadcast trip ended event
+        // Verify driver owns this trip
+        if ($trip->driver_id !== auth()->id()) {
+            return $this->errorResponse('Unauthorized', null, 403);
+        }
+
+        if ($trip->status !== 'in_progress') {
+            return $this->errorResponse('Trip is not in progress', null, 422);
+        }
+
+        $request->validate([
+            'end_location' => 'nullable|array',
+            'end_location.latitude' => 'required_with:end_location|numeric',
+            'end_location.longitude' => 'required_with:end_location|numeric',
+        ]);
+
+        $trip->end($request->end_location ?? null);
+
+        // Update bus status
+        $trip->bus->update([
+            'status' => 'inactive',
+            'current_route_id' => null,
+        ]);
+
+        // Broadcast trip ended event
+        event(new \App\Events\TripEnded($trip));
+
+        return $this->successResponse($trip->fresh(['bus', 'route']), 'Trip ended successfully');
     }
 
     public function getCurrent()
