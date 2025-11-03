@@ -1,0 +1,6 @@
+node_modules/
+generated/
+.bundled/
+*.log
+.DS_Store
+

@@ -72,11 +72,32 @@ openapi-generator-cli generate \
 
 ```bash
 # Using Swagger CLI
-swagger-cli validate openapi.yaml
+npm run validate
 
 # Or using Redocly CLI
-redocly lint openapi.yaml
+npm run lint
 ```
+
+### Mock API Server
+
+Start a mock API server for testing and frontend development:
+
+```bash
+# Start mock server (default port 4010)
+npm run mock
+
+# Start with dynamic responses
+npm run mock:dynamic
+
+# Start on custom port
+npm run mock:port
+```
+
+The mock server will:
+- Generate example responses based on your OpenAPI spec
+- Validate requests against the schema
+- Return appropriate HTTP status codes
+- Be accessible at `http://127.0.0.1:4010`
 
 ## API Base URLs
 

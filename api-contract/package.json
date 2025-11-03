@@ -1,0 +1,38 @@
+{
+  "name": "tracksy-api-contract",
+  "version": "1.0.0",
+  "description": "TRACKSY API Contract - OpenAPI 3.0 Specification",
+  "scripts": {
+    "validate": "swagger-cli validate openapi.yaml",
+    "lint": "redocly lint openapi.yaml",
+    "lint:fix": "redocly lint openapi.yaml --fix",
+    "generate:typescript": "openapi-generator-cli generate -i openapi.yaml -g typescript-axios -o ./generated/typescript-client",
+    "generate:javascript": "openapi-generator-cli generate -i openapi.yaml -g javascript -o ./generated/javascript-client",
+    "generate:php": "openapi-generator-cli generate -i openapi.yaml -g php -o ./generated/php-client",
+    "generate:all": "npm run generate:typescript && npm run generate:javascript && npm run generate:php",
+    "serve": "redocly preview-docs openapi.yaml",
+    "build": "redocly bundle openapi.yaml -o bundled.yaml",
+    "mock": "prism mock openapi.yaml",
+    "mock:dynamic": "prism mock -d openapi.yaml",
+    "mock:port": "prism mock -p 4010 openapi.yaml",
+    "migrate": "cd ../backend && php artisan migrate",
+    "migrate:fresh": "cd ../backend && php artisan migrate:fresh",
+    "migrate:rollback": "cd ../backend && php artisan migrate:rollback",
+    "migrate:status": "cd ../backend && php artisan migrate:status",
+    "db:seed": "cd ../backend && php artisan db:seed"
+  },
+  "keywords": [
+    "tracksy",
+    "api",
+    "openapi",
+    "swagger"
+  ],
+  "author": "TRACKSY Team",
+  "license": "proprietary",
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.25.0",
+    "@redocly/cli": "^1.34.5",
+    "@stoplight/prism-cli": "^5.14.2",
+    "swagger-cli": "^4.0.4"
+  }
+}
