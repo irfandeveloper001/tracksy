@@ -542,6 +542,48 @@ components:
           type: string
           format: date-time
     
+    # Alert Schemas
+    Alert:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [route_deviation, delay, emergency, maintenance, system]
+        title:
+          type: string
+        message:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high, critical]
+        status:
+          type: string
+          enum: [new, acknowledged, resolved]
+        bus_id:
+          type: integer
+        route_id:
+          type: integer
+        created_by:
+          type: integer
+        acknowledged_by:
+          type: integer
+        resolved_by:
+          type: integer
+        acknowledged_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
     # Analytics Schemas
     AnalyticsOverview:
       type: object
@@ -592,6 +634,52 @@ components:
                 type: integer
 
 paths:
+  # ============================================
+  # ROOT ENDPOINT (API Information)
+  # ============================================
+  
+  /:
+    get:
+      tags:
+        - API Info
+      summary: API Information
+      description: Get API information and version
+      responses:
+        '200':
+          description: API information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: TRACKSY API
+                  version:
+                    type: string
+                    example: 1.0.0
+                  description:
+                    type: string
+                    example: Smart Student Transport Tracking System API
+                  endpoints:
+                    type: object
+                    properties:
+                      authentication:
+                        type: string
+                        example: /auth/login, /auth/register
+                      student:
+                        type: string
+                        example: /buses, /routes, /bookings
+                      driver:
+                        type: string
+                        example: /driver/trips, /driver/location
+                      admin:
+                        type: string
+                        example: /admin/buses, /admin/routes
+                  documentation:
+                    type: string
+                    example: See OpenAPI specification for full details
+  
   # ============================================
   # AUTHENTICATION ENDPOINTS
   # ============================================
@@ -1317,11 +1405,14 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Booking'
-  
-  /bookings:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+                  pagination:
+                    type: object
     post:
       tags:
         - Bookings
@@ -1344,8 +1435,38 @@ paths:
                 $ref: '#/components/schemas/Booking'
         '400':
           description: Seat not available or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /bookings/{id}:
+    get:
+      tags:
+        - Bookings
+        - Students
+      summary: Get booking details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - Bookings
@@ -1366,6 +1487,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        '404':
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   # ============================================
   # ADMIN ENDPOINTS
@@ -1460,8 +1587,6 @@ paths:
                       $ref: '#/components/schemas/Bus'
                   pagination:
                     type: object
-  
-  /admin/buses:
     post:
       tags:
         - Admins
@@ -1504,8 +1629,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Bus'
-  
-  /admin/buses/{id}:
+        '404':
+          description: Bus not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     put:
       tags:
         - Admins
@@ -1532,8 +1661,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Bus'
-  
-  /admin/buses/{id}:
+        '404':
+          description: Bus not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - Admins
@@ -1554,6 +1687,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        '404':
+          description: Bus not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /admin/buses/{id}/location:
     get:
@@ -1628,8 +1767,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Route'
-  
-  /admin/routes:
     post:
       tags:
         - Admins
@@ -1650,8 +1787,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Route'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /admin/routes/{id}:
+    get:
+      tags:
+        - Admins
+        - Routes
+      summary: Get route details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Route details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+        '404':
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     put:
       tags:
         - Admins
@@ -1678,8 +1847,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Route'
-  
-  /admin/routes/{id}:
+        '404':
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - Admins
@@ -1700,6 +1873,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+        '404':
+          description: Route not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /admin/routes/{id}/stops:
     get:
@@ -1743,8 +1922,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Stop'
-  
-  /admin/stops:
     post:
       tags:
         - Admins
@@ -1765,6 +1942,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Stop'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /admin/stops/{id}:
+    get:
+      tags:
+        - Admins
+        - Stops
+      summary: Get stop details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Stop details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stop'
+        '404':
+          description: Stop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Admins
+        - Stops
+      summary: Update stop
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StopCreate'
+      responses:
+        '200':
+          description: Stop updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stop'
+        '404':
+          description: Stop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Admins
+        - Stops
+      summary: Delete stop
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Stop deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '404':
+          description: Stop not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Stop is assigned to routes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /admin/students:
     get:
@@ -1811,6 +2086,150 @@ paths:
                       $ref: '#/components/schemas/User'
                   pagination:
                     type: object
+    post:
+      tags:
+        - Admins
+        - Students
+      summary: Create student
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - student_id
+                - name
+                - email
+                - password
+                - institution
+              properties:
+                student_id:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                institution:
+                  type: string
+      responses:
+        '201':
+          description: Student created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /admin/students/{id}:
+    get:
+      tags:
+        - Admins
+        - Students
+      summary: Get student details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Student details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Admins
+        - Students
+      summary: Update student
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                institution:
+                  type: string
+                student_id:
+                  type: string
+      responses:
+        '200':
+          description: Student updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Admins
+        - Students
+      summary: Delete student
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Student deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '404':
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /admin/drivers:
     get:
@@ -1850,6 +2269,159 @@ paths:
                       $ref: '#/components/schemas/Driver'
                   pagination:
                     type: object
+    post:
+      tags:
+        - Admins
+        - Drivers
+      summary: Create driver
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - driver_id
+                - name
+                - email
+                - password
+                - license_number
+              properties:
+                driver_id:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                license_number:
+                  type: string
+                phone:
+                  type: string
+      responses:
+        '201':
+          description: Driver created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /admin/drivers/{id}:
+    get:
+      tags:
+        - Admins
+        - Drivers
+      summary: Get driver details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Driver details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '404':
+          description: Driver not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+        - Admins
+        - Drivers
+      summary: Update driver
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                license_number:
+                  type: string
+                phone:
+                  type: string
+                assigned_bus_id:
+                  type: integer
+                assigned_route_id:
+                  type: integer
+                status:
+                  type: string
+                  enum: [active, on_leave, inactive]
+      responses:
+        '200':
+          description: Driver updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+        '404':
+          description: Driver not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Admins
+        - Drivers
+      summary: Delete driver
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Driver deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '404':
+          description: Driver not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /admin/admins:
     get:
@@ -1908,11 +2480,35 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [student, driver, admin]
       responses:
         '200':
           description: User updated
-  
-  /admin/users/{id}:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - Admins
@@ -1928,6 +2524,16 @@ paths:
       responses:
         '200':
           description: User deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /admin/analytics/overview:
     get:
@@ -1983,6 +2589,152 @@ paths:
       responses:
         '200':
           description: Performance metrics
+  
+  /admin/alerts:
+    get:
+      tags:
+        - Admins
+        - Notifications
+      summary: List all alerts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, acknowledged, resolved]
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [route_deviation, delay, emergency, maintenance, system]
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  pagination:
+                    type: object
+    post:
+      tags:
+        - Admins
+        - Notifications
+      summary: Create alert
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - title
+                - message
+              properties:
+                type:
+                  type: string
+                  enum: [route_deviation, delay, emergency, maintenance, system]
+                title:
+                  type: string
+                message:
+                  type: string
+                severity:
+                  type: string
+                  enum: [low, medium, high, critical]
+                  default: medium
+                bus_id:
+                  type: integer
+                route_id:
+                  type: integer
+      responses:
+        '201':
+          description: Alert created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /admin/alerts/{id}/acknowledge:
+    put:
+      tags:
+        - Admins
+        - Notifications
+      summary: Acknowledge alert
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '404':
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /admin/alerts/{id}/resolve:
+    put:
+      tags:
+        - Admins
+        - Notifications
+      summary: Resolve alert
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Alert resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '404':
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   
   /admin/reports/generate:
     get:
