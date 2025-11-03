@@ -11,9 +11,40 @@ class AdminController extends Controller
 {
     public function login(Request $request)
     {
-        // Admin login
-        // TODO: Implement admin-specific login
-        // Similar to AuthController but check for admin role
+        $request->validate([
+            'email' => 'required|string',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $credentials = $request->only('email', 'password');
+        
+        $user = User::where('email', $credentials['email'])
+            ->orWhere('driver_id', $credentials['email'])
+            ->first();
+
+        if (!$user || !\Hash::check($credentials['password'], $user->password)) {
+            return $this->errorResponse('Invalid credentials', null, 401);
+        }
+
+        // Check if user is admin or manager
+        if (!in_array($user->role, ['admin', 'manager'])) {
+            return $this->errorResponse('Access denied. Admin or manager role required.', null, 403);
+        }
+
+        if (!$token = JWTAuth::fromUser($user)) {
+            return $this->errorResponse('Could not create token', null, 500);
+        }
+
+        return $this->successResponse([
+            'token' => $token,
+            'refreshToken' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+            ],
+        ], 'Login successful');
     }
 
     public function me()
@@ -50,20 +81,84 @@ class AdminController extends Controller
 
     public function createUser(Request $request)
     {
-        // Create user (student, driver, or admin)
-        // TODO: Implement user creation
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'role' => 'required|in:student,driver,admin',
+            'student_id' => 'required_if:role,student|string|unique:users,student_id',
+            'driver_id' => 'required_if:role,driver|string|unique:users,driver_id',
+            'institution' => 'required_if:role,student|string',
+            'license_number' => 'required_if:role,driver|string',
+            'phone' => 'nullable|string',
+        ]);
+
+        $userData = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => \Hash::make($request->password),
+            'role' => $request->role,
+        ];
+
+        if ($request->role === 'student') {
+            $userData['student_id'] = $request->student_id;
+            $userData['institution'] = $request->institution;
+        } elseif ($request->role === 'driver') {
+            $userData['driver_id'] = $request->driver_id;
+            $userData['license_number'] = $request->license_number;
+        }
+
+        if ($request->has('phone')) {
+            $userData['phone'] = $request->phone;
+        }
+
+        $user = User::create($userData);
+        $user->assignRole($request->role);
+
+        return $this->successResponse($user, 'User created successfully', 201);
     }
 
     public function updateUser(Request $request, $id)
     {
-        // Update user
-        // TODO: Implement user update
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|unique:users,email,' . $id,
+            'password' => 'sometimes|string|min:6',
+            'role' => 'sometimes|in:student,driver,admin',
+            'student_id' => 'sometimes|string|unique:users,student_id,' . $id,
+            'driver_id' => 'sometimes|string|unique:users,driver_id,' . $id,
+            'institution' => 'sometimes|string',
+            'license_number' => 'sometimes|string',
+            'phone' => 'nullable|string',
+            'status' => 'sometimes|in:active,inactive,on_leave',
+            'assigned_bus_id' => 'nullable|exists:buses,id',
+            'assigned_route_id' => 'nullable|exists:routes,id',
+        ]);
+
+        $updateData = $request->only(['name', 'email', 'institution', 'student_id', 'driver_id', 'license_number', 'phone', 'status', 'assigned_bus_id', 'assigned_route_id']);
+
+        if ($request->has('password')) {
+            $updateData['password'] = \Hash::make($request->password);
+        }
+
+        if ($request->has('role')) {
+            $user->syncRoles([$request->role]);
+            $updateData['role'] = $request->role;
+        }
+
+        $user->update($updateData);
+
+        return $this->successResponse($user->fresh(), 'User updated successfully');
     }
 
     public function deleteUser($id)
     {
-        // Delete user
-        // TODO: Implement soft delete
+        $user = User::findOrFail($id);
+        $user->delete();
+
+        return $this->successResponse(null, 'User deleted successfully');
     }
 }
 

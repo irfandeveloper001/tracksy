@@ -95,7 +95,7 @@ class BookingController extends Controller
             return $this->errorResponse('Unauthorized', null, 403);
         }
 
-        // TODO: Cancel booking logic
+        // Cancel booking
         $booking->cancel(auth()->id());
         
         return $this->successResponse(null, 'Booking cancelled');

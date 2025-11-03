@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
+use App\Models\Booking;
 use App\Models\Location;
 use Illuminate\Http\Request;
 
@@ -51,18 +52,49 @@ class BusController extends Controller
         
         $tripDate = $request->tripDate ?? now()->toDateString();
         
-        // TODO: Implement seat availability calculation
-        // - Get all bookings for this bus and date
-        // - Calculate available, occupied, reserved seats
-        // - Return seat map
+        // Get all bookings for this bus and date
+        $bookings = Booking::where('bus_id', $bus->id)
+            ->where('trip_date', $tripDate)
+            ->where('status', '!=', 'cancelled')
+            ->get();
+        
+        // Get seat assignments
+        $seatAssignments = \App\Models\SeatAssignment::where('bus_id', $bus->id)
+            ->where('trip_date', $tripDate)
+            ->where('status', '!=', 'cancelled')
+            ->get();
+        
+        // Calculate seat statuses
+        $occupiedSeats = $bookings->where('status', 'confirmed')->pluck('seat_number')->toArray();
+        $reservedSeats = $seatAssignments->where('status', 'reserved')->pluck('seat_number')->toArray();
+        $allBookedSeats = array_unique(array_merge($occupiedSeats, $reservedSeats));
+        
+        $totalSeats = $bus->capacity;
+        $occupiedCount = count($occupiedSeats);
+        $reservedCount = count(array_diff($reservedSeats, $occupiedSeats));
+        $availableCount = $totalSeats - count($allBookedSeats);
+        
+        // Generate seat map
+        $seatMap = [];
+        for ($i = 1; $i <= $totalSeats; $i++) {
+            $seatNumber = (string)$i;
+            if (in_array($seatNumber, $occupiedSeats)) {
+                $seatMap[$seatNumber] = 'occupied';
+            } elseif (in_array($seatNumber, $reservedSeats)) {
+                $seatMap[$seatNumber] = 'reserved';
+            } else {
+                $seatMap[$seatNumber] = 'available';
+            }
+        }
         
         $availability = [
             'bus_id' => $bus->id,
-            'total_seats' => $bus->capacity,
-            'available_seats' => 0, // TODO: Calculate
-            'occupied_seats' => 0,  // TODO: Calculate
-            'reserved_seats' => 0,  // TODO: Calculate
-            'seat_map' => [],       // TODO: Generate seat map
+            'trip_date' => $tripDate,
+            'total_seats' => $totalSeats,
+            'available_seats' => $availableCount,
+            'occupied_seats' => $occupiedCount,
+            'reserved_seats' => $reservedCount,
+            'seat_map' => $seatMap,
         ];
         
         return $this->successResponse($availability);
