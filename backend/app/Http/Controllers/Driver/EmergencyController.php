@@ -33,8 +33,8 @@ class EmergencyController extends Controller
             'status' => 'new',
         ]);
 
-        // TODO: Broadcast emergency alert
-        // TODO: Send notifications to admin
+        // Broadcast emergency alert
+        event(new \App\Events\EmergencyAlert($alert));
 
         return $this->successResponse($alert, 'Emergency alert sent', 201);
     }
@@ -51,10 +51,26 @@ class EmergencyController extends Controller
             'photo_url' => 'nullable|url',
         ]);
 
-        // TODO: Create incident report
-        // TODO: Store incident data
+        // Create incident alert
+        $alert = Alert::create([
+            'type' => 'maintenance',
+            'severity' => 'medium',
+            'title' => 'Incident Report',
+            'message' => $request->description,
+            'data' => [
+                'incident_type' => $request->type,
+                'location' => $request->location,
+                'photo_url' => $request->photo_url,
+            ],
+            'driver_id' => $driver->id,
+            'bus_id' => $driver->assigned_bus_id,
+            'status' => 'new',
+        ]);
+
+        // Broadcast incident event
+        event(new \App\Events\IncidentReported($alert));
         
-        return $this->successResponse(null, 'Incident reported', 201);
+        return $this->successResponse($alert, 'Incident reported', 201);
     }
 }
 

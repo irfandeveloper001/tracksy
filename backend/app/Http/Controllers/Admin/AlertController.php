@@ -29,8 +29,29 @@ class AlertController extends Controller
 
     public function store(Request $request)
     {
-        // Create alert
-        // TODO: Implement alert creation
+        $request->validate([
+            'type' => 'required|in:route_deviation,delay,emergency,maintenance,system',
+            'title' => 'required|string|max:255',
+            'message' => 'required|string',
+            'severity' => 'nullable|in:low,medium,high,critical',
+            'bus_id' => 'nullable|exists:buses,id',
+            'route_id' => 'nullable|exists:routes,id',
+        ]);
+
+        $alert = Alert::create([
+            'type' => $request->type,
+            'title' => $request->title,
+            'message' => $request->message,
+            'severity' => $request->severity ?? 'medium',
+            'bus_id' => $request->bus_id,
+            'route_id' => $request->route_id,
+            'status' => 'new',
+        ]);
+
+        // Broadcast alert event
+        event(new \App\Events\AlertCreated($alert));
+
+        return $this->successResponse($alert, 'Alert created successfully', 201);
     }
 
     public function acknowledge($id)

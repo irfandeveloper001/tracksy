@@ -11,7 +11,6 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         // List all students (admin only)
-        // TODO: Implement with pagination, search, filters
         $students = User::students()
             ->when($request->search, function ($query, $search) {
                 return $query->where('name', 'like', "%{$search}%")
@@ -44,22 +43,59 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
-        // Create new student (admin only)
-        // TODO: Implement validation
-        // TODO: Implement creation logic
+        $request->validate([
+            'student_id' => 'required|string|unique:users,student_id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'institution' => 'required|string',
+        ]);
+
+        $student = User::create([
+            'student_id' => $request->student_id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => \Hash::make($request->password),
+            'institution' => $request->institution,
+            'role' => 'student',
+            'status' => 'active',
+        ]);
+
+        $student->assignRole('student');
+
+        return $this->successResponse($student, 'Student created successfully', 201);
     }
 
     public function update(Request $request, $id)
     {
-        // Update student (admin only)
-        // TODO: Implement validation
-        // TODO: Implement update logic
+        $student = User::students()->findOrFail($id);
+
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|unique:users,email,' . $id,
+            'password' => 'sometimes|string|min:6',
+            'institution' => 'sometimes|string',
+            'student_id' => 'sometimes|string|unique:users,student_id,' . $id,
+            'status' => 'sometimes|in:active,inactive',
+        ]);
+
+        $updateData = $request->only(['name', 'email', 'institution', 'student_id', 'status']);
+        
+        if ($request->has('password')) {
+            $updateData['password'] = \Hash::make($request->password);
+        }
+
+        $student->update($updateData);
+
+        return $this->successResponse($student->fresh(), 'Student updated successfully');
     }
 
     public function destroy($id)
     {
-        // Delete student (admin only)
-        // TODO: Implement soft delete
+        $student = User::students()->findOrFail($id);
+        $student->delete();
+
+        return $this->successResponse(null, 'Student deleted successfully');
     }
 }
 

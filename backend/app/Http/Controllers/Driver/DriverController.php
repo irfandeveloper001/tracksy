@@ -13,8 +13,43 @@ class DriverController extends Controller
 {
     public function login(Request $request)
     {
-        // Driver login - same as AuthController but for driver role
-        // TODO: Implement driver-specific login
+        $request->validate([
+            'email' => 'required|string',
+            'password' => 'required|string|min:6',
+        ]);
+
+        $credentials = $request->only('email', 'password');
+        
+        $user = User::where('email', $credentials['email'])
+            ->orWhere('driver_id', $credentials['email'])
+            ->first();
+
+        if (!$user || !\Hash::check($credentials['password'], $user->password)) {
+            return $this->errorResponse('Invalid credentials', null, 401);
+        }
+
+        // Check if user is driver
+        if ($user->role !== 'driver') {
+            return $this->errorResponse('Access denied. Driver role required.', null, 403);
+        }
+
+        if (!$token = JWTAuth::fromUser($user)) {
+            return $this->errorResponse('Could not create token', null, 500);
+        }
+
+        return $this->successResponse([
+            'token' => $token,
+            'refreshToken' => $token,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'driver_id' => $user->driver_id,
+                'assigned_bus' => $user->assignedBus,
+                'assigned_route' => $user->assignedRoute,
+            ],
+        ], 'Login successful');
     }
 
     public function me()
@@ -74,46 +109,171 @@ class DriverController extends Controller
 
     public function markStopArrival($id)
     {
-        // Mark stop as arrived
-        // TODO: Implement stop arrival logic
+        $driver = auth()->user();
+        $trip = Trip::where('driver_id', $driver->id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if (!$trip) {
+            return $this->errorResponse('No active trip found', null, 404);
+        }
+
+        // Create or update trip stop record
+        $tripStop = \App\Models\TripStop::updateOrCreate(
+            [
+                'trip_id' => $trip->id,
+                'stop_id' => $id,
+            ],
+            [
+                'actual_time' => now(),
+            ]
+        );
+
+        // Broadcast stop arrival event
+        event(new \App\Events\StopArrived($tripStop));
+
+        return $this->successResponse($tripStop, 'Stop arrival marked successfully');
     }
 
     public function getPassengers($tripId)
     {
-        // Get trip passengers
-        $trip = Trip::with('passengers.student')->findOrFail($tripId);
+        $trip = Trip::with(['bookings.student', 'bookings.bus'])->findOrFail($tripId);
         
-        return $this->successResponse($trip->passengers);
+        $passengers = $trip->bookings->map(function ($booking) {
+            return [
+                'id' => $booking->student->id,
+                'name' => $booking->student->name,
+                'student_id' => $booking->student->student_id,
+                'seat_number' => $booking->seat_number,
+                'booking_id' => $booking->id,
+                'status' => $booking->status,
+            ];
+        });
+        
+        return $this->successResponse($passengers);
     }
 
     public function checkIn(Request $request)
     {
-        // Check-in passenger
-        // TODO: Implement passenger check-in logic
+        $request->validate([
+            'student_id' => 'required|exists:users,id',
+            'trip_id' => 'required|exists:trips,id',
+            'seat_number' => 'nullable|string',
+        ]);
+
+        $driver = auth()->user();
+        $trip = Trip::where('id', $request->trip_id)
+            ->where('driver_id', $driver->id)
+            ->firstOrFail();
+
+        $booking = Booking::where('trip_id', $request->trip_id)
+            ->where('student_id', $request->student_id)
+            ->first();
+
+        if (!$booking) {
+            return $this->errorResponse('Booking not found for this trip', null, 404);
+        }
+
+        // Update booking status to confirmed if pending
+        if ($booking->status === 'pending') {
+            $booking->update(['status' => 'confirmed']);
+        }
+
+        // Create trip passenger record
+        \App\Models\TripPassenger::updateOrCreate(
+            [
+                'trip_id' => $trip->id,
+                'student_id' => $request->student_id,
+            ],
+            [
+                'checked_in' => true,
+                'checked_in_at' => now(),
+                'seat_number' => $request->seat_number ?? $booking->seat_number,
+            ]
+        );
+
+        $trip->increment('passenger_count');
+
+        return $this->successResponse(['checked_in' => true], 'Passenger checked in successfully');
     }
 
     public function index(Request $request)
     {
-        // List all drivers (admin only)
-        // TODO: Implement with pagination, filters
+        $drivers = User::drivers()
+            ->when($request->search, function ($query, $search) {
+                return $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('driver_id', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            })
+            ->when($request->status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
+            ->with(['assignedBus', 'assignedRoute'])
+            ->paginate($request->limit ?? 10);
+
+        return $this->successResponse($drivers);
     }
 
     public function store(Request $request)
     {
-        // Create driver (admin only)
-        // TODO: Implement driver creation
+        $request->validate([
+            'driver_id' => 'required|string|unique:users,driver_id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'license_number' => 'required|string',
+            'phone' => 'nullable|string',
+        ]);
+
+        $driver = User::create([
+            'driver_id' => $request->driver_id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => \Hash::make($request->password),
+            'license_number' => $request->license_number,
+            'phone' => $request->phone ?? null,
+            'role' => 'driver',
+            'status' => 'active',
+        ]);
+
+        $driver->assignRole('driver');
+
+        return $this->successResponse($driver, 'Driver created successfully', 201);
     }
 
     public function update(Request $request, $id)
     {
-        // Update driver (admin only)
-        // TODO: Implement driver update
+        $driver = User::drivers()->findOrFail($id);
+
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|unique:users,email,' . $id,
+            'password' => 'sometimes|string|min:6',
+            'license_number' => 'sometimes|string',
+            'phone' => 'nullable|string',
+            'status' => 'sometimes|in:active,on_leave,inactive',
+            'assigned_bus_id' => 'nullable|exists:buses,id',
+            'assigned_route_id' => 'nullable|exists:routes,id',
+            'driver_id' => 'sometimes|string|unique:users,driver_id,' . $id,
+        ]);
+
+        $updateData = $request->only(['name', 'email', 'license_number', 'phone', 'status', 'assigned_bus_id', 'assigned_route_id', 'driver_id']);
+        
+        if ($request->has('password')) {
+            $updateData['password'] = \Hash::make($request->password);
+        }
+
+        $driver->update($updateData);
+
+        return $this->successResponse($driver->fresh()->load(['assignedBus', 'assignedRoute']), 'Driver updated successfully');
     }
 
     public function destroy($id)
     {
-        // Delete driver (admin only)
-        // TODO: Implement soft delete
+        $driver = User::drivers()->findOrFail($id);
+        $driver->delete();
+
+        return $this->successResponse(null, 'Driver deleted successfully');
     }
 }
 
