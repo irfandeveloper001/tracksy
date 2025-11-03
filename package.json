@@ -1,0 +1,40 @@
+{
+  "name": "tracksy-monorepo",
+  "version": "1.0.0",
+  "description": "TRACKSY - Smart Student Transport Tracking System - Monorepo",
+  "private": true,
+  "workspaces": [
+    "student-app",
+    "admin-dashboard",
+    "DriverApp"
+  ],
+  "scripts": {
+    "student:start": "cd student-app && npm start",
+    "student:android": "cd student-app && npm run android",
+    "student:ios": "cd student-app && npm run ios",
+    "admin:dev": "cd admin-dashboard && npm run dev",
+    "admin:build": "cd admin-dashboard && npm run build",
+    "driver:android": "cd DriverApp && npm run android",
+    "driver:start": "cd DriverApp && npm start",
+    "install:all": "npm install && cd student-app && npm install && cd ../admin-dashboard && npm install && cd ../driver-app && npm install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/tracksy.git"
+  },
+  "keywords": [
+    "transport",
+    "tracking",
+    "student",
+    "gps",
+    "react-native",
+    "remix"
+  ],
+  "author": "TRACKSY Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
+

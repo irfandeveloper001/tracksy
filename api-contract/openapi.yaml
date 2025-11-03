@@ -1,0 +1,2020 @@
+openapi: 3.0.3
+info:
+  title: TRACKSY API
+  description: |
+    Smart Student Transport Tracking System API Contract
+    
+    This API provides endpoints for:
+    - Student mobile application
+    - Driver mobile application
+    - Admin dashboard
+    
+    All endpoints require authentication except login and registration.
+  version: 1.0.0
+  contact:
+    name: TRACKSY Team
+    email: support@tracksy.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:8000/api
+    description: Development server
+  - url: https://api.tracksy.com/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: Authentication and authorization endpoints
+  - name: Students
+    description: Student-related endpoints
+  - name: Drivers
+    description: Driver-related endpoints
+  - name: Admins
+    description: Admin-related endpoints
+  - name: Buses
+    description: Bus management endpoints
+  - name: Routes
+    description: Route management endpoints
+  - name: Stops
+    description: Stop management endpoints
+  - name: Bookings
+    description: Seat booking endpoints
+  - name: Trips
+    description: Trip management endpoints
+  - name: Analytics
+    description: Analytics and reporting endpoints
+  - name: Notifications
+    description: Notification management endpoints
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    
+    Success:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+    
+    # Authentication Schemas
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email or student/driver ID
+        password:
+          type: string
+          minLength: 6
+    
+    RegisterRequest:
+      type: object
+      required:
+        - studentId
+        - name
+        - email
+        - password
+        - institution
+      properties:
+        studentId:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        institution:
+          type: string
+        confirmPassword:
+          type: string
+    
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+    
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        studentId:
+          type: string
+        institution:
+          type: string
+        role:
+          type: string
+          enum: [student, driver, admin]
+    
+    # Bus Schemas
+    Bus:
+      type: object
+      properties:
+        id:
+          type: integer
+        busNumber:
+          type: string
+        licensePlate:
+          type: string
+        busType:
+          type: string
+          enum: [standard, premium]
+        capacity:
+          type: integer
+        currentRouteId:
+          type: integer
+        currentDriverId:
+          type: integer
+        status:
+          type: string
+          enum: [active, inactive, maintenance, emergency]
+        location:
+          $ref: '#/components/schemas/Location'
+        lastUpdated:
+          type: string
+          format: date-time
+    
+    Location:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        accuracy:
+          type: number
+        speed:
+          type: number
+        heading:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+    
+    BusCreate:
+      type: object
+      required:
+        - busNumber
+        - licensePlate
+        - capacity
+      properties:
+        busNumber:
+          type: string
+        licensePlate:
+          type: string
+        busType:
+          type: string
+          enum: [standard, premium]
+        capacity:
+          type: integer
+        routeId:
+          type: integer
+        driverId:
+          type: integer
+        status:
+          type: string
+          enum: [active, inactive, maintenance]
+    
+    # Route Schemas
+    Route:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        startPoint:
+          type: string
+        endPoint:
+          type: string
+        distance:
+          type: number
+        estimatedDuration:
+          type: integer
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/Stop'
+        activeBuses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bus'
+        studentCount:
+          type: integer
+    
+    RouteCreate:
+      type: object
+      required:
+        - name
+        - startPoint
+        - endPoint
+        - stops
+      properties:
+        name:
+          type: string
+        startPoint:
+          type: string
+        endPoint:
+          type: string
+        stops:
+          type: array
+          items:
+            type: integer
+          description: Array of stop IDs in order
+        estimatedDuration:
+          type: integer
+    
+    # Stop Schemas
+    Stop:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        estimatedTime:
+          type: integer
+        routes:
+          type: array
+          items:
+            type: integer
+    
+    StopCreate:
+      type: object
+      required:
+        - name
+        - address
+        - latitude
+        - longitude
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+    
+    # Booking Schemas
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        busId:
+          type: integer
+        seatNumber:
+          type: string
+        tripDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [pending, confirmed, cancelled, completed]
+        createdAt:
+          type: string
+          format: date-time
+    
+    BookingCreate:
+      type: object
+      required:
+        - busId
+        - seatNumber
+        - tripDate
+      properties:
+        busId:
+          type: integer
+        seatNumber:
+          type: string
+        tripDate:
+          type: string
+          format: date
+    
+    SeatAvailability:
+      type: object
+      properties:
+        busId:
+          type: integer
+        totalSeats:
+          type: integer
+        availableSeats:
+          type: integer
+        occupiedSeats:
+          type: integer
+        reservedSeats:
+          type: integer
+        seatMap:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [available, occupied, reserved]
+    
+    # Trip Schemas
+    Trip:
+      type: object
+      properties:
+        id:
+          type: integer
+        driverId:
+          type: integer
+        busId:
+          type: integer
+        routeId:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [not_started, in_progress, completed, cancelled]
+        distance:
+          type: number
+        duration:
+          type: integer
+        passengerCount:
+          type: integer
+    
+    TripStart:
+      type: object
+      required:
+        - routeId
+        - busId
+      properties:
+        routeId:
+          type: integer
+        busId:
+          type: integer
+        startLocation:
+          $ref: '#/components/schemas/Location'
+    
+    # Driver Schemas
+    Driver:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        driverId:
+          type: string
+        licenseNumber:
+          type: string
+        assignedBusId:
+          type: integer
+        assignedRouteId:
+          type: integer
+        status:
+          type: string
+          enum: [active, on_leave, inactive]
+        currentLocation:
+          $ref: '#/components/schemas/Location'
+    
+    LocationUpdate:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        accuracy:
+          type: number
+        speed:
+          type: number
+        heading:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+    
+    LocationBatch:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationUpdate'
+    
+    # Passenger Schemas
+    Passenger:
+      type: object
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        name:
+          type: string
+        boardingStop:
+          type: integer
+        alightingStop:
+          type: integer
+        seatNumber:
+          type: string
+        checkedIn:
+          type: boolean
+        checkedInAt:
+          type: string
+          format: date-time
+    
+    CheckInRequest:
+      type: object
+      required:
+        - studentId
+        - tripId
+      properties:
+        studentId:
+          type: integer
+        tripId:
+          type: integer
+        seatNumber:
+          type: string
+    
+    # Emergency Schemas
+    EmergencyAlert:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [accident, breakdown, medical, other]
+        description:
+          type: string
+        location:
+          $ref: '#/components/schemas/Location'
+    
+    IncidentReport:
+      type: object
+      required:
+        - type
+        - description
+      properties:
+        type:
+          type: string
+        description:
+          type: string
+        location:
+          $ref: '#/components/schemas/Location'
+        photoUrl:
+          type: string
+    
+    # Notification Schemas
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        type:
+          type: string
+          enum: [route_deviation, delay, seat_available, stop_arrival, safety, general]
+        title:
+          type: string
+        message:
+          type: string
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    
+    # Analytics Schemas
+    AnalyticsOverview:
+      type: object
+      properties:
+        totalBuses:
+          type: integer
+        activeBuses:
+          type: integer
+        totalStudents:
+          type: integer
+        totalRoutes:
+          type: integer
+        onTimePercentage:
+          type: number
+        currentAlerts:
+          type: integer
+    
+    UsageStatistics:
+      type: object
+      properties:
+        dateRange:
+          type: object
+          properties:
+            start:
+              type: string
+              format: date
+            end:
+              type: string
+              format: date
+        dailyTrips:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              count:
+                type: integer
+        peakHours:
+          type: array
+          items:
+            type: object
+            properties:
+              hour:
+                type: integer
+              count:
+                type: integer
+
+paths:
+  # ============================================
+  # AUTHENTICATION ENDPOINTS
+  # ============================================
+  
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: Login endpoint for students, drivers, and admins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+        - Students
+      summary: Student registration
+      description: Register a new student account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: User logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /auth/forgot-password:
+    post:
+      tags:
+        - Authentication
+      summary: Request password reset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Password reset email sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /auth/reset-password:
+    post:
+      tags:
+        - Authentication
+      summary: Reset password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - password
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 6
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  # ============================================
+  # DRIVER ENDPOINTS
+  # ============================================
+  
+  /driver/login:
+    post:
+      tags:
+        - Drivers
+        - Authentication
+      summary: Driver login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  
+  /driver/me:
+    get:
+      tags:
+        - Drivers
+      summary: Get driver profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Driver information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Driver'
+  
+  /driver/refresh-token:
+    post:
+      tags:
+        - Drivers
+        - Authentication
+      summary: Refresh driver token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+  
+  /driver/trips/start:
+    post:
+      tags:
+        - Drivers
+        - Trips
+      summary: Start a trip
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TripStart'
+      responses:
+        '201':
+          description: Trip started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+  
+  /driver/trips/{id}/end:
+    post:
+      tags:
+        - Drivers
+        - Trips
+      summary: End a trip
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endLocation:
+                  $ref: '#/components/schemas/Location'
+      responses:
+        '200':
+          description: Trip ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+  
+  /driver/trips/current:
+    get:
+      tags:
+        - Drivers
+        - Trips
+      summary: Get current trip
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current trip information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+        '404':
+          description: No active trip
+  
+  /driver/trips:
+    get:
+      tags:
+        - Drivers
+        - Trips
+      summary: Get trip history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Trip history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Trip'
+                  pagination:
+                    type: object
+  
+  /driver/trips/{id}:
+    get:
+      tags:
+        - Drivers
+        - Trips
+      summary: Get trip details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Trip details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trip'
+  
+  /driver/location:
+    post:
+      tags:
+        - Drivers
+      summary: Send location update
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationUpdate'
+      responses:
+        '200':
+          description: Location updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /driver/location/batch:
+    post:
+      tags:
+        - Drivers
+      summary: Send batch location updates
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationBatch'
+      responses:
+        '200':
+          description: Locations updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /driver/route:
+    get:
+      tags:
+        - Drivers
+        - Routes
+      summary: Get assigned route
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Assigned route
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+  
+  /driver/route/stops:
+    get:
+      tags:
+        - Drivers
+        - Routes
+        - Stops
+      summary: Get route stops
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Route stops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Stop'
+  
+  /driver/stops/{id}/arrive:
+    post:
+      tags:
+        - Drivers
+        - Stops
+      summary: Mark stop as arrived
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Stop marked as arrived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /driver/trips/{id}/passengers:
+    get:
+      tags:
+        - Drivers
+        - Trips
+      summary: Get trip passengers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Passenger list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Passenger'
+  
+  /driver/passengers/check-in:
+    post:
+      tags:
+        - Drivers
+      summary: Check-in passenger
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInRequest'
+      responses:
+        '200':
+          description: Passenger checked in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /driver/emergency:
+    post:
+      tags:
+        - Drivers
+      summary: Send emergency alert
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyAlert'
+      responses:
+        '200':
+          description: Emergency alert sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /driver/incidents:
+    post:
+      tags:
+        - Drivers
+      summary: Report incident
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentReport'
+      responses:
+        '201':
+          description: Incident reported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  # ============================================
+  # STUDENT ENDPOINTS
+  # ============================================
+  
+  /buses:
+    get:
+      tags:
+        - Buses
+        - Students
+      summary: Get all buses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: routeId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive]
+      responses:
+        '200':
+          description: List of buses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bus'
+  
+  /buses/{id}:
+    get:
+      tags:
+        - Buses
+        - Students
+      summary: Get bus details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bus details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bus'
+  
+  /buses/{id}/location:
+    get:
+      tags:
+        - Buses
+        - Students
+      summary: Get bus current location
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bus location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+  
+  /buses/{id}/seats:
+    get:
+      tags:
+        - Buses
+        - Students
+        - Bookings
+      summary: Get seat availability
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: tripDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Seat availability
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatAvailability'
+  
+  /routes:
+    get:
+      tags:
+        - Routes
+        - Students
+      summary: Get all routes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Route'
+  
+  /routes/{id}:
+    get:
+      tags:
+        - Routes
+        - Students
+      summary: Get route details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Route details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+  
+  /routes/{id}/stops:
+    get:
+      tags:
+        - Routes
+        - Stops
+        - Students
+      summary: Get route stops
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Route stops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Stop'
+  
+  /bookings:
+    get:
+      tags:
+        - Bookings
+        - Students
+      summary: Get user bookings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, cancelled, completed]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+  
+  /bookings:
+    post:
+      tags:
+        - Bookings
+        - Students
+      summary: Create booking
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+      responses:
+        '201':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          description: Seat not available or validation error
+  
+  /bookings/{id}:
+    delete:
+      tags:
+        - Bookings
+        - Students
+      summary: Cancel booking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  # ============================================
+  # ADMIN ENDPOINTS
+  # ============================================
+  
+  /admin/login:
+    post:
+      tags:
+        - Admins
+        - Authentication
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  
+  /admin/me:
+    get:
+      tags:
+        - Admins
+      summary: Get admin profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Admin information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  
+  /admin/refresh-token:
+    post:
+      tags:
+        - Admins
+        - Authentication
+      summary: Refresh admin token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token refreshed
+  
+  /admin/buses:
+    get:
+      tags:
+        - Admins
+        - Buses
+      summary: List all buses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, maintenance, emergency]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of buses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bus'
+                  pagination:
+                    type: object
+  
+  /admin/buses:
+    post:
+      tags:
+        - Admins
+        - Buses
+      summary: Create bus
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusCreate'
+      responses:
+        '201':
+          description: Bus created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bus'
+  
+  /admin/buses/{id}:
+    get:
+      tags:
+        - Admins
+        - Buses
+      summary: Get bus details
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bus details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bus'
+  
+  /admin/buses/{id}:
+    put:
+      tags:
+        - Admins
+        - Buses
+      summary: Update bus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusCreate'
+      responses:
+        '200':
+          description: Bus updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bus'
+  
+  /admin/buses/{id}:
+    delete:
+      tags:
+        - Admins
+        - Buses
+      summary: Delete bus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bus deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /admin/buses/{id}/location:
+    get:
+      tags:
+        - Admins
+        - Buses
+      summary: Get bus location
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Bus location
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Location'
+  
+  /admin/buses/{id}/history:
+    get:
+      tags:
+        - Admins
+        - Buses
+      summary: Get bus history
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Bus history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trip'
+  
+  /admin/routes:
+    get:
+      tags:
+        - Admins
+        - Routes
+      summary: List all routes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Route'
+  
+  /admin/routes:
+    post:
+      tags:
+        - Admins
+        - Routes
+      summary: Create route
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteCreate'
+      responses:
+        '201':
+          description: Route created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+  
+  /admin/routes/{id}:
+    put:
+      tags:
+        - Admins
+        - Routes
+      summary: Update route
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteCreate'
+      responses:
+        '200':
+          description: Route updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+  
+  /admin/routes/{id}:
+    delete:
+      tags:
+        - Admins
+        - Routes
+      summary: Delete route
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Route deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+  
+  /admin/routes/{id}/stops:
+    get:
+      tags:
+        - Admins
+        - Routes
+        - Stops
+      summary: Get route stops
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Route stops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Stop'
+  
+  /admin/stops:
+    get:
+      tags:
+        - Admins
+        - Stops
+      summary: List all stops
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of stops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Stop'
+  
+  /admin/stops:
+    post:
+      tags:
+        - Admins
+        - Stops
+      summary: Create stop
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StopCreate'
+      responses:
+        '201':
+          description: Stop created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stop'
+  
+  /admin/students:
+    get:
+      tags:
+        - Admins
+        - Students
+      summary: List all students
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: institution
+          in: query
+          schema:
+            type: string
+        - name: routeId
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  pagination:
+                    type: object
+  
+  /admin/drivers:
+    get:
+      tags:
+        - Admins
+        - Drivers
+      summary: List all drivers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, on_leave, inactive]
+      responses:
+        '200':
+          description: List of drivers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Driver'
+                  pagination:
+                    type: object
+  
+  /admin/admins:
+    get:
+      tags:
+        - Admins
+      summary: List all admins
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of admins
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  
+  /admin/users:
+    post:
+      tags:
+        - Admins
+      summary: Create user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+                  enum: [student, driver, admin]
+      responses:
+        '201':
+          description: User created
+  
+  /admin/users/{id}:
+    put:
+      tags:
+        - Admins
+      summary: Update user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User updated
+  
+  /admin/users/{id}:
+    delete:
+      tags:
+        - Admins
+      summary: Delete user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User deleted
+  
+  /admin/analytics/overview:
+    get:
+      tags:
+        - Admins
+        - Analytics
+      summary: Get dashboard metrics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsOverview'
+  
+  /admin/analytics/usage:
+    get:
+      tags:
+        - Admins
+        - Analytics
+      summary: Get usage statistics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Usage statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageStatistics'
+  
+  /admin/analytics/performance:
+    get:
+      tags:
+        - Admins
+        - Analytics
+      summary: Get performance metrics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Performance metrics
+  
+  /admin/reports/generate:
+    get:
+      tags:
+        - Admins
+        - Analytics
+      summary: Generate report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, custom]
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Report generated
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
