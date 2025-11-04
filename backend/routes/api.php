@@ -25,6 +25,15 @@ use App\Http\Controllers\Api\RouteController as ApiRouteController;
 |--------------------------------------------------------------------------
 */
 
+// Root API endpoint
+Route::get('/', function () {
+    return response()->json([
+        'message' => 'Tracksy API',
+        'version' => '1.0.0',
+        'status' => 'running',
+    ]);
+});
+
 // ============================================
 // AUTHENTICATION ROUTES
 // ============================================
@@ -95,6 +104,9 @@ Route::prefix('routes')->middleware('auth:api')->group(function () {
 Route::prefix('bookings')->middleware('auth:api')->group(function () {
     Route::get('/', [BookingController::class, 'index']);
     Route::post('/', [BookingController::class, 'store']);
+    Route::get('/statistics', [BookingController::class, 'getStatistics']);
+    Route::get('/monthly-summary', [BookingController::class, 'getMonthlySummary']);
+    Route::get('/usage-statistics', [BookingController::class, 'getUsageStatistics']);
     Route::get('/{id}', [BookingController::class, 'show']);
     Route::delete('/{id}', [BookingController::class, 'destroy']);
 });
