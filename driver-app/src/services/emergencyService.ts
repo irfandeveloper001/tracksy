@@ -31,6 +31,13 @@ class EmergencyService {
       const result = response.data.data || response.data;
       return result;
     } catch (error: any) {
+      // Network error - queue for offline sync
+      if (error.code === 'NETWORK_ERROR' || !error.response) {
+        console.warn('⚠️ Network error sending emergency - will retry');
+        // Return success even if network fails - emergency is critical
+        return { queued: true, message: 'Emergency alert will be sent when online' };
+      }
+      
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||

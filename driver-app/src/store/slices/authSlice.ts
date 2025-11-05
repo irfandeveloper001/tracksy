@@ -183,19 +183,33 @@ const authSlice = createSlice({
     // Get current user
     builder
       .addCase(getCurrentUser.pending, (state) => {
-        state.isLoading = true;
+        // Don't set isLoading to true - we don't want to block UI
+        // state.isLoading = true; // REMOVED - don't block UI
+        state.error = null;
       })
       .addCase(getCurrentUser.fulfilled, (state, action) => {
         state.isLoading = false;
         if (action.payload) {
           state.user = action.payload;
           state.isAuthenticated = true;
+        } else {
+          state.user = null;
+          state.isAuthenticated = false;
         }
+        state.error = null;
       })
-      .addCase(getCurrentUser.rejected, (state) => {
+      .addCase(getCurrentUser.rejected, (state, action) => {
         state.isLoading = false;
-        state.isAuthenticated = false;
-        state.user = null;
+        // Don't change auth state if getCurrentUser fails - keep existing state
+        // Only clear if we're sure user is not authenticated
+        if (action.payload && action.payload.includes('not authenticated')) {
+          state.isAuthenticated = false;
+          state.user = null;
+        }
+        // Don't set error for "no user" - it's normal if not logged in
+        if (action.payload && !action.payload.includes('Failed to get user')) {
+          state.error = action.payload as string;
+        }
       });
 
     // Refresh token

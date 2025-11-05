@@ -48,6 +48,11 @@ class TripService {
       const trip = response.data.data || response.data;
       return trip;
     } catch (error: any) {
+      // If backend unavailable, provide helpful error
+      if (error.response?.status === 500 || !error.response) {
+        console.error('❌ Backend unavailable - cannot start trip');
+        throw new Error('Backend service unavailable. Please check your connection and try again.');
+      }
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -64,6 +69,11 @@ class TripService {
       const trip = response.data.data || response.data;
       return trip;
     } catch (error: any) {
+      // If backend unavailable, provide helpful error
+      if (error.response?.status === 500 || !error.response) {
+        console.error('❌ Backend unavailable - cannot end trip');
+        throw new Error('Backend service unavailable. Please check your connection and try again.');
+      }
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -80,8 +90,14 @@ class TripService {
       const trip = response.data.data || response.data;
       return trip;
     } catch (error: any) {
-      // If no active trip, return null
-      if (error.response?.status === 404) {
+      // If no active trip or backend unavailable, return null
+      if (error.response?.status === 404 || error.response?.status === 500) {
+        console.warn('⚠️ Backend unavailable or no active trip, returning null');
+        return null;
+      }
+      // For network errors, also return null gracefully
+      if (!error.response) {
+        console.warn('⚠️ Network error getting current trip, returning null');
         return null;
       }
       throw new Error('Failed to get current trip');
@@ -104,6 +120,15 @@ class TripService {
         current_page: data.current_page || 1,
       };
     } catch (error: any) {
+      // If backend unavailable, return empty data gracefully
+      if (error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting trip history, returning empty array');
+        return {
+          trips: [],
+          total: 0,
+          current_page: 1,
+        };
+      }
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||

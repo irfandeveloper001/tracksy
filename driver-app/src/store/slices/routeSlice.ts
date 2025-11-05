@@ -85,7 +85,12 @@ const routeSlice = createSlice({
       })
       .addCase(getAssignedRoute.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload as string;
+        // Set to null on error instead of crashing
+        state.assignedRoute = null;
+        // Don't set error for backend unavailable - it's expected
+        if (action.payload && !action.payload.includes('unavailable')) {
+          state.error = action.payload as string;
+        }
       });
 
     // Get route stops
@@ -99,7 +104,12 @@ const routeSlice = createSlice({
       })
       .addCase(getRouteStops.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload as string;
+        // Set empty array on error instead of crashing
+        state.stops = [];
+        // Don't set error for backend unavailable - it's expected
+        if (action.payload && !action.payload.includes('unavailable')) {
+          state.error = action.payload as string;
+        }
       });
 
     // Mark stop arrival

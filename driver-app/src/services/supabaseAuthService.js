@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import { Platform } from 'react-native';
 
 // Transform Supabase user to app user format
 const transformUser = (user) => {
@@ -24,6 +25,16 @@ class SupabaseAuthService {
   // Register driver
   async register(email, password, userData) {
     try {
+      console.log('📝 Registering driver with Supabase:', email);
+      
+      // Set email redirect URL based on platform
+      let emailRedirectTo = 'tracksydriver://email-verified';
+      if (Platform.OS === 'web') {
+        emailRedirectTo = typeof window !== 'undefined' 
+          ? `${window.location.origin}/email-verified` 
+          : 'http://localhost:8081/email-verified';
+      }
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -36,15 +47,22 @@ class SupabaseAuthService {
             role: 'driver',
             status: 'active',
           },
-          emailRedirectTo: 'tracksydriver://email-verified',
+          emailRedirectTo,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase signup error:', error);
+        throw error;
+      }
 
-      // Create user profile in database
+      console.log('✅ Supabase signup successful:', data.user?.id);
+
+      // Create user profile in database (non-blocking - don't wait for it)
       if (data.user) {
-        await this.ensureUserProfile(data.user, userData);
+        this.ensureUserProfile(data.user, userData).catch((err) => {
+          console.warn('⚠️ Profile creation error (non-critical):', err);
+        });
       }
 
       return {
@@ -52,13 +70,15 @@ class SupabaseAuthService {
         user: transformUser(data.user),
         session: data.session,
         requiresVerification: !data.session, // Email verification required
-        message: data.session ? 'Registration successful' : 'Please check your email to verify your account.',
+        message: data.session 
+          ? 'Registration successful! You can now log in.' 
+          : 'Registration successful! Please check your email to verify your account before logging in.',
       };
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('❌ Registration error:', error);
       return {
         success: false,
-        error: error.message || 'Registration failed',
+        error: error.message || error.error || 'Registration failed',
       };
     }
   }
@@ -132,7 +152,13 @@ class SupabaseAuthService {
   // Get current session
   async getCurrentSession() {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      // Add timeout to prevent hanging
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((resolve) => 
+        setTimeout(() => resolve({ data: { session: null }, error: null }), 2000)
+      );
+      
+      const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
       if (error) throw error;
       return session;
     } catch (error) {
@@ -174,7 +200,30 @@ class SupabaseAuthService {
   // Verify email from URL (for deep linking)
   async verifyEmailFromURL(url) {
     try {
-      // Extract tokens from URL hash
+      console.log('🔐 Verifying email from URL:', url.substring(0, 100) + '...');
+      
+      // For web, Supabase automatically handles the session from URL hash
+      // We just need to get the session
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // Get session from Supabase (it should have been set automatically)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          throw sessionError;
+        }
+
+        if (session && session.user) {
+          console.log('✅ Session found, user:', session.user.email);
+          await this.ensureUserProfile(session.user);
+          return {
+            user: transformUser(session.user),
+            session: session,
+          };
+        }
+      }
+
+      // For native platforms or fallback: Extract tokens from URL hash
       const hashParams = new URLSearchParams(url.split('#')[1] || '');
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');

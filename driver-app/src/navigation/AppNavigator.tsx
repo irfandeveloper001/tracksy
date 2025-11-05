@@ -10,6 +10,7 @@ import supabaseAuthService from '../services/supabaseAuthService';
 
 // Screens
 import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Stack = createStackNavigator();
@@ -83,11 +84,12 @@ const MainTabs = () => {
         );
       };
 
-// Auth Stack (Login)
+// Auth Stack (Login & Register)
 const AuthStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
   );
 };
@@ -211,15 +213,33 @@ export default function AppNavigator() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Add timeout to prevent infinite loading - shorter timeout
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Auth check timeout - forcing completion');
+        setIsCheckingAuth(false);
+      }, 1500); // 1.5 second timeout - much shorter
+
       try {
-              const session = await supabaseAuthService.getCurrentSession();
-              const authenticated = !!session;
+        console.log('🔍 Checking auth in AppNavigator...');
+        const session = await Promise.race([
+          supabaseAuthService.getCurrentSession(),
+          new Promise((resolve) => setTimeout(() => resolve(null), 1000)), // 1 second timeout
+        ]);
+        const authenticated = !!session;
+        console.log('🔐 Auth status:', authenticated ? 'Authenticated' : 'Not authenticated');
+        
+        // Don't wait for getCurrentUser - dispatch it but don't await
         if (authenticated) {
-          await dispatch(getCurrentUser());
+          // Dispatch without awaiting - let it run in background
+          dispatch(getCurrentUser()).catch((err) => {
+            console.warn('⚠️ getCurrentUser failed (non-blocking):', err);
+          });
         }
       } catch (error) {
-        console.error('Error checking auth:', error);
+        console.error('❌ Error checking auth:', error);
       } finally {
+        console.log('✅ Auth check complete');
+        clearTimeout(timeout);
         setIsCheckingAuth(false);
       }
     };
@@ -227,10 +247,13 @@ export default function AppNavigator() {
     checkAuth();
   }, [dispatch]);
 
-  if (isCheckingAuth || isLoading) {
+  // Only show loading if we're checking auth, not if APIs are loading
+  // This allows dashboard to show even if APIs are still loading
+  if (isCheckingAuth) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -251,6 +274,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
   },
 });
 

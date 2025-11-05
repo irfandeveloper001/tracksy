@@ -73,7 +73,12 @@ const passengerSlice = createSlice({
       })
       .addCase(getPassengers.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload as string;
+        // Set empty array on error instead of crashing
+        state.passengers = [];
+        // Don't set error for backend unavailable - it's expected
+        if (action.payload && !action.payload.includes('unavailable')) {
+          state.error = action.payload as string;
+        }
       });
 
     // Check-in passenger

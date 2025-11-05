@@ -26,12 +26,17 @@ export interface Stop {
 
 class RouteService {
   // Get assigned route
-  async getAssignedRoute(): Promise<Route> {
+  async getAssignedRoute(): Promise<Route | null> {
     try {
       const response = await api.get('/driver/route');
       const route = response.data.data || response.data;
       return route;
     } catch (error: any) {
+      // If backend unavailable or route not found, return null gracefully
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting route, returning null');
+        return null;
+      }
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -48,6 +53,11 @@ class RouteService {
       const stops = response.data.data || response.data;
       return Array.isArray(stops) ? stops : [];
     } catch (error: any) {
+      // If backend unavailable, return empty array gracefully
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting route stops, returning empty array');
+        return [];
+      }
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -64,6 +74,11 @@ class RouteService {
       const result = response.data.data || response.data;
       return result;
     } catch (error: any) {
+      // If backend unavailable, provide helpful error
+      if (error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable marking stop arrival');
+        throw new Error('Backend service unavailable. Stop arrival will be synced when online.');
+      }
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||

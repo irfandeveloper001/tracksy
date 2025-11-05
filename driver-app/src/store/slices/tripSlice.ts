@@ -151,30 +151,52 @@ const tripSlice = createSlice({
     // Get current trip
     builder
       .addCase(getCurrentTrip.pending, (state) => {
-        state.isLoading = true;
+        // Don't set isLoading - we don't want to block UI
+        // state.isLoading = true; // REMOVED - non-blocking
+        state.error = null;
       })
       .addCase(getCurrentTrip.fulfilled, (state, action) => {
         state.isLoading = false;
         state.currentTrip = action.payload;
+        state.error = null;
       })
       .addCase(getCurrentTrip.rejected, (state, action) => {
         state.isLoading = false;
         state.currentTrip = null;
+        // Don't set error for "no current trip" - it's normal
+        if (action.payload && !action.payload.includes('unavailable')) {
+          state.error = action.payload as string;
+        }
       });
 
     // Get trip history
     builder
       .addCase(getTripHistory.pending, (state) => {
-        state.isLoading = true;
+        // Don't set isLoading - we don't want to block UI
+        // state.isLoading = true; // REMOVED - non-blocking
+        state.error = null;
       })
       .addCase(getTripHistory.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.tripHistory = action.payload.trips;
-        state.totalTrips = action.payload.total;
-        state.currentPage = action.payload.current_page;
+        // Handle both object format { trips, total, current_page } and array format
+        if (action.payload && typeof action.payload === 'object' && 'trips' in action.payload) {
+          state.tripHistory = action.payload.trips || [];
+          state.totalTrips = action.payload.total || 0;
+          state.currentPage = action.payload.current_page || 1;
+        } else if (Array.isArray(action.payload)) {
+          state.tripHistory = action.payload;
+          state.totalTrips = action.payload.length;
+        } else {
+          state.tripHistory = [];
+          state.totalTrips = 0;
+        }
+        state.error = null;
       })
       .addCase(getTripHistory.rejected, (state, action) => {
         state.isLoading = false;
+        // Set empty array on error instead of crashing
+        state.tripHistory = [];
+        state.totalTrips = 0;
         state.error = action.payload as string;
       });
 

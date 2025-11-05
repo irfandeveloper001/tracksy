@@ -2,12 +2,12 @@ import axios from 'axios';
 import { API_BASE_URL } from '../../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../../constants';
-import secureStorage from '../../utils/secureStorage';
+import { supabase } from '../../config/supabase';
 import inputSanitizer from '../../utils/inputSanitizer';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 5000, // Reduced timeout to 5 seconds - fail fast
   headers: {
     'Content-Type': 'application/json',
   },
@@ -16,9 +16,24 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   async (config) => {
-    const token = await secureStorage.getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Get token from Supabase session instead of secureStorage
+    try {
+      // Add timeout to prevent hanging
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((resolve) => 
+        setTimeout(() => resolve(null), 1000) // 1 second timeout
+      );
+      
+      const result = await Promise.race([sessionPromise, timeoutPromise]);
+      if (result && typeof result === 'object' && 'data' in result) {
+        const { data: { session } } = result as any;
+        if (session?.access_token) {
+          config.headers.Authorization = `Bearer ${session.access_token}`;
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to get Supabase session for API request:', error);
+      // Continue without token - some APIs might work without auth
     }
     
     // Sanitize request data
@@ -48,9 +63,13 @@ api.interceptors.response.use(
   },
         async (error) => {
           if (error.response?.status === 401) {
-            // Handle unauthorized - clear secure token and redirect to login
-            await secureStorage.removeToken();
-            await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
+            // Handle unauthorized - sign out from Supabase
+            try {
+              await supabase.auth.signOut();
+              await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
+            } catch (signOutError) {
+              console.warn('⚠️ Failed to sign out from Supabase:', signOutError);
+            }
           }
     
     // Normalize error responses
