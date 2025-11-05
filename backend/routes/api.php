@@ -58,6 +58,8 @@ Route::prefix('driver')->group(function () {
     Route::middleware('auth:api')->group(function () {
         Route::get('/me', [DriverController::class, 'me']);
         Route::post('/refresh-token', [DriverController::class, 'refreshToken']);
+        Route::put('/profile', [DriverController::class, 'updateProfile']);
+        Route::post('/change-password', [DriverController::class, 'changePassword']);
         
         // Location routes
         Route::post('/location', [LocationController::class, 'update']);

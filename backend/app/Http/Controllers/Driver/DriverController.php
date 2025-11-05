@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Route;
 use App\Models\Trip;
+use App\Models\Booking;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
@@ -77,6 +78,44 @@ class DriverController extends Controller
         return $this->successResponse([
             'token' => $token,
         ]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $driver = auth()->user();
+        
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|string|email|unique:users,email,' . $driver->id,
+            'phone' => 'nullable|string',
+            'license_number' => 'sometimes|string',
+        ]);
+
+        $updateData = $request->only(['name', 'email', 'phone', 'license_number']);
+        $driver->update($updateData);
+
+        return $this->successResponse($driver->fresh()->load(['assignedBus', 'assignedRoute']), 'Profile updated successfully');
+    }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:6',
+            'confirm_password' => 'required|string|same:new_password',
+        ]);
+
+        $driver = auth()->user();
+
+        if (!\Hash::check($request->current_password, $driver->password)) {
+            return $this->errorResponse('Current password is incorrect', null, 400);
+        }
+
+        $driver->update([
+            'password' => \Hash::make($request->new_password),
+        ]);
+
+        return $this->successResponse(null, 'Password changed successfully');
     }
 
     public function getRoute()
