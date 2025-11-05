@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Tracksy Student",
+    "slug": "tracksy-monorepo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1E88E5"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tracksy.student",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to track nearby buses and stops.",
+        "NSLocationAlwaysUsageDescription": "We need your location to provide real-time bus tracking.",
+        "NSCameraUsageDescription": "Camera access is needed for profile pictures."
+      }
+    },
+    "android": {
+      "package": "com.tracksy.student",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E88E5"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5a65ef4d-0a4a-45c9-b90c-2a671b2777d5"
+      }
+    }
+  }
+}
