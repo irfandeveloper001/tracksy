@@ -88,12 +88,19 @@ const notificationSlice = createSlice({
       })
       .addCase(getNotifications.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.notifications = action.payload;
-        state.unreadCount = action.payload.filter((n) => !n.read).length;
+        state.notifications = Array.isArray(action.payload) ? action.payload : [];
+        state.unreadCount = state.notifications.filter((n) => !n.read).length;
+        state.error = null;
       })
       .addCase(getNotifications.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload as string;
+        // Set empty array on error instead of crashing
+        state.notifications = [];
+        state.unreadCount = 0;
+        // Don't set error for backend unavailable - it's expected
+        if (action.payload && !action.payload.includes('unavailable')) {
+          state.error = action.payload as string;
+        }
       });
 
     // Mark as read
@@ -120,7 +127,11 @@ const notificationSlice = createSlice({
     // Get unread count
     builder
       .addCase(getUnreadCount.fulfilled, (state, action) => {
-        state.unreadCount = action.payload;
+        state.unreadCount = typeof action.payload === 'number' ? action.payload : 0;
+      })
+      .addCase(getUnreadCount.rejected, (state) => {
+        // Set to 0 on error - don't crash
+        state.unreadCount = 0;
       });
   },
 });

@@ -41,8 +41,9 @@ class AnalyticsService {
       const data = response.data.data || response.data;
       return data;
     } catch (error: any) {
-      // If endpoint doesn't exist, return empty metrics
-      if (error.response?.status === 404) {
+      // If endpoint doesn't exist or backend unavailable, return empty metrics
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting today metrics, returning empty metrics');
         return {
           tripsCompleted: 0,
           totalDistance: 0,
@@ -63,7 +64,8 @@ class AnalyticsService {
       const data = response.data.data || response.data;
       return Array.isArray(data) ? data : [];
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting weekly stats, returning empty array');
         return [];
       }
       throw new Error('Failed to get weekly stats');
@@ -77,7 +79,8 @@ class AnalyticsService {
       const data = response.data.data || response.data;
       return Array.isArray(data) ? data : [];
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting monthly stats, returning empty array');
         return [];
       }
       throw new Error('Failed to get monthly stats');
@@ -93,7 +96,8 @@ class AnalyticsService {
       const data = response.data.data || response.data;
       return Array.isArray(data) ? data : [];
     } catch (error: any) {
-      if (error.response?.status === 404) {
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting daily stats, returning empty array');
         return [];
       }
       throw new Error('Failed to get daily stats');

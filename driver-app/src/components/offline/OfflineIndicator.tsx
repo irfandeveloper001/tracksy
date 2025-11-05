@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { DESIGN } from '../../constants/design';
 
@@ -8,19 +8,36 @@ const OfflineIndicator: React.FC = () => {
   const [fadeAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      const connected = state.isConnected ?? false;
-      setIsConnected(connected);
+    // Web: Use navigator.onLine
+    if (Platform.OS === 'web') {
+      const handleOnline = () => setIsConnected(true);
+      const handleOffline = () => setIsConnected(false);
+      
+      setIsConnected(navigator.onLine);
+      
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+      
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    } else {
+      // Native: Use NetInfo
+      const unsubscribe = NetInfo.addEventListener((state) => {
+        const connected = state.isConnected ?? false;
+        setIsConnected(connected);
 
-      // Animate visibility
-      Animated.timing(fadeAnim, {
-        toValue: connected ? 0 : 1,
-        duration: DESIGN.ANIMATION.NORMAL,
-        useNativeDriver: true,
-      }).start();
-    });
+        // Animate visibility
+        Animated.timing(fadeAnim, {
+          toValue: connected ? 0 : 1,
+          duration: DESIGN.ANIMATION.NORMAL,
+          useNativeDriver: true,
+        }).start();
+      });
 
-    return () => unsubscribe();
+      return () => unsubscribe();
+    }
   }, [fadeAnim]);
 
   if (isConnected) {

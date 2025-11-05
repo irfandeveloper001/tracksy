@@ -156,6 +156,17 @@ const LoginScreen = ({ navigation }: any) => {
             {error && !isLoading && (
               <Text style={styles.errorText}>{error}</Text>
             )}
+
+            {/* Sign Up Link */}
+            <View style={styles.signUpLinkContainer}>
+              <Text style={styles.signUpLinkText}>Don't have an account? </Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Register')}
+                disabled={isLoading}
+              >
+                <Text style={styles.signUpLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -282,6 +293,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginTop: 8,
+  },
+  signUpLinkContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  signUpLinkText: {
+    fontSize: 16,
+    color: COLORS.TEXT,
+    opacity: 0.7,
+  },
+  signUpLink: {
+    fontSize: 16,
+    color: COLORS.PRIMARY,
+    fontWeight: '600',
   },
 });
 

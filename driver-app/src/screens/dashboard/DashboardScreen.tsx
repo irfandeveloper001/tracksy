@@ -19,6 +19,7 @@ import { getCurrentUser } from '../../store/slices/authSlice';
 import { useLocationTracking } from '../../hooks/useLocationTracking';
 import { getUnreadCount } from '../../store/slices/notificationSlice';
 import LocationStatusIndicator from '../../components/LocationStatusIndicator';
+import OfflineIndicator from '../../components/offline/OfflineIndicator';
 import { COLORS } from '../../constants';
 
 const DashboardScreen = ({ navigation }: any) => {
@@ -36,16 +37,21 @@ const DashboardScreen = ({ navigation }: any) => {
 
   useEffect(() => {
     loadDashboardData();
-    dispatch(getUnreadCount());
   }, [dispatch]);
 
   const loadDashboardData = async () => {
-    await Promise.all([
-      dispatch(getCurrentUser()),
-      dispatch(getCurrentTrip()),
-      dispatch(getTripHistory({ limit: 5 })),
-      dispatch(getUnreadCount()),
-    ]);
+    try {
+      // Load data in parallel, but don't fail if some fail
+      await Promise.allSettled([
+        dispatch(getCurrentUser()),
+        dispatch(getCurrentTrip()),
+        dispatch(getTripHistory({ limit: 5 })),
+        dispatch(getUnreadCount()),
+      ]);
+    } catch (error) {
+      console.warn('⚠️ Error loading dashboard data:', error);
+      // Don't throw - app should still work
+    }
   };
 
   const onRefresh = async () => {
@@ -377,11 +383,7 @@ const DashboardScreen = ({ navigation }: any) => {
         </View>
       )}
 
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.PRIMARY} />
-        </View>
-      )}
+      {/* Removed blocking loading indicator - data loads in background */}
     </ScrollView>
   );
 };

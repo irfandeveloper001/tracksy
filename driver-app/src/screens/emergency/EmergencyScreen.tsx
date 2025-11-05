@@ -36,9 +36,21 @@ const EmergencyScreen = ({ navigation }: any) => {
         longitude: currentLocation.longitude,
       });
     } else {
-      getCurrentLocation();
+      // Get location if not available in Redux
+      const fetchLocation = async () => {
+        try {
+          const loc = await locationService.getCurrentLocation();
+          setLocation({
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          });
+        } catch (error) {
+          console.warn('Could not get location for emergency:', error);
+        }
+      };
+      fetchLocation();
     }
-  }, [currentLocation, dispatch]);
+  }, [currentLocation]);
 
   const handleGetCurrentLocation = async () => {
     try {

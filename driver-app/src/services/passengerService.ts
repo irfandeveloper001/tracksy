@@ -27,6 +27,11 @@ class PassengerService {
       const passengers = response.data.data || response.data;
       return Array.isArray(passengers) ? passengers : [];
     } catch (error: any) {
+      // If backend unavailable, return empty array gracefully
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting passengers, returning empty array');
+        return [];
+      }
       const errorMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||

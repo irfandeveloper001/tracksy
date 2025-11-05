@@ -21,8 +21,9 @@ class NotificationService {
       const notifications = response.data.data || response.data;
       return Array.isArray(notifications) ? notifications : [];
     } catch (error: any) {
-      // If endpoint doesn't exist, return empty array
-      if (error.response?.status === 404) {
+      // If endpoint doesn't exist or backend unavailable, return empty array
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting notifications, returning empty array');
         return [];
       }
       const errorMessage =
@@ -66,8 +67,9 @@ class NotificationService {
       const response = await api.get('/driver/notifications/unread-count');
       return response.data.data?.count || response.data.count || 0;
     } catch (error: any) {
-      // If endpoint doesn't exist, return 0
-      if (error.response?.status === 404) {
+      // If endpoint doesn't exist or backend unavailable, return 0
+      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+        console.warn('⚠️ Backend unavailable getting unread count, returning 0');
         return 0;
       }
       return 0;
