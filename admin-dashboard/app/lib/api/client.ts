@@ -1,6 +1,8 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000/api';
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
+import { API_BASE_URL } from '../constants';
+import { supabase } from '../config/supabase';
+import { handleApiError, showErrorToast } from '../utils/errorHandler';
+import { retry } from '../utils/retry';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -12,12 +14,17 @@ const api: AxiosInstance = axios.create({
 
 // Request interceptor
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Add auth token if available
-    const token = localStorage.getItem('auth_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config: InternalAxiosRequestConfig) => {
+    // Get token from Supabase session
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        config.headers.Authorization = `Bearer ${session.access_token}`;
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to get Supabase session for API request:', error);
     }
+
     return config;
   },
   (error) => {
@@ -25,18 +32,72 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor with error handling
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized - clear token and redirect to login
-      localStorage.removeItem('auth_token');
-      window.location.href = '/login';
+  (response) => {
+    // Normalize backend responses
+    if (response.data && !response.data.success && response.data.data === undefined) {
+      response.data = {
+        success: true,
+        data: response.data,
+      };
     }
-    return Promise.reject(error);
+    return response;
+  },
+  async (error: AxiosError) => {
+    // Handle offline
+    if (!navigator.onLine) {
+      const offlineError = handleApiError({
+        message: 'Network error. You are currently offline.',
+        code: 'OFFLINE',
+      });
+      showErrorToast(offlineError);
+      return Promise.reject(offlineError);
+    }
+
+    // Handle 401 - Unauthorized
+    if (error.response?.status === 401) {
+      try {
+        await supabase.auth.signOut();
+        // Redirect to login
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+      } catch (signOutError) {
+        console.warn('⚠️ Failed to sign out from Supabase:', signOutError);
+      }
+    }
+
+    // Handle API errors
+    const apiError = handleApiError(error);
+    
+    // Show toast for user-facing errors
+    if (error.config && !error.config.skipErrorToast) {
+      showErrorToast(apiError);
+    }
+
+    return Promise.reject(apiError);
   }
 );
 
-export default api;
+// Wrapper for API calls with retry logic
+export function apiCallWithRetry<T>(
+  apiCall: () => Promise<T>,
+  options?: { maxAttempts?: number; skipErrorToast?: boolean }
+): Promise<T> {
+  return retry(
+    () => apiCall(),
+    {
+      maxAttempts: options?.maxAttempts || 3,
+      delay: 1000,
+      backoff: true,
+      onRetry: (attempt) => {
+        if (import.meta.env.DEV) {
+          console.log(`Retrying API call (attempt ${attempt})...`);
+        }
+      },
+    }
+  );
+}
 
+export default api;
