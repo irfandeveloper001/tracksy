@@ -49,15 +49,29 @@ class ErrorLogger {
   // Send error to backend
   private async sendToBackend(errorLog: ErrorLog) {
     try {
-      // Only send if we have API base URL
-      if (import.meta.env.VITE_API_BASE_URL) {
+      // Only send if we have API base URL and backend is available
+      if (import.meta.env.VITE_API_BASE_URL && navigator.onLine) {
+        // Use AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+        
+        try {
         await fetch(`${import.meta.env.VITE_API_BASE_URL}/admin/errors`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(errorLog),
+            signal: controller.signal,
         });
+        } catch (fetchError: any) {
+          // Silently fail for network errors - backend might be unavailable
+          if (fetchError.name !== 'AbortError' && !fetchError.message?.includes('Failed to fetch')) {
+            console.warn('⚠️ Failed to send error to backend:', fetchError);
+          }
+        } finally {
+          clearTimeout(timeoutId);
+        }
       }
     } catch (error) {
       // Silently fail - don't break the app

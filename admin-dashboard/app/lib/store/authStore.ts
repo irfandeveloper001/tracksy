@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import authService, { AdminUser, AdminRole } from '../api/authService';
+import authService, { AdminRole } from '../api/authService';
+import type { AdminUser } from '../api/authService';
 import type { Session } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -12,6 +13,7 @@ interface AuthState {
   
   // Actions
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  signup: (email: string, password: string, name: string, role?: AdminRole) => Promise<void>;
   logout: () => Promise<void>;
   getCurrentUser: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -47,6 +49,29 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
             isLoading: false,
             error: error.message || 'Login failed',
+          });
+          throw error;
+        }
+      },
+
+      signup: async (email: string, password: string, name: string, role: AdminRole = AdminRole.ADMIN) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { user, session } = await authService.signup(email, password, name, role);
+          set({
+            user,
+            session,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+        } catch (error: any) {
+          set({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: error.message || 'Signup failed',
           });
           throw error;
         }
@@ -117,11 +142,19 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'tracksy-admin-auth',
+      storage: typeof window !== 'undefined' ? localStorage : undefined,
       partialize: (state) => ({
         user: state.user,
         session: state.session,
         isAuthenticated: state.isAuthenticated,
       }),
+      skipHydration: true, // Skip hydration to avoid SSR issues
+      onRehydrateStorage: () => (state) => {
+        // Called after rehydration
+        if (state) {
+          console.log('Auth store rehydrated');
+        }
+      },
     }
   )
 );

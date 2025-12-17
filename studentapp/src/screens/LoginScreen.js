@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser, clearError } from '../store/slices/authSlice';
+import { loginUser, clearError, resendVerificationEmail } from '../store/slices/authSlice';
 import Input from '../components/Input';
 import Button from '../components/Button';
 import { COLORS, SPACING, FONTS } from '../constants';
@@ -18,7 +18,7 @@ import { validateForm } from '../utils/validation';
 
 const LoginScreen = ({ navigation }) => {
   const dispatch = useDispatch();
-  const { isLoading, error } = useSelector((state) => state.auth);
+  const { isLoading, error, loginRequiresVerification, loginPendingEmail } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -69,6 +69,22 @@ const LoginScreen = ({ navigation }) => {
       console.error('❌ Login failed:', error);
       const errorMessage = error || 'Invalid credentials. Please try again.';
       Alert.alert('Login Failed', errorMessage);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const targetEmail = formData.email || loginPendingEmail;
+
+    if (!targetEmail) {
+      Alert.alert('Email Required', 'Enter your email so we can resend the verification link.');
+      return;
+    }
+
+    try {
+      await dispatch(resendVerificationEmail(targetEmail)).unwrap();
+      Alert.alert('Verification Sent', 'Please check your inbox (and spam folder) for the new link.');
+    } catch (err) {
+      Alert.alert('Unable to Resend', err || 'Please try again later.');
     }
   };
 
@@ -130,6 +146,17 @@ const LoginScreen = ({ navigation }) => {
           {error && (
             <View style={styles.errorContainer}>
               <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          {loginRequiresVerification && (
+            <View style={styles.helperContainer}>
+              <Text style={styles.helperText}>
+                Didn&apos;t get the verification email?
+              </Text>
+              <TouchableOpacity onPress={handleResendVerification}>
+                <Text style={styles.helperLink}>Resend link</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -247,6 +274,22 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     fontSize: 20,
+  },
+  helperContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    gap: 4,
+  },
+  helperText: {
+    color: COLORS.TEXT_SECONDARY,
+    fontSize: FONTS.SIZES.sm,
+  },
+  helperLink: {
+    color: COLORS.PRIMARY,
+    fontSize: FONTS.SIZES.sm,
+    fontWeight: '600',
   },
 });
 

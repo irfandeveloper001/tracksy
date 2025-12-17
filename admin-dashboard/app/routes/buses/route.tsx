@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -15,18 +15,48 @@ import toast from 'react-hot-toast';
 
 export default function BusesPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [routeFilter, setRouteFilter] = useState<string>('all');
 
+  // Read URL parameters on mount and when they change
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    const onRouteParam = searchParams.get('on_route');
+    
+    if (statusParam) {
+      // Handle multiple status values (e.g., "maintenance,emergency")
+      if (statusParam.includes(',')) {
+        // For multiple statuses, we'll filter by the first one or use a special filter
+        // For now, let's use the first status
+        const firstStatus = statusParam.split(',')[0];
+        setStatusFilter(firstStatus);
+      } else {
+        setStatusFilter(statusParam);
+      }
+    }
+    
+    // Note: on_route filter would need backend support, for now we'll just use status
+    // If on_route is true, we might want to show active buses that have a route assigned
+    if (onRouteParam === 'true' && statusParam === 'active') {
+      // This would require backend support for filtering buses with assigned routes
+      // For now, we'll just keep the active filter
+    }
+  }, [searchParams]);
+
   // Fetch buses
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['buses', page, searchTerm, statusFilter, routeFilter],
     queryFn: () => {
       const filters: BusFilters = {};
-      if (statusFilter !== 'all') filters.status = statusFilter;
+      if (statusFilter !== 'all') {
+        // Handle multiple statuses (comma-separated) - use first one for now
+        const status = statusFilter.includes(',') ? statusFilter.split(',')[0] : statusFilter;
+        filters.status = status as any;
+      }
       if (routeFilter !== 'all') filters.route_id = routeFilter;
       if (searchTerm) filters.search = searchTerm;
 
@@ -83,8 +113,12 @@ export default function BusesPage() {
           </p>
         </div>
         <button
-          onClick={() => navigate('/buses/new')}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          type="button"
+          onClick={() => {
+            console.log('🔘 Add New Bus button clicked');
+            navigate('/buses/new');
+          }}
+          className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold transform hover:scale-105 active:scale-95 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Add New Bus

@@ -41,39 +41,66 @@ export default function NewNotificationPage() {
   const createMutation = useMutation({
     mutationFn: alertService.createNotification,
     onSuccess: (data) => {
-      toast.success('Notification created successfully');
+      toast.success('✅ Notification created and sent successfully!');
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['alerts'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      setIsSubmitting(false);
+      // Small delay before navigation to show success message
+      setTimeout(() => {
       navigate('/alerts');
+      }, 1000);
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to create notification');
+      console.error('❌ Notification creation error:', error);
+      const errorMessage = error.message || error.response?.data?.message || 'Failed to create notification. Please check your connection and try again.';
+      toast.error(errorMessage);
       setIsSubmitting(false);
     },
   });
 
   const onSubmit = async (data: NotificationFormData) => {
     setIsSubmitting(true);
+    try {
     createMutation.mutate(data);
+    } catch (error) {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center space-x-4">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+      {/* Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-yellow-600 via-yellow-700 to-orange-700 p-6 text-white shadow-xl">
+        <div className="relative z-10 flex items-center space-x-4">
         <button
           onClick={() => navigate('/alerts')}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
         >
-          <ArrowLeftIcon className="h-5 w-5" />
+            <ArrowLeftIcon className="h-6 w-6" />
         </button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Send Notification</h1>
-          <p className="mt-1 text-sm text-gray-600">Create and send a notification to users</p>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold mb-1">Send Announcement</h1>
+            <p className="text-yellow-100">Create and send notifications to users</p>
+          </div>
+          <div className="hidden md:block">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+              <span className="text-sm font-medium">🔔 Notifications</span>
+            </div>
+          </div>
         </div>
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-orange-400/20 rounded-full -ml-24 -mb-24 blur-2xl"></div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 space-y-6">
+        {/* Form Header */}
+        <div className="border-b border-gray-200 pb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Notification Details</h2>
+          <p className="text-sm text-gray-500 mt-1">Fill in the details to send a notification</p>
+        </div>
         {/* Title */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -161,11 +188,20 @@ export default function NewNotificationPage() {
           </div>
         )}
 
-        {/* Info Message */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
+        {/* Info Box */}
+        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-500 rounded-lg p-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-800">
             <strong>Note:</strong> The notification will be sent immediately after creation. You can schedule notifications in the future.
           </p>
+            </div>
+          </div>
         </div>
 
         {/* Actions */}
@@ -173,16 +209,31 @@ export default function NewNotificationPage() {
           <button
             type="button"
             onClick={() => navigate('/alerts')}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white rounded-xl hover:from-yellow-700 hover:to-yellow-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl font-semibold transform hover:scale-105 active:scale-95"
           >
-            {isSubmitting ? 'Sending...' : 'Send Notification'}
+            {isSubmitting ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sending...
+              </span>
+            ) : (
+              <span className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send Announcement
+              </span>
+            )}
           </button>
         </div>
       </form>

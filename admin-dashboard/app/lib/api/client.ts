@@ -1,4 +1,5 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError } from 'axios';
+import axios from 'axios';
+import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../constants';
 import { supabase } from '../config/supabase';
 import { handleApiError, showErrorToast } from '../utils/errorHandler';
@@ -6,7 +7,7 @@ import { retry } from '../utils/retry';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 3000, // Reduced timeout to 3 seconds for faster failure
   headers: {
     'Content-Type': 'application/json',
   },
@@ -71,9 +72,23 @@ api.interceptors.response.use(
     // Handle API errors
     const apiError = handleApiError(error);
     
-    // Show toast for user-facing errors
-    if (error.config && !error.config.skipErrorToast) {
+    // Suppress error toasts for:
+    // 1. Network errors when backend is unavailable (we have Supabase fallback)
+    // 2. CORS errors (backend not running or misconfigured)
+    // 3. When explicitly requested via skipErrorToast
+    const shouldSuppressToast = 
+      error.config?.skipErrorToast ||
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ERR_FAILED' ||
+      (error.response?.status && error.response.status >= 500) ||
+      (error.message && error.message.includes('CORS'));
+    
+    // Only show toast for critical errors that need user attention
+    if (error.config && !shouldSuppressToast) {
+      // Don't show toast for offline errors if we have Supabase fallback
+      if (apiError.code !== 'OFFLINE' || !navigator.onLine) {
       showErrorToast(apiError);
+      }
     }
 
     return Promise.reject(apiError);

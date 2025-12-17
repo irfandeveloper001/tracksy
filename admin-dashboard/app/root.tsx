@@ -5,9 +5,8 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLocation,
 } from "react-router";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "./lib/store/authStore";
@@ -87,48 +86,84 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const location = useLocation();
-  const { getCurrentUser, refreshSession } = useAuthStore();
+  // Initialize auth state on app load (only on client)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
 
-  // Initialize auth state on app load
-  useEffect(() => {
+    // Handle Supabase auth callback (access_token in URL fragment)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    
+    if (accessToken && refreshToken) {
+      // Clear the hash from URL
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      
+      // Set the session
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(() => {
+        // Session set, will trigger auth state change
+        console.log('✅ Session restored from URL');
+      }).catch((error) => {
+        console.error('❌ Failed to set session from URL:', error);
+      });
+    }
+
+    // Skip auth check on public routes (login, signup, forgot-password, reset-password)
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password'];
+    const currentPath = window.location.pathname;
+    if (publicRoutes.includes(currentPath)) {
+      return;
+    }
+
     const initializeAuth = async () => {
       try {
+        // Get store methods
+        const { getCurrentUser, refreshSession } = useAuthStore.getState();
+
         // Check for existing session
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
-          // Get current user
-          await getCurrentUser();
+          // Get current user with timeout
+          try {
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Auth initialization timeout')), 5000)
+            );
+            await Promise.race([getCurrentUser(), timeoutPromise]);
+          } catch (error) {
+            console.warn('⚠️ Auth initialization timed out or failed:', error);
+          }
           
           // Set up session refresh interval (refresh every 30 minutes)
-          const refreshInterval = setInterval(async () => {
+          setInterval(async () => {
             try {
               await refreshSession();
             } catch (error) {
               console.error('Failed to refresh session:', error);
             }
           }, 30 * 60 * 1000); // 30 minutes
-          
-          return () => clearInterval(refreshInterval);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
       }
     };
 
+    // Small delay to ensure everything is mounted
+    const timer = setTimeout(() => {
     initializeAuth();
-  }, [getCurrentUser, refreshSession]);
+    }, 100);
 
   // Listen for auth state changes
-  useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const { getCurrentUser, refreshSession } = useAuthStore.getState();
       if (event === 'SIGNED_IN' && session) {
         await getCurrentUser();
       } else if (event === 'SIGNED_OUT') {
-        // User signed out
         window.location.href = '/login';
       } else if (event === 'TOKEN_REFRESHED' && session) {
         await refreshSession();
@@ -136,9 +171,10 @@ export default function App() {
     });
 
     return () => {
+      clearTimeout(timer);
       subscription.unsubscribe();
     };
-  }, [getCurrentUser, refreshSession]);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

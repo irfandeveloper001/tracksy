@@ -1,6 +1,41 @@
 import supabase from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { STORAGE_KEYS } from '../constants';
+
+const NATIVE_EMAIL_REDIRECT = 'tracksy://email-verified';
+
+const resolveEmailRedirectTo = () => {
+  if (process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL) {
+    return process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL;
+  }
+
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return window.location.origin || 'http://localhost:19007';
+  }
+
+  return NATIVE_EMAIL_REDIRECT;
+};
+
+const formatSupabaseError = (error, fallbackMessage) => {
+  if (!error) return fallbackMessage;
+
+  const normalizedMessage = error.message || error.error || fallbackMessage;
+
+  if (error.status === 429 || /only request this after/i.test(normalizedMessage)) {
+    return 'For security purposes you must wait about 30 seconds before sending another signup request. Please try again shortly.';
+  }
+
+  if (error.status === 500 || /database error saving new user/i.test(normalizedMessage)) {
+    return 'Student ID or email already exists in Supabase. Please use unique credentials or remove the existing record before trying again.';
+  }
+
+  if (error.status === 400 && /email.*already/i.test(normalizedMessage)) {
+    return 'This email is already registered. Please sign in or reset your password.';
+  }
+
+  return normalizedMessage;
+};
 
 export const supabaseAuthService = {
   // Register new user with email verification
@@ -16,7 +51,7 @@ export const supabaseAuthService = {
           data: {
             ...userData, // student_id, name, institution, etc.
           },
-          emailRedirectTo: 'tracksy://email-verified', // Deep link for email verification
+          emailRedirectTo: resolveEmailRedirectTo(), // Platform-aware verification redirect
         },
       });
 
@@ -24,7 +59,7 @@ export const supabaseAuthService = {
         console.error('❌ Supabase registration error:', error);
         return {
           success: false,
-          error: error.message || 'Registration failed',
+          error: formatSupabaseError(error, 'Registration failed'),
         };
       }
 
@@ -73,7 +108,7 @@ export const supabaseAuthService = {
       console.error('❌ Registration error:', error);
       return {
         success: false,
-        error: error.message || 'Registration failed',
+        error: formatSupabaseError(error, 'Registration failed'),
       };
     }
   },
@@ -145,7 +180,7 @@ export const supabaseAuthService = {
         type: 'signup',
         email,
         options: {
-          emailRedirectTo: 'tracksy://email-verified',
+          emailRedirectTo: resolveEmailRedirectTo(),
         },
       });
 
@@ -153,7 +188,7 @@ export const supabaseAuthService = {
         console.error('❌ Resend verification error:', error);
         return {
           success: false,
-          error: error.message || 'Failed to resend verification email',
+          error: formatSupabaseError(error, 'Failed to resend verification email'),
         };
       }
 
@@ -165,7 +200,7 @@ export const supabaseAuthService = {
       console.error('❌ Resend verification error:', error);
       return {
         success: false,
-        error: error.message || 'Failed to resend verification email',
+        error: formatSupabaseError(error, 'Failed to resend verification email'),
       };
     }
   },

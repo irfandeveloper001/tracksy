@@ -11,7 +11,7 @@ A comprehensive transport tracking system with three main applications:
 
 ```
 tracksy/
-├── student-app/          # Student Mobile App (Eman)
+├── studentapp/           # Student Mobile App (Eman)
 │   ├── src/
 │   │   ├── components/
 │   │   ├── screens/
@@ -48,6 +48,11 @@ tracksy/
 │   ├── package.json
 │   └── remix.config.js
 │
+├── launcher/             # Static web launchpad for all dashboards
+│   ├── index.html
+│   ├── styles.css
+│   └── main.js
+│
 ├── EMAN_TASK_ASSIGNMENT.md
 ├── IBSHAM_TASK_ASSIGNMENT.md
 ├── WAHIB_TASK_ASSIGNMENT.md
@@ -70,7 +75,7 @@ tracksy/
 ### Student App Setup (Eman)
 
 ```bash
-cd student-app
+cd studentapp
 npm install
 npm start
 ```
@@ -92,6 +97,24 @@ cd admin-dashboard
 npm install
 npm run dev
 ```
+
+### Unified frontend launch
+
+Use the launchpad to open all three dashboards (Admin, Student web, Driver web) alongside each other:
+
+```bash
+npm install
+npm run web
+```
+
+This starts:
+
+- `launcher/` at http://localhost:4000 — click a tile to open any dashboard in a new tab
+- Admin dashboard at http://localhost:5173
+- Student portal (Expo web) at http://localhost:19007
+- Driver portal (Expo web) at http://localhost:19008
+
+> Run the Laravel API separately with `cd backend && php artisan serve`.
 
 ---
 
@@ -137,7 +160,7 @@ npm run dev
 ### Environment Variables
 
 Each app has its own `.env` file (not committed to git):
-- `student-app/.env`
+- `studentapp/.env`
 - `driver-app/.env`
 - `admin-dashboard/.env`
 

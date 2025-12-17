@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 export default [
   index("routes/home.tsx"),
   route("login", "routes/login/route.tsx"),
+  route("signup", "routes/signup/route.tsx"),
   route("forgot-password", "routes/forgot-password/route.tsx"),
   route("reset-password", "routes/reset-password/route.tsx"),
   route("dashboard", "routes/dashboard/route.tsx", {
@@ -17,7 +18,7 @@ export default [
   route("buses", "routes/buses/route.tsx", {
     layout: DashboardLayout,
   }),
-  route("buses.new", "routes/buses.new/route.tsx", {
+  route("buses/new", "routes/buses.new/route.tsx", {
     layout: DashboardLayout,
   }),
   route("buses.$id", "routes/buses.$id/route.tsx", {
@@ -29,7 +30,7 @@ export default [
   route("routes", "routes/routes/route.tsx", {
     layout: DashboardLayout,
   }),
-  route("routes.new", "routes/routes.new/route.tsx", {
+  route("routes/new", "routes/routes.new/route.tsx", {
     layout: DashboardLayout,
   }),
   route("routes.$id", "routes/routes.$id/route.tsx", {
@@ -77,7 +78,7 @@ export default [
   route("alerts.$id", "routes/alerts.$id/route.tsx", {
     layout: DashboardLayout,
   }),
-  route("notifications.new", "routes/notifications.new/route.tsx", {
+  route("notifications/new", "routes/notifications.new/route.tsx", {
     layout: DashboardLayout,
   }),
   route("maintenance", "routes/maintenance/route.tsx", {

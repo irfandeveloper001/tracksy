@@ -26,6 +26,7 @@ const institutions = [
 
 const RegisterScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const { isLoading, error: authError } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
     student_id: '',
@@ -133,6 +134,12 @@ const RegisterScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.form}>
+          {authError ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{authError}</Text>
+            </View>
+          ) : null}
+
           <Input
             label="Student ID"
             value={formData.student_id}
@@ -238,6 +245,7 @@ const RegisterScreen = ({ navigation }) => {
           <Button
             title="Sign Up"
             onPress={handleRegister}
+            loading={isLoading}
             style={styles.registerButton}
           />
 
@@ -338,6 +346,17 @@ const styles = StyleSheet.create({
   registerButton: {
     marginTop: SPACING.md,
     marginBottom: SPACING.lg,
+  },
+  errorContainer: {
+    backgroundColor: COLORS.ERROR_OPACITY,
+    borderRadius: 8,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  errorText: {
+    color: COLORS.ERROR,
+    fontSize: FONTS.SIZES.sm,
+    textAlign: 'center',
   },
   loginContainer: {
     flexDirection: 'row',

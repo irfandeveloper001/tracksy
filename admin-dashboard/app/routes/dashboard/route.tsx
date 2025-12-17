@@ -11,9 +11,33 @@ import {
 import MetricCard from '../../components/dashboard/MetricCard';
 import StatusPanel from '../../components/dashboard/StatusPanel';
 import QuickActions from '../../components/dashboard/QuickActions';
-import ActivityFeed, { Activity } from '../../components/dashboard/ActivityFeed';
-import dashboardService, { DashboardMetrics, BusStatus } from '../../lib/api/dashboardService';
+import ActivityFeed from '../../components/dashboard/ActivityFeed';
+import dashboardService from '../../lib/api/dashboardService';
 import realtimeService from '../../lib/services/realtimeService';
+
+// Define types locally to avoid import issues
+type DashboardMetrics = {
+  totalActiveBuses: number;
+  totalStudents: number;
+  totalRoutes: number;
+  onTimePercentage: number;
+  currentAlerts: number;
+  systemHealth: 'healthy' | 'warning' | 'critical';
+};
+
+type BusStatus = {
+  activeBuses: number;
+  busesOnRoute: number;
+  busesWithIssues: number;
+};
+
+type Activity = {
+  id: string;
+  type: 'bus' | 'user' | 'route' | 'alert' | 'system';
+  action: string;
+  timestamp: string;
+  user?: string;
+};
 
 export default function DashboardPage() {
   const [busStatus, setBusStatus] = useState<BusStatus>({
@@ -23,25 +47,37 @@ export default function DashboardPage() {
   });
   const [activities, setActivities] = useState<Activity[]>([]);
 
-  // Fetch dashboard metrics
-  const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
+  // Fetch dashboard metrics - non-blocking, always show UI
+  const { data: metrics, isLoading: metricsLoading, isError: metricsError, refetch: refetchMetrics } = useQuery({
     queryKey: ['dashboard-metrics'],
     queryFn: () => dashboardService.getMetrics(),
     refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 0, // Don't retry - fail fast
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnMount: false, // Don't refetch on mount if we have cached data
   });
 
-  // Fetch bus status
-  const { data: initialBusStatus, refetch: refetchBusStatus } = useQuery({
+  // Fetch bus status - non-blocking, always show UI
+  const { data: initialBusStatus, isLoading: busStatusLoading, isError: busStatusError, refetch: refetchBusStatus } = useQuery({
     queryKey: ['bus-status'],
     queryFn: () => dashboardService.getBusStatus(),
     refetchInterval: 10000, // Refetch every 10 seconds
+    retry: 0, // Don't retry - fail fast
+    staleTime: 5000, // Consider data fresh for 5 seconds
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnMount: false, // Don't refetch on mount if we have cached data
   });
 
-  // Fetch recent activities
-  const { data: initialActivities, refetch: refetchActivities } = useQuery({
+  // Fetch recent activities - non-blocking, always show UI
+  const { data: initialActivities, isLoading: activitiesLoading, isError: activitiesError, refetch: refetchActivities } = useQuery({
     queryKey: ['recent-activities'],
     queryFn: () => dashboardService.getRecentActivities(10),
     refetchInterval: 15000, // Refetch every 15 seconds
+    retry: 0, // Don't retry - fail fast
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnMount: false, // Don't refetch on mount if we have cached data
   });
 
   // Update local state when data changes
@@ -110,17 +146,30 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Page Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 p-8 text-white shadow-xl">
+        <div className="relative z-10">
+          <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-sm text-gray-600">
+              <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+              <p className="text-blue-100 text-lg">
           Real-time overview of your transport system
         </p>
+            </div>
+            <div className="hidden md:flex items-center space-x-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">Live</span>
+            </div>
+          </div>
+        </div>
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full -ml-24 -mb-24 blur-2xl"></div>
       </div>
 
-      {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Key Metrics Cards - Always show, data loads in background */}
+      <div className="grid grid-cols-1 gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard
           title="Active Buses"
           value={formattedMetrics.totalActiveBuses}
@@ -171,8 +220,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+      {/* Main Content Grid - Always show, data loads in background */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Real-time Status Panel */}
@@ -192,13 +241,27 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Loading State */}
-      {metricsLoading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading dashboard...</span>
+      {/* Info Message - Only show in dev mode when backend is unavailable */}
+      {import.meta.env.DEV && (metricsError || busStatusError || activitiesError) && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 rounded-xl p-5 shadow-lg animate-in slide-in-from-bottom duration-500">
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center">
+                <span className="text-blue-900 text-lg">ℹ️</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-blue-900 mb-1">
+                Development Mode
+              </p>
+              <p className="text-sm text-blue-800">
+                Dashboard is using Supabase data directly. Backend API is optional and used for advanced analytics.
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
+

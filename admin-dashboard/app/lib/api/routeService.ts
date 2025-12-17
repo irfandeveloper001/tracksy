@@ -1,4 +1,5 @@
 import api from './client';
+import { supabase } from '../config/supabase';
 
 export interface Route {
   id: string;
@@ -45,12 +46,34 @@ export interface RouteListResponse {
 }
 
 class RouteService {
-  // Get all routes with filters and pagination
+  // Get all routes with filters and pagination - Try Supabase first, fallback to API
   async getRoutes(
     page: number = 1,
     perPage: number = 20,
     filters?: RouteFilters
   ): Promise<RouteListResponse> {
+    try {
+      // Try Supabase first
+      const supabaseRoutes = await this.getRoutesFromSupabase(filters);
+      if (supabaseRoutes && supabaseRoutes.length > 0) {
+        // Apply pagination
+        const start = (page - 1) * perPage;
+        const end = start + perPage;
+        const paginatedRoutes = supabaseRoutes.slice(start, end);
+        
+        return {
+          routes: paginatedRoutes,
+          total: supabaseRoutes.length,
+          current_page: page,
+          per_page: perPage,
+          last_page: Math.ceil(supabaseRoutes.length / perPage),
+        };
+      }
+    } catch (supabaseError) {
+      console.warn('⚠️ Supabase fetch failed, trying API:', supabaseError);
+    }
+
+    // Fallback to API
     try {
       const params: any = {
         page,
@@ -72,6 +95,50 @@ class RouteService {
         };
       }
       throw error;
+    }
+  }
+
+  // Get routes directly from Supabase
+  async getRoutesFromSupabase(filters?: RouteFilters): Promise<Route[]> {
+    try {
+      let query = supabase
+        .from('routes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Apply filters
+      if (filters?.status) {
+        query = query.eq('status', filters.status);
+      }
+
+      if (filters?.search) {
+        query = query.or(`name.ilike.%${filters.search}%,origin.ilike.%${filters.search}%,destination.ilike.%${filters.search}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.warn('⚠️ Supabase error fetching routes:', error);
+        // Return empty array instead of throwing - form can work without routes
+        return [];
+      }
+
+      // Map Supabase data to Route interface
+      return (data || []).map((route: any) => ({
+        id: route.id,
+        name: route.name || route.route_name || 'Unnamed Route',
+        start_location: route.origin || route.start_point || route.start_location || '',
+        end_location: route.destination || route.end_point || route.end_location || '',
+        distance: route.distance || null,
+        estimated_duration: route.estimated_duration || null,
+        status: (route.status || 'active') as 'active' | 'inactive',
+        created_at: route.created_at,
+        updated_at: route.updated_at,
+      }));
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch routes from Supabase:', error);
+      // Return empty array - form can work without routes
+      return [];
     }
   }
 
@@ -101,13 +168,89 @@ class RouteService {
     }
   }
 
-  // Create new route
+  // Create new route - Try Supabase first, fallback to API
   async createRoute(routeData: Partial<Route>): Promise<Route> {
+    try {
+      // First, try to create in Supabase directly
+      const supabaseRoute = await this.createRouteInSupabase(routeData);
+      if (supabaseRoute) {
+        console.log('✅ Route created in Supabase:', supabaseRoute);
+        return supabaseRoute;
+      }
+    } catch (supabaseError) {
+      console.warn('⚠️ Supabase creation failed, trying API:', supabaseError);
+    }
+
+    // Fallback to API if Supabase fails
     try {
       const response = await api.post('/admin/routes', routeData);
       return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to create route');
+    }
+  }
+
+  // Create route directly in Supabase
+  async createRouteInSupabase(routeData: Partial<Route>): Promise<Route | null> {
+    try {
+      // Map the data to Supabase schema (uses origin/destination, not start_point/end_point)
+      const supabaseData: any = {
+        name: routeData.name,
+        origin: routeData.start_location || routeData.start_point || '',
+        destination: routeData.end_location || routeData.end_point || '',
+        status: routeData.status || 'active',
+      };
+
+      // Add optional fields only if provided
+      if (routeData.distance !== undefined && routeData.distance !== null) {
+        supabaseData.distance = routeData.distance;
+      }
+      if (routeData.estimated_duration !== undefined && routeData.estimated_duration !== null) {
+        supabaseData.estimated_duration = routeData.estimated_duration;
+      }
+
+      // Remove empty strings
+      Object.keys(supabaseData).forEach(key => {
+        if (supabaseData[key] === '' || supabaseData[key] === null) {
+          delete supabaseData[key];
+        }
+      });
+
+      console.log('🛣️ Inserting route into Supabase:', supabaseData);
+
+      const { data, error } = await supabase
+        .from('routes')
+        .insert(supabaseData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        // Provide better error messages
+        if (error.code === '23505') {
+          throw new Error('A route with this name already exists');
+        }
+        throw error;
+      }
+
+      // Map Supabase response to Route interface
+      const route: Route = {
+        id: data.id,
+        name: data.name,
+        start_location: data.origin,
+        end_location: data.destination,
+        distance: data.distance,
+        estimated_duration: data.estimated_duration,
+        status: data.status as any,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      };
+
+      console.log('✅ Route created successfully in Supabase:', route);
+      return route;
+    } catch (error: any) {
+      console.error('❌ Failed to create route in Supabase:', error);
+      throw error;
     }
   }
 

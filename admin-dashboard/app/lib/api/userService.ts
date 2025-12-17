@@ -1,4 +1,5 @@
 import api from './client';
+import { supabase } from '../config/supabase';
 
 export interface Student {
   id: string;
@@ -175,12 +176,34 @@ class UserService {
 
   // ========== DRIVER METHODS ==========
 
-  // Get all drivers
+  // Get all drivers - Try Supabase first, fallback to API
   async getDrivers(
     page: number = 1,
     perPage: number = 20,
     filters?: UserFilters
   ): Promise<UserListResponse<Driver>> {
+    try {
+      // Try Supabase first
+      const supabaseDrivers = await this.getDriversFromSupabase(filters);
+      if (supabaseDrivers && supabaseDrivers.length > 0) {
+        // Apply pagination
+        const start = (page - 1) * perPage;
+        const end = start + perPage;
+        const paginatedDrivers = supabaseDrivers.slice(start, end);
+        
+        return {
+          users: paginatedDrivers,
+          total: supabaseDrivers.length,
+          current_page: page,
+          per_page: perPage,
+          last_page: Math.ceil(supabaseDrivers.length / perPage),
+        };
+      }
+    } catch (supabaseError) {
+      console.warn('⚠️ Supabase fetch failed, trying API:', supabaseError);
+    }
+
+    // Fallback to API
     try {
       const params: any = {
         page,
@@ -202,6 +225,46 @@ class UserService {
         };
       }
       throw error;
+    }
+  }
+
+  // Get drivers directly from Supabase
+  async getDriversFromSupabase(filters?: UserFilters): Promise<Driver[]> {
+    try {
+      // Query drivers table directly without join (user_profiles relationship may not exist)
+      let driversQuery = supabase
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Apply filters
+      if (filters?.status) {
+        driversQuery = driversQuery.eq('status', filters.status);
+      }
+
+      const { data: driversData, error: driversError } = await driversQuery;
+
+      if (driversError) {
+        console.error('❌ Supabase error fetching drivers:', driversError);
+        // Return empty array if query fails
+        return [];
+      }
+
+      // Map Supabase data to Driver interface
+      return (driversData || []).map((driver: any) => ({
+        id: driver.id,
+        email: driver.email || driver.user_id || '',
+        name: driver.name || driver.full_name || 'Unknown Driver',
+        driver_id: driver.license_number || driver.driver_id || driver.id,
+        phone: driver.phone || driver.phone_number,
+        license_number: driver.license_number || driver.driver_license,
+        status: (driver.status || 'active') as 'active' | 'inactive' | 'on_leave',
+        created_at: driver.created_at,
+        updated_at: driver.updated_at,
+      }));
+    } catch (error) {
+      console.error('❌ Failed to fetch drivers from Supabase:', error);
+      return [];
     }
   }
 

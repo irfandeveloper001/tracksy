@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { MapIcon, FilterIcon } from '@heroicons/react/24/outline';
+import { MapIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import busService from '../../lib/api/busService';
 import routeService from '../../lib/api/routeService';
 import LiveMap from '../../components/map/LiveMap';
@@ -45,7 +45,7 @@ export default function LiveMapPage() {
           onClick={() => setShowFilters(!showFilters)}
           className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
         >
-          <FilterIcon className="h-5 w-5 mr-2" />
+          <FunnelIcon className="h-5 w-5 mr-2" />
           Filters
         </button>
       </div>

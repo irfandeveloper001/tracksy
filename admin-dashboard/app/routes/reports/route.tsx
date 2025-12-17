@@ -93,15 +93,31 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Generate and export comprehensive reports
-          </p>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 p-6 text-white shadow-xl">
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold mb-1">Generate Report</h1>
+            <p className="text-purple-100">Create and export comprehensive reports</p>
+          </div>
+          <div className="hidden md:block">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+              <span className="text-sm font-medium">📊 Analytics</span>
+            </div>
+          </div>
         </div>
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full -ml-24 -mb-24 blur-2xl"></div>
+      </div>
+
+      {/* Content */}
+      <div className="space-y-6">
+        {/* Report Type Selection */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">Report Type</h2>
         <div className="flex space-x-2">
           <button
             onClick={() => setShowScheduleModal(true)}
@@ -126,9 +142,6 @@ export default function ReportsPage() {
           </button>
         </div>
       </div>
-
-      {/* Report Type Selection */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <button
             onClick={() => setReportType('daily')}
@@ -250,6 +263,7 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // API Configuration
-export const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000/api';
-export const WS_URL = process.env.WS_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BASE_URL || 'http://localhost:8000/api';
+export const WS_URL = import.meta.env.VITE_WS_URL || import.meta.env.WS_URL || 'http://localhost:8000';
 
 // App Constants
 export const APP_NAME = 'Tracksy Admin';

@@ -1,4 +1,5 @@
 import api from './client';
+import { supabase } from '../config/supabase';
 
 export interface Alert {
   id: string;
@@ -142,10 +143,24 @@ class AlertService {
     }
   }
 
-  // Create notification
+  // Create notification - Try Supabase first, fallback to API
   async createNotification(notificationData: Partial<Notification>): Promise<Notification> {
     try {
-      const response = await api.post('/admin/notifications', notificationData);
+      // First, try to create in Supabase directly
+      const supabaseNotification = await this.createNotificationInSupabase(notificationData);
+      if (supabaseNotification) {
+        console.log('✅ Notification created in Supabase:', supabaseNotification);
+        return supabaseNotification;
+      }
+    } catch (supabaseError) {
+      console.warn('⚠️ Supabase creation failed, trying API:', supabaseError);
+    }
+
+    // Fallback to API if Supabase fails
+    try {
+      const response = await api.post('/admin/notifications', notificationData, {
+        skipErrorToast: true,
+      } as any);
       return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to create notification');
@@ -198,6 +213,73 @@ class AlertService {
       await api.put('/admin/notifications/preferences', preferences);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to update preferences');
+    }
+  }
+
+  // Create notification directly in Supabase
+  async createNotificationInSupabase(notificationData: Partial<Notification>): Promise<Notification | null> {
+    try {
+      // Validate required fields
+      if (!notificationData.title || !notificationData.message) {
+        throw new Error('Title and message are required');
+      }
+
+      // Map the data to Supabase alerts schema
+      const alertData: any = {
+        type: notificationData.type || 'info',
+        title: notificationData.title,
+        message: notificationData.message,
+        severity: 'medium', // Default severity
+        audience_type: notificationData.audience_type || 'all',
+        status: 'active',
+      };
+
+      // Add optional fields
+      if (notificationData.audience_ids && notificationData.audience_ids.length > 0) {
+        alertData.audience_ids = notificationData.audience_ids;
+      }
+
+      console.log('🔔 Inserting alert into Supabase:', alertData);
+
+      const { data, error } = await supabase
+        .from('alerts')
+        .insert(alertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        
+        // Provide user-friendly error messages
+        if (error.code === '23505') {
+          throw new Error('An alert with this information already exists.');
+        }
+        
+        throw new Error(error.message || 'Failed to create alert in database');
+      }
+
+      if (!data) {
+        throw new Error('Alert was created but no data was returned');
+      }
+
+      console.log('✅ Alert successfully created in Supabase:', data);
+
+      // Map Supabase response to Notification interface
+      const notification: Notification = {
+        id: data.id,
+        title: data.title,
+        message: data.message,
+        type: data.type as any,
+        audience_type: data.audience_type as any,
+        audience_ids: data.audience_ids || [],
+        status: 'sent',
+        created_at: data.created_at,
+      };
+
+      return notification;
+    } catch (error: any) {
+      console.error('❌ Failed to create alert in Supabase:', error);
+      throw error;
     }
   }
 }

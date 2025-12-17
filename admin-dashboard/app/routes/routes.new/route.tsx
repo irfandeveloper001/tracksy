@@ -12,6 +12,8 @@ const routeSchema = z.object({
   name: z.string().min(1, 'Route name is required'),
   start_location: z.string().min(1, 'Start location is required'),
   end_location: z.string().min(1, 'End location is required'),
+  start_point: z.string().optional(), // Backend might use this
+  end_point: z.string().optional(), // Backend might use this
   start_latitude: z.number().optional(),
   start_longitude: z.number().optional(),
   end_latitude: z.number().optional(),
@@ -19,6 +21,7 @@ const routeSchema = z.object({
   distance: z.number().optional(),
   estimated_duration: z.number().optional(),
   status: z.enum(['active', 'inactive']),
+  is_active: z.boolean().optional(), // Backend might use this
 });
 
 type RouteFormData = z.infer<typeof routeSchema>;
@@ -44,68 +47,126 @@ export default function NewRoutePage() {
   const createMutation = useMutation({
     mutationFn: routeService.createRoute,
     onSuccess: (data) => {
-      toast.success('Route created successfully');
+      toast.success('✅ Route created successfully and saved to database!');
       queryClient.invalidateQueries({ queryKey: ['routes'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      setIsSubmitting(false);
+      // Small delay before navigation to show success message
+      setTimeout(() => {
       navigate(`/routes/${data.id}`);
+      }, 1000);
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to create route');
+      console.error('❌ Route creation error:', error);
+      const errorMessage = error.message || error.response?.data?.message || 'Failed to create route. Please check your connection and try again.';
+      toast.error(errorMessage);
       setIsSubmitting(false);
     },
   });
 
   const onSubmit = async (data: RouteFormData) => {
     setIsSubmitting(true);
-    createMutation.mutate(data);
+    try {
+      // Map form data to API format (backend uses start_point, end_point, and is_active)
+      const routeData: any = {
+        name: data.name,
+        start_point: data.start_location, // Backend uses start_point instead of start_location
+        end_point: data.end_location, // Backend uses end_point instead of end_location
+        is_active: data.status === 'active', // Set active status
+      };
+      
+      // Add optional fields only if they're provided
+      if (data.start_latitude !== undefined && data.start_latitude !== null) {
+        routeData.start_latitude = data.start_latitude;
+      }
+      if (data.start_longitude !== undefined && data.start_longitude !== null) {
+        routeData.start_longitude = data.start_longitude;
+      }
+      if (data.end_latitude !== undefined && data.end_latitude !== null) {
+        routeData.end_latitude = data.end_latitude;
+      }
+      if (data.end_longitude !== undefined && data.end_longitude !== null) {
+        routeData.end_longitude = data.end_longitude;
+      }
+      if (data.distance !== undefined && data.distance !== null) {
+        routeData.distance = data.distance;
+      }
+      if (data.estimated_duration !== undefined && data.estimated_duration !== null) {
+        routeData.estimated_duration = data.estimated_duration;
+      }
+      
+      console.log('🛣️ Creating route with data:', routeData);
+      createMutation.mutate(routeData);
+    } catch (error) {
+      console.error('❌ Error in onSubmit:', error);
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center space-x-4">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+      {/* Header with gradient */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-600 via-green-700 to-emerald-700 p-6 text-white shadow-xl">
+        <div className="relative z-10 flex items-center space-x-4">
         <button
           onClick={() => navigate('/routes')}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
         >
-          <ArrowLeftIcon className="h-5 w-5" />
+            <ArrowLeftIcon className="h-6 w-6" />
         </button>
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Route</h1>
-          <p className="mt-1 text-sm text-gray-600">Define a new bus route</p>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold mb-1">Create New Route</h1>
+            <p className="text-green-100">Define a new bus route for your fleet</p>
+          </div>
+          <div className="hidden md:block">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+              <span className="text-sm font-medium">🗺️ Route Management</span>
+            </div>
+          </div>
         </div>
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-400/20 rounded-full -ml-24 -mb-24 blur-2xl"></div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 space-y-6">
+        {/* Form Header */}
+        <div className="border-b border-gray-200 pb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Route Information</h2>
+          <p className="text-sm text-gray-500 mt-1">Fill in the details to create a new route</p>
+        </div>
         {/* Route Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
             Route Name <span className="text-red-500">*</span>
           </label>
           <input
             {...register('name')}
             type="text"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              errors.name ? 'border-red-500' : 'border-gray-300'
+            className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${
+              errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
             }`}
             placeholder="e.g., Downtown to University"
           />
           {errors.name && (
-            <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+            <p className="mt-2 text-sm text-red-600 flex items-center">
+              <span className="mr-1">⚠️</span> {errors.name.message}
+            </p>
           )}
         </div>
 
         {/* Start & End Locations */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
               Start Location <span className="text-red-500">*</span>
             </label>
             <input
               {...register('start_location')}
               type="text"
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.start_location ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${
+                errors.start_location ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
               }`}
               placeholder="e.g., Downtown Station"
             />
@@ -115,19 +176,21 @@ export default function NewRoutePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
               End Location <span className="text-red-500">*</span>
             </label>
             <input
               {...register('end_location')}
               type="text"
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                errors.end_location ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all ${
+                errors.end_location ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
               }`}
               placeholder="e.g., University Campus"
             />
             {errors.end_location && (
-              <p className="mt-1 text-sm text-red-600">{errors.end_location.message}</p>
+              <p className="mt-2 text-sm text-red-600 flex items-center">
+                <span className="mr-1">⚠️</span> {errors.end_location.message}
+              </p>
             )}
           </div>
         </div>
@@ -222,12 +285,20 @@ export default function NewRoutePage() {
           </select>
         </div>
 
-        {/* Info Message */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
-            <strong>Note:</strong> You can add stops to this route after creating it. Stops can be
-            added, edited, and reordered on the route detail page.
+        {/* Info Box */}
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-green-800">
+                <strong>Note:</strong> The route will be saved to the database and will be immediately available. You can add stops to this route after creating it on the route detail page.
           </p>
+            </div>
+          </div>
         </div>
 
         {/* Actions */}
@@ -235,16 +306,31 @@ export default function NewRoutePage() {
           <button
             type="button"
             onClick={() => navigate('/routes')}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl font-semibold transform hover:scale-105 active:scale-95"
           >
-            {isSubmitting ? 'Creating...' : 'Create Route'}
+            {isSubmitting ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Saving to Database...
+              </span>
+            ) : (
+              <span className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Route
+              </span>
+            )}
           </button>
         </div>
       </form>
