@@ -12,16 +12,18 @@
     "student:start": "cd studentapp && npm start",
     "student:android": "cd studentapp && npm run android",
     "student:ios": "cd studentapp && npm run ios",
+    "student:web": "cd studentapp && npm run web",
     "admin:dev": "cd admin-dashboard && npm run dev",
     "admin:build": "cd admin-dashboard && npm run build",
+    "admin:web": "cd admin-dashboard && npm run web",
     "driver:android": "cd driver-app && npm run android",
     "driver:start": "cd driver-app && npm start",
+    "driver:web": "cd driver-app && npm run web",
     "install:all": "npm install && cd studentapp && npm install && cd ../admin-dashboard && npm install && cd ../driver-app && npm install",
     "launcher:web": "http-server launcher -p 4000 -c-1 -s",
-    "admin:web": "cd admin-dashboard && npm run web",
-    "student:web": "cd studentapp && npm run web",
-    "driver:web": "cd driver-app && npm run web",
-    "web": "concurrently \"npm run launcher:web\" \"npm run admin:web\" \"npm run student:web\" \"npm run driver:web\""
+    "web": "concurrently --names \"🚀LAUNCHER,📊ADMIN,👨‍🎓STUDENT,🚗DRIVER\" --prefix-colors \"cyan,magenta,green,yellow\" --prefix \"[{name}]\" --kill-others \"npm run launcher:web\" \"npm run admin:web\" \"npm run student:web\" \"npm run driver:web\"",
+    "web:clean": "concurrently --names \"🚀LAUNCHER,📊ADMIN,👨‍🎓STUDENT,🚗DRIVER\" --prefix-colors \"cyan,magenta,green,yellow\" --prefix \"[{name}]\" --kill-others \"npm run launcher:web\" \"npm run admin:web\" \"cd studentapp && EXPO_OFFLINE=1 npx expo start --web --clear --port 19007\" \"cd driver-app && EXPO_OFFLINE=1 npx expo start --web --clear --port 19008\"",
+    "kill:ports": "bash scripts/kill-ports.sh"
   },
   "repository": {
     "type": "git",

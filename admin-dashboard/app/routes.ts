@@ -15,16 +15,16 @@ export default [
       return {};
     },
   }),
-  route("buses", "routes/buses/route.tsx", {
+  route("buses/new", "routes/buses.new/route.tsx", {
     layout: DashboardLayout,
   }),
-  route("buses/new", "routes/buses.new/route.tsx", {
+  route("buses.$id.edit", "routes/buses.$id.edit/route.tsx", {
     layout: DashboardLayout,
   }),
   route("buses.$id", "routes/buses.$id/route.tsx", {
     layout: DashboardLayout,
   }),
-  route("buses.$id.edit", "routes/buses.$id.edit/route.tsx", {
+  route("buses", "routes/buses/route.tsx", {
     layout: DashboardLayout,
   }),
   route("routes", "routes/routes/route.tsx", {

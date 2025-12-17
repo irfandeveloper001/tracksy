@@ -6,7 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "./lib/store/authStore";
@@ -87,7 +87,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   // Initialize auth state on app load (only on client)
-  React.useEffect(() => {
+  useEffect(() => {
     if (typeof window === 'undefined') return;
 
     // Handle Supabase auth callback (access_token in URL fragment)

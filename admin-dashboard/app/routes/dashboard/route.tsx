@@ -52,10 +52,10 @@ export default function DashboardPage() {
     queryKey: ['dashboard-metrics'],
     queryFn: () => dashboardService.getMetrics(),
     refetchInterval: 30000, // Refetch every 30 seconds
-    retry: 0, // Don't retry - fail fast
+    retry: 1, // Retry once on failure
     staleTime: 10000, // Consider data fresh for 10 seconds
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchOnMount: false, // Don't refetch on mount if we have cached data
+    refetchOnMount: true, // Always refetch on mount to get latest data
   });
 
   // Fetch bus status - non-blocking, always show UI
@@ -63,10 +63,10 @@ export default function DashboardPage() {
     queryKey: ['bus-status'],
     queryFn: () => dashboardService.getBusStatus(),
     refetchInterval: 10000, // Refetch every 10 seconds
-    retry: 0, // Don't retry - fail fast
+    retry: 1, // Retry once on failure
     staleTime: 5000, // Consider data fresh for 5 seconds
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    refetchOnMount: false, // Don't refetch on mount if we have cached data
+    refetchOnMount: true, // Always refetch on mount to get latest data
   });
 
   // Fetch recent activities - non-blocking, always show UI
@@ -229,6 +229,7 @@ export default function DashboardPage() {
             activeBuses={busStatus.activeBuses}
             busesOnRoute={busStatus.busesOnRoute}
             busesWithIssues={busStatus.busesWithIssues}
+            activeRoutes={formattedMetrics.totalRoutes || 0}
           />
 
           {/* Activity Feed */}

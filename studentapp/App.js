@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Provider } from 'react-redux';
 import { Platform, Linking } from 'react-native';
 import { store } from './src/store/store';
@@ -174,7 +174,7 @@ const initializeApp = async () => {
 };
 
 export default function App() {
-  useEffect(() => {
+  React.useEffect(() => {
     console.log('✅ App.js loaded');
     console.log('Platform:', Platform.OS);
     initializeApp();

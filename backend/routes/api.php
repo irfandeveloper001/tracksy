@@ -125,6 +125,11 @@ Route::prefix('admin')->group(function () {
         
         // Bus management
         Route::apiResource('buses', BusController::class);
+        // Specific bus routes for view, edit, delete
+        Route::get('/buses/{id}/view', [BusController::class, 'show']);
+        Route::put('/buses/{id}/edit', [BusController::class, 'update']);
+        Route::patch('/buses/{id}/edit', [BusController::class, 'update']);
+        Route::delete('/buses/{id}/delete', [BusController::class, 'destroy']);
         Route::get('/buses/{id}/location', [BusController::class, 'getLocation']);
         Route::get('/buses/{id}/history', [BusController::class, 'getHistory']);
         

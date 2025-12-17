@@ -202,33 +202,31 @@ class AuthService {
         };
       }
 
-      // Create admin profile in database
+      // Admin profile should be created automatically by trigger
+      // The trigger runs with SECURITY DEFINER so it can bypass RLS
+      // We'll verify it exists after a short delay, but won't fail if it doesn't
+      // (it will be created on first login if trigger didn't fire)
       try {
-        const { error: profileError } = await supabase
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Verify profile exists (created by trigger)
+        const { data: profile } = await supabase
           .from('admin_profiles')
-          .insert({
-            id: data.user.id,
-            email: email,
-            name: name,
-            role: role,
-            permissions: [],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
+          .select('id, role')
+          .eq('id', data.user.id)
+          .single();
 
-        if (profileError) {
-          console.warn('⚠️ Failed to create admin profile:', profileError);
-          // If it's a permission error, the table might not exist or RLS is blocking
-          if (profileError.code === 'PGRST116' || profileError.message.includes('permission denied')) {
-            console.warn('⚠️ Admin profiles table might not exist. Please run SUPABASE_DATABASE_SETUP.sql in Supabase SQL Editor.');
-          }
-          // Non-critical error, don't throw - profile might be created by trigger
+        if (profile) {
+          console.log('✅ Admin profile exists (created by trigger)');
         } else {
-          console.log('✅ Admin profile created successfully');
+          console.warn('⚠️ Admin profile not found. It will be created on first login or by trigger.');
+          // Don't throw error - user account was created successfully
         }
-      } catch (profileErr) {
-        console.warn('⚠️ Error creating admin profile:', profileErr);
-        // Non-critical error, profile might be created by trigger
+      } catch (profileCheckErr: any) {
+        // Profile check failed - this is non-critical
+        // The trigger should have created it, or it will be created on login
+        console.warn('⚠️ Could not verify admin profile:', profileCheckErr.message);
+        // Continue - don't fail signup
       }
 
       // Update user metadata with role
@@ -242,12 +240,17 @@ class AuthService {
         });
       }
 
+      // Signup succeeded - user is created in auth.users
+      // Profile will be created by trigger or on first login
       return {
         user: adminUser,
         session: data.session,
       };
     } catch (error: any) {
       console.error('❌ Admin signup error:', error);
+      
+      // Only throw errors for actual signup failures, not profile creation issues
+      // The trigger handles profile creation with SECURITY DEFINER permissions
       throw new Error(error.message || 'Signup failed. Please try again.');
     }
   }

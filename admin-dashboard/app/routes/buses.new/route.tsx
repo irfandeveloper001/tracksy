@@ -99,7 +99,7 @@ export default function NewBusPage() {
     defaultValues: {
       bus_type: 'standard',
       capacity: 40,
-      status: 'inactive',
+            status: 'active', // Default to active so student/driver apps can see it
     },
   });
   
@@ -153,12 +153,13 @@ export default function NewBusPage() {
   const createMutation = useMutation({
     mutationFn: (busData: any) => busService.createBus(busData),
     onSuccess: (data) => {
-      console.log('✅ Bus created successfully:', data);
-      toast.success('✅ Bus created successfully and saved to database!', {
+      console.log('✅ Bus created successfully in Supabase:', data);
+      toast.success('✅ Bus created and saved to database! It will appear in the list shortly.', {
         duration: 3000,
         icon: '🚌',
       });
-      // Invalidate queries to refresh data
+      // Invalidate all bus-related queries to force refetch from Supabase
+      // This ensures the newly created bus appears immediately
       queryClient.invalidateQueries({ queryKey: ['buses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['routes', 'all'] });

@@ -40,12 +40,12 @@ export default function NewRoutePage() {
   } = useForm<RouteFormData>({
     resolver: zodResolver(routeSchema),
     defaultValues: {
-      status: 'inactive',
+      status: 'active', // Default to active so student/driver apps can see it
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: routeService.createRoute,
+    mutationFn: (routeData: any) => routeService.createRoute(routeData),
     onSuccess: (data) => {
       toast.success('✅ Route created successfully and saved to database!');
       queryClient.invalidateQueries({ queryKey: ['routes'] });
@@ -67,12 +67,17 @@ export default function NewRoutePage() {
   const onSubmit = async (data: RouteFormData) => {
     setIsSubmitting(true);
     try {
-      // Map form data to API format (backend uses start_point, end_point, and is_active)
+      // Map form data - works for both Supabase and API
+      // Supabase uses: name, origin, destination, status
+      // API uses: name, start_point, end_point, is_active
       const routeData: any = {
-        name: data.name,
-        start_point: data.start_location, // Backend uses start_point instead of start_location
-        end_point: data.end_location, // Backend uses end_point instead of end_location
-        is_active: data.status === 'active', // Set active status
+        name: data.name.trim(),
+        start_location: data.start_location.trim(), // For Supabase (maps to origin)
+        end_location: data.end_location.trim(), // For Supabase (maps to destination)
+        start_point: data.start_location.trim(), // For API fallback
+        end_point: data.end_location.trim(), // For API fallback
+        status: data.status, // For Supabase
+        is_active: data.status === 'active', // For API fallback
       };
       
       // Add optional fields only if they're provided
@@ -96,9 +101,12 @@ export default function NewRoutePage() {
       }
       
       console.log('🛣️ Creating route with data:', routeData);
+      console.log('📝 Calling createMutation.mutate...');
       createMutation.mutate(routeData);
+      console.log('✅ Mutation called successfully');
     } catch (error) {
       console.error('❌ Error in onSubmit:', error);
+      toast.error('Failed to create route. Please try again.');
       setIsSubmitting(false);
     }
   };

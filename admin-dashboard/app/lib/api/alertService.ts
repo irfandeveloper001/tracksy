@@ -97,7 +97,7 @@ class AlertService {
   // Acknowledge alert
   async acknowledgeAlert(alertId: string, notes?: string): Promise<Alert> {
     try {
-      const response = await api.post(`/admin/alerts/${alertId}/acknowledge`, { notes });
+      const response = await api.put(`/admin/alerts/${alertId}/acknowledge`, { notes });
       return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to acknowledge alert');
@@ -107,7 +107,7 @@ class AlertService {
   // Resolve alert
   async resolveAlert(alertId: string, resolution?: string): Promise<Alert> {
     try {
-      const response = await api.post(`/admin/alerts/${alertId}/resolve`, { resolution });
+      const response = await api.put(`/admin/alerts/${alertId}/resolve`, { resolution });
       return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to resolve alert');

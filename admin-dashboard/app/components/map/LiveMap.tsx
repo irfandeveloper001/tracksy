@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TruckIcon, MapPinIcon } from '@heroicons/react/24/outline';
-import { Bus } from '../../lib/api/busService';
+import type { Bus } from '../../lib/api/types';
 import { Route } from '../../lib/api/routeService';
 
 interface LiveMapProps {

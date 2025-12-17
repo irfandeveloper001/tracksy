@@ -62,14 +62,16 @@ export default function MetricCard({
   const config = colorConfig[color];
 
   return (
-    <div className="group relative bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
+    <div className="group relative bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300 hover:-translate-y-1 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
       {/* Gradient background effect */}
       <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
       
       <div className="relative flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wide">{title}</p>
-          <p className="text-4xl font-bold text-gray-900 mb-1">{value}</p>
+          <p className="text-4xl font-bold text-gray-900 mb-1 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
+            {typeof value === 'number' ? value.toLocaleString() : value}
+          </p>
           {change && (
             <div className="mt-3 flex items-center">
               <span
