@@ -176,34 +176,13 @@ class UserService {
 
   // ========== DRIVER METHODS ==========
 
-  // Get all drivers - Try Supabase first, fallback to API
+  // Get all drivers - Use Laravel backend API (primary source)
   async getDrivers(
     page: number = 1,
     perPage: number = 20,
     filters?: UserFilters
   ): Promise<UserListResponse<Driver>> {
-    try {
-      // Try Supabase first
-      const supabaseDrivers = await this.getDriversFromSupabase(filters);
-      if (supabaseDrivers && supabaseDrivers.length > 0) {
-        // Apply pagination
-        const start = (page - 1) * perPage;
-        const end = start + perPage;
-        const paginatedDrivers = supabaseDrivers.slice(start, end);
-        
-        return {
-          users: paginatedDrivers,
-          total: supabaseDrivers.length,
-          current_page: page,
-          per_page: perPage,
-          last_page: Math.ceil(supabaseDrivers.length / perPage),
-        };
-      }
-    } catch (supabaseError) {
-      console.warn('⚠️ Supabase fetch failed, trying API:', supabaseError);
-    }
-
-    // Fallback to API
+    // Use Laravel backend API (primary source)
     try {
       const params: any = {
         page,
@@ -212,7 +191,66 @@ class UserService {
       };
 
       const response = await api.get('/admin/drivers', { params });
-      return response.data.data || response.data;
+      const backendData = response.data.data || response.data;
+      
+      // Handle Laravel pagination response format
+      if (backendData.data && Array.isArray(backendData.data)) {
+        // Laravel paginated response
+        const drivers = backendData.data.map((driver: any) => ({
+          id: driver.id?.toString() || '',
+          email: driver.email || '',
+          name: driver.name || '',
+          driver_id: driver.driver_id || '',
+          phone: driver.phone || '',
+          license_number: driver.license_number || '',
+          license_expiry: driver.license_expiry || '',
+          status: driver.status || 'active',
+          bus_id: driver.assigned_bus_id?.toString() || '',
+          route_id: driver.assigned_route_id?.toString() || '',
+          created_at: driver.created_at || '',
+          updated_at: driver.updated_at || '',
+        }));
+        
+        return {
+          users: drivers,
+          total: backendData.total || 0,
+          current_page: backendData.current_page || page,
+          per_page: backendData.per_page || perPage,
+          last_page: backendData.last_page || 1,
+        };
+      } else if (Array.isArray(backendData)) {
+        // Simple array response
+        const drivers = backendData.map((driver: any) => ({
+          id: driver.id?.toString() || '',
+          email: driver.email || '',
+          name: driver.name || '',
+          driver_id: driver.driver_id || '',
+          phone: driver.phone || '',
+          license_number: driver.license_number || '',
+          license_expiry: driver.license_expiry || '',
+          status: driver.status || 'active',
+          bus_id: driver.assigned_bus_id?.toString() || '',
+          route_id: driver.assigned_route_id?.toString() || '',
+          created_at: driver.created_at || '',
+          updated_at: driver.updated_at || '',
+        }));
+        
+        return {
+          users: drivers,
+          total: drivers.length,
+          current_page: page,
+          per_page: perPage,
+          last_page: Math.ceil(drivers.length / perPage) || 1,
+        };
+      }
+      
+      return {
+        users: [],
+        total: 0,
+        current_page: page,
+        per_page: perPage,
+        last_page: 1,
+      };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         console.warn('⚠️ Backend unavailable, returning empty drivers list');

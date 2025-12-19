@@ -10,7 +10,6 @@ import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "./lib/store/authStore";
-import { supabase } from "./lib/config/supabase";
 import AppErrorBoundary from "./components/ui/ErrorBoundary";
 import OfflineBanner from "./components/offline/OfflineBanner";
 import type { Route } from "./+types/root";
@@ -86,30 +85,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  // Initialize auth state on app load (only on client)
+  // Initialize auth state on app load (only on client) - Laravel API only
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    // Handle Supabase auth callback (access_token in URL fragment)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
-    
-    if (accessToken && refreshToken) {
-      // Clear the hash from URL
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      
-      // Set the session
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      }).then(() => {
-        // Session set, will trigger auth state change
-        console.log('✅ Session restored from URL');
-      }).catch((error) => {
-        console.error('❌ Failed to set session from URL:', error);
-      });
-    }
 
     // Skip auth check on public routes (login, signup, forgot-password, reset-password)
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password'];
@@ -123,10 +101,10 @@ export default function App() {
         // Get store methods
         const { getCurrentUser, refreshSession } = useAuthStore.getState();
 
-        // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
+        // Check for Laravel token
+        const token = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
         
-        if (session) {
+        if (token) {
           // Get current user with timeout
           try {
             const timeoutPromise = new Promise((_, reject) => 
@@ -153,26 +131,11 @@ export default function App() {
 
     // Small delay to ensure everything is mounted
     const timer = setTimeout(() => {
-    initializeAuth();
+      initializeAuth();
     }, 100);
-
-  // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const { getCurrentUser, refreshSession } = useAuthStore.getState();
-      if (event === 'SIGNED_IN' && session) {
-        await getCurrentUser();
-      } else if (event === 'SIGNED_OUT') {
-        window.location.href = '/login';
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        await refreshSession();
-      }
-    });
 
     return () => {
       clearTimeout(timer);
-      subscription.unsubscribe();
     };
   }, []);
 

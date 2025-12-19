@@ -1,29 +1,52 @@
 import axios from 'axios';
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL } from '../constants';
-import { supabase } from '../config/supabase';
 import { handleApiError, showErrorToast } from '../utils/errorHandler';
 import { retry } from '../utils/retry';
 
+// Track if we're already redirecting to prevent multiple redirects
+let isRedirecting = false;
+
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 3000, // Reduced timeout to 3 seconds for faster failure
+  timeout: 30000, // Increased timeout to 30 seconds for better reliability
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+  validateStatus: function (status) {
+    // Don't throw errors for 4xx and 5xx, let us handle them
+    return status >= 200 && status < 600;
   },
 });
 
 // Request interceptor
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    // Get token from Supabase session
+    // Get JWT token from localStorage (stored by Laravel login)
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        config.headers.Authorization = `Bearer ${session.access_token}`;
+      // Get Laravel JWT token (required for all API requests)
+      const laravelToken = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
+      
+      if (laravelToken) {
+        config.headers.Authorization = `Bearer ${laravelToken}`;
+        if (import.meta.env.DEV) {
+          console.log('✅ Using Laravel JWT token for API request');
+        }
+      } else {
+        // Only warn if not on login page (to reduce console noise)
+        if (import.meta.env.DEV && typeof window !== 'undefined') {
+          const currentPath = window.location.pathname;
+          const isLoginPage = currentPath === '/login' || currentPath.startsWith('/login');
+          if (!isLoginPage) {
+            console.warn('⚠️ No Laravel authentication token found. API request may fail with 401.');
+          }
+        }
       }
     } catch (error) {
-      console.warn('⚠️ Failed to get Supabase session for API request:', error);
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Failed to get auth token for API request:', error);
+      }
     }
 
     return config;
@@ -36,6 +59,15 @@ api.interceptors.request.use(
 // Response interceptor with error handling
 api.interceptors.response.use(
   (response) => {
+    // Check for error status codes
+    if (response.status >= 400) {
+      // Convert error response to rejected promise
+      const error: any = new Error(response.data?.message || `Request failed with status ${response.status}`);
+      error.response = response;
+      error.status = response.status;
+      return Promise.reject(error);
+    }
+    
     // Normalize backend responses
     if (response.data && !response.data.success && response.data.data === undefined) {
       response.data = {
@@ -58,37 +90,97 @@ api.interceptors.response.use(
 
     // Handle 401 - Unauthorized
     if (error.response?.status === 401) {
-      try {
-        await supabase.auth.signOut();
-        // Redirect to login
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+      const errorData: any = error.response.data || {};
+      const errorMessage: string = errorData.message || 'Authentication required. Please log in again.';
+      const errorType: string = errorData.error || 'unauthorized';
+      
+      // Clear invalid tokens
+      localStorage.removeItem('laravel_token');
+      localStorage.removeItem('tracksy_admin:auth_token');
+      
+      // Show specific error message (only once)
+      let authError: Error;
+      if (errorType === 'token_expired' || errorType === 'token_invalid' || errorType === 'token_error') {
+        authError = new Error('Your session has expired. Please log in again.');
+      } else if (errorType === 'missing_token') {
+        authError = new Error('Please log in to continue.');
+      } else {
+        authError = new Error(errorMessage);
+      }
+      
+      // Only show toast and redirect if not already redirecting and not on login page
+      if (typeof window !== 'undefined' && !isRedirecting) {
+        const currentPath = window.location.pathname;
+        const isLoginPage = currentPath === '/login' || currentPath.startsWith('/login');
+        
+        if (!isLoginPage) {
+          isRedirecting = true;
+          showErrorToast(authError);
+          
+          // Redirect to login after a delay (only once)
+          setTimeout(() => {
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
+            // Reset redirect flag after redirect
+            setTimeout(() => {
+              isRedirecting = false;
+            }, 1000);
+          }, 2000);
         }
-      } catch (signOutError) {
-        console.warn('⚠️ Failed to sign out from Supabase:', signOutError);
+      }
+      
+      return Promise.reject(authError);
+    }
+    
+    // Handle 500 - Server Error
+    if (error.response?.status === 500) {
+      const serverError = new Error('Backend server error. Please check Laravel logs and ensure database is connected.');
+      showErrorToast(serverError);
+      return Promise.reject(serverError);
+    }
+    
+    // Handle 422 - Validation errors
+    if (error.response?.status === 422) {
+      const responseData: any = error.response.data || {};
+      const validationErrors = responseData.errors;
+      if (validationErrors) {
+        const errorMessages = Object.entries(validationErrors)
+          .map(([field, messages]: [string, any]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n');
+        error.message = errorMessages || responseData.message || 'Validation failed';
       }
     }
 
     // Handle API errors
     const apiError = handleApiError(error);
     
-    // Suppress error toasts for:
-    // 1. Network errors when backend is unavailable (we have Supabase fallback)
-    // 2. CORS errors (backend not running or misconfigured)
-    // 3. When explicitly requested via skipErrorToast
-    const shouldSuppressToast = 
-      error.config?.skipErrorToast ||
-      error.code === 'ERR_NETWORK' ||
-      error.code === 'ERR_FAILED' ||
-      (error.response?.status && error.response.status >= 500) ||
-      (error.message && error.message.includes('CORS'));
-    
-    // Only show toast for critical errors that need user attention
-    if (error.config && !shouldSuppressToast) {
-      // Don't show toast for offline errors if we have Supabase fallback
-      if (apiError.code !== 'OFFLINE' || !navigator.onLine) {
-      showErrorToast(apiError);
+    // Handle network errors - show helpful message
+    if (error.code === 'ERR_NETWORK' || error.code === 'ERR_FAILED' || (!error.response && error.request)) {
+      // Check if it's a CORS error
+      const errorMsg: string = (error as any).message || '';
+      if (errorMsg.includes('CORS') || errorMsg.includes('Access-Control')) {
+        const corsError = new Error('CORS error: Backend may not be running or CORS not configured. Please ensure Laravel backend is running on http://localhost:8000');
+        showErrorToast(corsError);
+        return Promise.reject(corsError);
       }
+      
+      // Network error - backend not reachable
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+      const networkError = new Error(`Cannot connect to backend API at ${apiUrl}. Please ensure Laravel backend is running.`);
+      showErrorToast(networkError);
+      return Promise.reject(networkError);
+    }
+    
+    // Suppress error toasts for:
+    // 1. When explicitly requested via skipErrorToast
+    // 2. Server errors (500+) - show generic message
+    const config: any = error.config || {};
+    const shouldSuppressToast = config.skipErrorToast;
+    
+    // Show toast for all other errors
+    if (error.config && !shouldSuppressToast) {
+      showErrorToast(apiError);
     }
 
     return Promise.reject(apiError);

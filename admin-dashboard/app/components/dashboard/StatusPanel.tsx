@@ -102,10 +102,10 @@ export default function StatusPanel({
               return '/routes';
             } else {
               // buses
-              if (item.filter === 'active') return '/buses?status=active';
-              if (item.filter === 'on_route') return '/buses?status=active';
-              if (item.filter === 'issues') return '/buses?status=maintenance';
-              return '/buses';
+            if (item.filter === 'active') return '/buses?status=active';
+            if (item.filter === 'on_route') return '/buses?status=active';
+            if (item.filter === 'issues') return '/buses?status=maintenance';
+            return '/buses';
             }
           };
 
@@ -198,13 +198,13 @@ export default function StatusPanel({
                   </div>
                 </div>
                 
-                <div className={`flex items-center transition-all duration-300 ${
-                  isClicked ? 'translate-x-2' : 'group-hover:translate-x-1'
-                }`}>
-                  <ArrowRightIcon className={`w-6 h-6 ${item.text.replace('text-', 'text-').replace('-700', '-600')} transition-opacity duration-300 ${
-                    isClicked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`} />
-                </div>
+                  <div className={`flex items-center transition-all duration-300 ${
+                    isClicked ? 'translate-x-2' : 'group-hover:translate-x-1'
+                  }`}>
+                    <ArrowRightIcon className={`w-6 h-6 ${item.text.replace('text-', 'text-').replace('-700', '-600')} transition-opacity duration-300 ${
+                      isClicked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`} />
+                  </div>
               </div>
               
               {/* Animated background gradient on hover */}

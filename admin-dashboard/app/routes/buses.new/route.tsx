@@ -27,16 +27,16 @@ export default function NewBusPage() {
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch routes directly from Supabase - non-blocking, fail gracefully
-  const { data: routesData, isLoading: routesLoading } = useQuery({
-    queryKey: ['routes', 'all', 'supabase'],
+  // Fetch routes from Laravel backend API - non-blocking, fail gracefully
+  const { data: routesData, isLoading: routesLoading, isError: routesError } = useQuery({
+    queryKey: ['routes', 'all', 'backend'],
     queryFn: async () => {
       try {
-        // Fetch directly from Supabase
-        const routes = await routeService.getRoutesFromSupabase();
-        return { routes, total: routes.length, current_page: 1, per_page: 100, last_page: 1 };
+        // Fetch from Laravel backend API
+        const response = await routeService.getRoutes(1, 100); // Get first 100 routes
+        return response;
       } catch (error) {
-        console.warn('⚠️ Failed to fetch routes from Supabase, form can still work without them:', error);
+        console.warn('⚠️ Failed to fetch routes from backend, form can still work without them:', error);
         return { routes: [], total: 0, current_page: 1, per_page: 100, last_page: 1 };
       }
     },
@@ -46,16 +46,16 @@ export default function NewBusPage() {
     refetchOnMount: true, // Always refetch to get latest data
   });
 
-  // Fetch drivers directly from Supabase - non-blocking, fail gracefully
-  const { data: driversData, isLoading: driversLoading } = useQuery({
-    queryKey: ['drivers', 'all', 'supabase'],
+  // Fetch drivers from Laravel backend API - non-blocking, fail gracefully
+  const { data: driversData, isLoading: driversLoading, isError: driversError } = useQuery({
+    queryKey: ['drivers', 'all', 'backend'],
     queryFn: async () => {
       try {
-        // Fetch directly from Supabase
-        const drivers = await userService.getDriversFromSupabase();
-        return { users: drivers, total: drivers.length, current_page: 1, per_page: 100, last_page: 1 };
+        // Fetch from Laravel backend API
+        const response = await userService.getDrivers(1, 100); // Get first 100 drivers
+        return response;
       } catch (error) {
-        console.warn('⚠️ Failed to fetch drivers from Supabase, form can still work without them:', error);
+        console.warn('⚠️ Failed to fetch drivers from backend, form can still work without them:', error);
         return { users: [], total: 0, current_page: 1, per_page: 100, last_page: 1 };
       }
     },
@@ -172,9 +172,37 @@ export default function NewBusPage() {
     },
     onError: (error: any) => {
       console.error('❌ Bus creation error:', error);
-      const errorMessage = error.message || error.response?.data?.message || 'Failed to create bus. Please check your connection and try again.';
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to create bus';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        
+        // Handle validation errors
+        if (errorData.errors) {
+          const validationErrors = Object.entries(errorData.errors)
+            .map(([field, messages]: [string, any]) => {
+              const msg = Array.isArray(messages) ? messages[0] : messages;
+              return `${field}: ${msg}`;
+            })
+            .join(', ');
+          errorMessage = validationErrors;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast.error(errorMessage, {
-        duration: 5000,
+        duration: 6000,
+        style: {
+          background: '#ef4444',
+          color: '#fff',
+          fontSize: '14px',
+          fontWeight: '600',
+        },
       });
       setIsSubmitting(false);
     },
@@ -225,33 +253,50 @@ export default function NewBusPage() {
 
   // Form is ready to use immediately - dropdowns load in background
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
-      {/* Header with gradient */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 p-6 text-white shadow-xl">
-        <div className="relative z-10 flex items-center space-x-4">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+      {/* Enhanced Header with gradient and animations */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-8 text-white shadow-2xl transform transition-all hover:scale-[1.01]">
+        <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white/5 to-transparent"></div>
+        <div className="relative z-10 flex items-center space-x-6">
         <button
           onClick={() => navigate('/buses')}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+            className="p-3 hover:bg-white/20 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-sm"
         >
             <ArrowLeftIcon className="h-6 w-6" />
         </button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-1">Add New Bus</h1>
-            <p className="text-blue-100">Fill in the bus details to add it to your fleet</p>
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl shadow-lg">
+                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
+                  <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z"/>
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-4xl font-extrabold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
+                  Add New Bus
+                </h1>
+                <p className="text-blue-100 text-lg font-medium">Fill in the bus details to add it to your fleet</p>
+              </div>
+            </div>
           </div>
           <div className="hidden md:block">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-              <span className="text-sm font-medium">🚌 Fleet Management</span>
+            <div className="bg-white/20 backdrop-blur-md rounded-2xl px-6 py-3 shadow-lg border border-white/10">
+              <span className="text-base font-semibold flex items-center space-x-2">
+                <span className="text-2xl">🚌</span>
+                <span>Fleet Management</span>
+              </span>
             </div>
           </div>
         </div>
-        {/* Decorative background elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full -ml-24 -mb-24 blur-2xl"></div>
+        {/* Enhanced decorative background elements */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-48 -mt-48 blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-purple-400/20 rounded-full -ml-36 -mb-36 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-blue-400/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
       </div>
 
       {/* Success/Error Info - Only show if routes are loaded and empty */}
-      {!routesLoading && routes.length === 0 && (
+      {!routesLoading && !routesError && routes.length === 0 && (
         <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-4 animate-in slide-in-from-top duration-300">
           <p className="text-sm text-blue-800">
             <strong>💡 Tip:</strong> Create a route first to assign it to this bus. Routes help organize your fleet and make it easier for students and drivers to find buses.
@@ -259,49 +304,82 @@ export default function NewBusPage() {
         </div>
       )}
 
-      {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 space-y-6">
-        {/* Form Header */}
-        <div className="border-b border-gray-200 pb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Bus Information</h2>
-          <p className="text-sm text-gray-500 mt-1">Fill in the details to add a new bus to your fleet</p>
+      {/* Enhanced Form */}
+      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all hover:shadow-3xl">
+        {/* Form Header with gradient */}
+        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 px-8 py-6">
+          <div className="flex items-center space-x-3">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Bus Information</h2>
+              <p className="text-sm text-gray-600 mt-1">Fill in the details to add a new bus to your fleet</p>
+            </div>
+          </div>
         </div>
-        {/* Bus Number & License Plate */}
+        
+        <div className="p-8 space-y-8">
+        {/* Bus Number & License Plate - Enhanced */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Bus Number <span className="text-red-500">*</span>
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center">
+              <span className="bg-blue-100 text-blue-700 rounded-lg px-2 py-1 mr-2 text-xs font-semibold">REQUIRED</span>
+              Bus Number <span className="text-red-500 ml-1">*</span>
           </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                </svg>
+              </div>
           <input
             {...register('bus_number')}
             type="text"
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                errors.bus_number ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                className={`w-full pl-12 pr-4 py-4 border-2 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg font-medium ${
+                  errors.bus_number ? 'border-red-500 bg-red-50 animate-pulse' : 'border-gray-300 hover:border-blue-400 focus:shadow-lg'
             }`}
             placeholder="e.g., BUS-001"
           />
+            </div>
           {errors.bus_number && (
-              <p className="mt-2 text-sm text-red-600 flex items-center">
-                <span className="mr-1">⚠️</span> {errors.bus_number.message}
+              <p className="mt-3 text-sm text-red-600 flex items-center bg-red-50 rounded-lg px-3 py-2 border border-red-200">
+                <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                {errors.bus_number.message}
               </p>
           )}
         </div>
 
-        <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              License Plate Number <span className="text-red-500">*</span>
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center">
+              <span className="bg-blue-100 text-blue-700 rounded-lg px-2 py-1 mr-2 text-xs font-semibold">REQUIRED</span>
+              License Plate <span className="text-red-500 ml-1">*</span>
           </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
           <input
             {...register('license_plate')}
             type="text"
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                errors.license_plate ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                className={`w-full pl-12 pr-4 py-4 border-2 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg font-medium tracking-wider ${
+                  errors.license_plate ? 'border-red-500 bg-red-50 animate-pulse' : 'border-gray-300 hover:border-blue-400 focus:shadow-lg'
             }`}
-              placeholder="e.g., ABC-123 or XYZ-456"
+                placeholder="e.g., ABC-123"
           />
+            </div>
           {errors.license_plate && (
-              <p className="mt-2 text-sm text-red-600 flex items-center">
-                <span className="mr-1">⚠️</span> {errors.license_plate.message}
+              <p className="mt-3 text-sm text-red-600 flex items-center bg-red-50 rounded-lg px-3 py-2 border border-red-200">
+                <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                {errors.license_plate.message}
               </p>
           )}
           </div>
@@ -371,7 +449,7 @@ export default function NewBusPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Assigned Route <span className="text-gray-400 text-xs">(Optional)</span>
             </label>
-            {routesLoading ? (
+            {routesLoading && !routesError ? (
               <div className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50 flex items-center">
                 <svg className="animate-spin h-5 w-5 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -379,11 +457,11 @@ export default function NewBusPage() {
                 </svg>
                 <span className="text-sm text-gray-500">Loading routes...</span>
               </div>
-            ) : routes.length === 0 ? (
+            ) : routes.length === 0 || routesError ? (
               <div className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50">
-                <p className="text-sm text-gray-500">No routes available</p>
+                <p className="text-sm text-gray-500">No routes available {routesError ? '(optional)' : ''}</p>
                 <p className="mt-2 text-xs text-blue-600">
-                  💡 Create a route first to assign it to this bus
+                  💡 {routesError ? 'Routes unavailable. You can still create the bus without assigning a route.' : 'Create a route first to assign it to this bus'}
                 </p>
               </div>
             ) : (
@@ -452,7 +530,7 @@ export default function NewBusPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Assigned Driver <span className="text-gray-400 text-xs">(Optional)</span>
             </label>
-            {driversLoading ? (
+            {driversLoading && !driversError ? (
               <div className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50 flex items-center">
                 <svg className="animate-spin h-5 w-5 text-gray-400 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -460,11 +538,11 @@ export default function NewBusPage() {
                 </svg>
                 <span className="text-sm text-gray-500">Loading drivers...</span>
               </div>
-            ) : drivers.length === 0 ? (
+            ) : drivers.length === 0 || driversError ? (
               <div className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-gray-50">
-                <p className="text-sm text-gray-500">No drivers available</p>
+                <p className="text-sm text-gray-500">No drivers available {driversError ? '(optional)' : ''}</p>
                 <p className="mt-2 text-xs text-blue-600">
-                  💡 No active drivers available. Drivers can be assigned later.
+                  💡 {driversError ? 'Drivers unavailable. You can still create the bus without assigning a driver.' : 'No active drivers available. Drivers can be assigned later.'}
                 </p>
               </div>
             ) : (
@@ -530,53 +608,57 @@ export default function NewBusPage() {
           </div>
         </div>
 
-        {/* Info Box */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+        {/* Enhanced Info Box */}
+        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+          <div className="relative z-10 flex items-start space-x-4">
+            <div className="flex-shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
+              <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
             </div>
-            <div className="ml-3">
-              <p className="text-sm text-blue-800">
-                <strong>Note:</strong> The bus will be saved to the database and will be immediately available in the driver and student apps.
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-gray-900 mb-2">💡 Important Information</h3>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                <strong className="text-blue-700">Note:</strong> The bus will be saved to the database and will be immediately available in the driver and student apps. Make sure all information is correct before submitting.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+        {/* Enhanced Actions */}
+        <div className="flex justify-end space-x-4 pt-6 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-transparent -mx-8 px-8 pb-8">
           <button
             type="button"
             onClick={() => navigate('/buses')}
-            className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
+            className="px-8 py-4 border-2 border-gray-300 rounded-2xl text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-semibold text-lg hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl font-semibold transform hover:scale-105 active:scale-95"
+            className="px-10 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-2xl hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl hover:shadow-3xl font-bold text-lg transform hover:scale-105 active:scale-95 relative overflow-hidden group"
           >
+            <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></span>
             {isSubmitting ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <span className="flex items-center relative z-10">
+                <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Saving to Database...
+                <span className="animate-pulse">Saving to Database...</span>
               </span>
             ) : (
-              <span className="flex items-center">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span className="flex items-center relative z-10">
+                <svg className="w-6 h-6 mr-3 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Add Bus to Database
               </span>
             )}
           </button>
+        </div>
         </div>
       </form>
     </div>

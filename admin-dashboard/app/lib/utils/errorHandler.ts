@@ -90,13 +90,18 @@ export function handleApiError(error: any): AppError {
       data?.user_message || message
     );
   } else if (error.request) {
-    // Network error
+    // Network error - provide more helpful message
+    const isCorsError = error.message?.includes('CORS') || error.message?.includes('Access-Control');
+    const message = isCorsError 
+      ? 'Backend server is not accessible. Please ensure Laravel backend is running on http://localhost:8000 and CORS is configured.'
+      : 'Cannot connect to backend API. Please ensure Laravel backend is running on http://localhost:8000';
+    
     return new AppError(
-      'Network error. Please check your connection.',
+      message,
       'NETWORK_ERROR',
       0,
       error.request,
-      'Unable to connect to the server. Please check your internet connection.'
+      message
     );
   } else {
     // Other error

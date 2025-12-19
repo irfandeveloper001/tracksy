@@ -15,6 +15,8 @@ use App\Http\Controllers\Admin\StopController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\AlertController;
+use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\BusController as ApiBusController;
 use App\Http\Controllers\Api\RouteController as ApiRouteController;
@@ -43,7 +45,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
     Route::post('/reset-password', [ForgotPasswordController::class, 'reset']);
     
-    Route::middleware('auth:api')->group(function () {
+    Route::middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
     });
@@ -55,7 +57,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('driver')->group(function () {
     Route::post('/login', [DriverController::class, 'login']);
     
-    Route::middleware('auth:api')->group(function () {
+    Route::middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
         Route::get('/me', [DriverController::class, 'me']);
         Route::post('/refresh-token', [DriverController::class, 'refreshToken']);
         Route::put('/profile', [DriverController::class, 'updateProfile']);
@@ -90,20 +92,20 @@ Route::prefix('driver')->group(function () {
 // ============================================
 // STUDENT ROUTES (Public API)
 // ============================================
-Route::prefix('buses')->middleware('auth:api')->group(function () {
+Route::prefix('buses')->middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
     Route::get('/', [ApiBusController::class, 'index']);
     Route::get('/{id}', [ApiBusController::class, 'show']);
     Route::get('/{id}/location', [ApiBusController::class, 'getLocation']);
     Route::get('/{id}/seats', [ApiBusController::class, 'getSeatAvailability']);
 });
 
-Route::prefix('routes')->middleware('auth:api')->group(function () {
+Route::prefix('routes')->middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
     Route::get('/', [ApiRouteController::class, 'index']);
     Route::get('/{id}', [ApiRouteController::class, 'show']);
     Route::get('/{id}/stops', [ApiRouteController::class, 'getStops']);
 });
 
-Route::prefix('bookings')->middleware('auth:api')->group(function () {
+Route::prefix('bookings')->middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
     Route::get('/', [BookingController::class, 'index']);
     Route::post('/', [BookingController::class, 'store']);
     Route::get('/statistics', [BookingController::class, 'getStatistics']);
@@ -118,8 +120,9 @@ Route::prefix('bookings')->middleware('auth:api')->group(function () {
 // ============================================
 Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminController::class, 'login']);
+    Route::post('/signup', [AdminController::class, 'signup']);
     
-    Route::middleware(['auth:api', 'role:admin|manager'])->group(function () {
+    Route::middleware([\App\Http\Middleware\ApiAuth::class, \App\Http\Middleware\RoleMiddleware::class . ':admin|manager'])->group(function () {
         Route::get('/me', [AdminController::class, 'me']);
         Route::post('/refresh-token', [AdminController::class, 'refreshToken']);
         
@@ -132,6 +135,9 @@ Route::prefix('admin')->group(function () {
         Route::delete('/buses/{id}/delete', [BusController::class, 'destroy']);
         Route::get('/buses/{id}/location', [BusController::class, 'getLocation']);
         Route::get('/buses/{id}/history', [BusController::class, 'getHistory']);
+        Route::patch('/buses/{id}/status', [BusController::class, 'updateStatus']);
+        Route::get('/buses/{id}/location-history', [BusController::class, 'getLocationHistory']);
+        Route::get('/buses/{id}/trips', [BusController::class, 'getTrips']);
         
         // Route management
         Route::apiResource('routes', RouteController::class);
@@ -171,6 +177,26 @@ Route::prefix('admin')->group(function () {
         Route::post('/alerts', [AlertController::class, 'store']);
         Route::put('/alerts/{id}/acknowledge', [AlertController::class, 'acknowledge']);
         Route::put('/alerts/{id}/resolve', [AlertController::class, 'resolve']);
+        
+        // Notifications
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications', [NotificationController::class, 'store']);
+        Route::get('/notifications/{id}', [NotificationController::class, 'show']);
+        Route::post('/notifications/{id}/send', [NotificationController::class, 'send']);
+        Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+        
+        // Settings
+        Route::get('/settings/system', [SettingsController::class, 'getSystemSettings']);
+        Route::put('/settings/system', [SettingsController::class, 'updateSystemSettings']);
+        Route::get('/settings/notifications', [SettingsController::class, 'getNotificationSettings']);
+        Route::put('/settings/notifications', [SettingsController::class, 'updateNotificationSettings']);
+        Route::get('/settings/map', [SettingsController::class, 'getMapSettings']);
+        Route::put('/settings/map', [SettingsController::class, 'updateMapSettings']);
+        Route::get('/settings/security', [SettingsController::class, 'getSecuritySettings']);
+        Route::put('/settings/security', [SettingsController::class, 'updateSecuritySettings']);
+        Route::get('/settings/integrations', [SettingsController::class, 'getIntegrationSettings']);
+        Route::put('/settings/integrations', [SettingsController::class, 'updateIntegrationSettings']);
+        Route::post('/settings/upload-logo', [SettingsController::class, 'uploadLogo']);
     });
 });
 

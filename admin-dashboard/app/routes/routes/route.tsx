@@ -10,9 +10,29 @@ import {
   EyeIcon,
   MapPinIcon,
   FunnelIcon,
+  XMarkIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
-import routeService, { Route, RouteFilters } from '../../lib/api/routeService';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import routeService from '../../lib/api/routeService';
+import type { Route } from '../../lib/api/routeService';
+import type { RouteFilters } from '../../lib/api/routeService';
 import toast from 'react-hot-toast';
+
+const routeSchema = z.object({
+  name: z.string().min(1, 'Route name is required'),
+  start_location: z.string().min(1, 'Start location is required'),
+  end_location: z.string().min(1, 'End location is required'),
+  start_point: z.string().optional(),
+  end_point: z.string().optional(),
+  distance: z.number().optional(),
+  estimated_duration: z.number().optional(),
+  status: z.enum(['active', 'inactive']),
+});
+
+type RouteFormData = z.infer<typeof routeSchema>;
 
 export default function RoutesPage() {
   const navigate = useNavigate();
@@ -23,6 +43,9 @@ export default function RoutesPage() {
   // Initialize statusFilter from URL params
   const initialStatus = searchParams.get('status') || 'all';
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Read URL parameters on mount and when they change
   useEffect(() => {
@@ -86,6 +109,83 @@ export default function RoutesPage() {
     if (window.confirm('Are you sure you want to delete this route?')) {
       deleteMutation.mutate(routeId);
     }
+  };
+
+  // Fetch selected route details when modal opens
+  const { data: selectedRouteData, isLoading: isLoadingRoute } = useQuery({
+    queryKey: ['route', selectedRoute?.id],
+    queryFn: async () => {
+      if (!selectedRoute?.id) return null;
+      return await routeService.getRouteById(selectedRoute.id);
+    },
+    enabled: !!selectedRoute?.id && !isEditMode,
+  });
+
+  const currentRoute = selectedRouteData || selectedRoute;
+
+  // Form for editing
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<RouteFormData>({
+    resolver: zodResolver(routeSchema),
+  });
+
+  // Populate form when route data loads in edit mode
+  useEffect(() => {
+    if (currentRoute && isEditMode) {
+      reset({
+        name: currentRoute.name,
+        start_location: currentRoute.start_point || currentRoute.origin || currentRoute.start_location || '',
+        end_location: currentRoute.end_point || currentRoute.destination || currentRoute.end_location || '',
+        start_point: currentRoute.start_point || currentRoute.origin || '',
+        end_point: currentRoute.end_point || currentRoute.destination || '',
+        distance: currentRoute.distance || undefined,
+        estimated_duration: currentRoute.estimated_duration || undefined,
+        status: (currentRoute.status || (currentRoute.is_active ? 'active' : 'inactive')) as 'active' | 'inactive',
+      });
+    }
+  }, [currentRoute, isEditMode, reset]);
+
+  // Update route mutation
+  const updateMutation = useMutation({
+    mutationFn: (data: RouteFormData) => {
+      if (!selectedRoute?.id) throw new Error('Route ID is required');
+      return routeService.updateRoute(selectedRoute.id, data);
+    },
+    onSuccess: () => {
+      toast.success('✅ Route updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['routes'] });
+      queryClient.invalidateQueries({ queryKey: ['route', selectedRoute?.id] });
+      setIsEditMode(false);
+      setIsSubmitting(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update route');
+      setIsSubmitting(false);
+    },
+  });
+
+  const onSubmit = async (data: RouteFormData) => {
+    setIsSubmitting(true);
+    updateMutation.mutate(data);
+  };
+
+  const handleViewRoute = (route: Route) => {
+    setSelectedRoute(route);
+    setIsEditMode(false);
+  };
+
+  const handleEditRoute = (route: Route) => {
+    setSelectedRoute(route);
+    setIsEditMode(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedRoute(null);
+    setIsEditMode(false);
   };
 
   const getStatusColor = (status: Route['status']) => {
@@ -371,14 +471,14 @@ export default function RoutesPage() {
                   {/* Action Buttons */}
                   <div className="flex space-x-2 pt-4 border-t border-gray-100">
                     <button
-                      onClick={() => navigate(`/routes/${route.id}`)}
+                      onClick={() => handleViewRoute(route)}
                       className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors font-medium text-sm"
                     >
                       <EyeIcon className="h-4 w-4 mr-2" />
                       View
                     </button>
                     <button
-                      onClick={() => navigate(`/routes/${route.id}/edit`)}
+                      onClick={() => handleEditRoute(route)}
                       className="flex-1 flex items-center justify-center px-4 py-2 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors font-medium text-sm"
                     >
                       <PencilIcon className="h-4 w-4 mr-2" />
@@ -397,6 +497,237 @@ export default function RoutesPage() {
             ))}
           </div>
         )}
+
+      {/* Route Details/Edit Modal */}
+      {selectedRoute && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className={`px-6 py-5 border-b border-gray-200 bg-gradient-to-r ${
+              currentRoute?.status === 'active' ? 'from-purple-50 to-indigo-50' : 'from-gray-50 to-slate-50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-3 rounded-xl ${
+                    currentRoute?.status === 'active' ? 'bg-purple-100' : 'bg-gray-100'
+                  }`}>
+                    <MapIcon className="h-6 w-6 text-gray-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {isEditMode ? 'Edit Route' : 'Route Details'}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {currentRoute?.name || 'Loading...'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {!isEditMode && (
+                    <button
+                      onClick={() => setIsEditMode(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                      <span>Edit</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={handleCloseModal}
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="h-6 w-6 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {isLoadingRoute && !currentRoute ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                </div>
+              ) : isEditMode ? (
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Route Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        {...register('name')}
+                        type="text"
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${
+                          errors.name ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      {errors.name && (
+                        <p className="mt-2 text-sm text-red-600">{errors.name.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...register('status')}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      >
+                        <option value="inactive">Inactive</option>
+                        <option value="active">Active</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Start Location <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        {...register('start_location')}
+                        type="text"
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${
+                          errors.start_location ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      {errors.start_location && (
+                        <p className="mt-2 text-sm text-red-600">{errors.start_location.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        End Location <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        {...register('end_location')}
+                        type="text"
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${
+                          errors.end_location ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      {errors.end_location && (
+                        <p className="mt-2 text-sm text-red-600">{errors.end_location.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Distance (km) - Optional
+                      </label>
+                      <input
+                        {...register('distance', { valueAsNumber: true })}
+                        type="number"
+                        step="0.1"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Estimated Duration (minutes) - Optional
+                      </label>
+                      <input
+                        {...register('estimated_duration', { valueAsNumber: true })}
+                        type="number"
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditMode(false)}
+                      className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 font-semibold disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Updating...' : 'Update Route'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-6">
+                  {currentRoute && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                          <span className="text-sm font-medium text-gray-600">Route Name</span>
+                          <span className="font-bold text-gray-900">{currentRoute.name}</span>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                          <span className="text-sm font-medium text-gray-600">Status</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            currentRoute.status === 'active' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {currentRoute.status || 'inactive'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                          <span className="text-sm font-medium text-gray-600 flex items-center">
+                            <MapPinIcon className="h-4 w-4 mr-1.5 text-gray-400" />
+                            Start Point
+                          </span>
+                          <span className="font-semibold text-gray-900">
+                            {currentRoute.start_point || currentRoute.origin || currentRoute.start_location || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                          <span className="text-sm font-medium text-gray-600 flex items-center">
+                            <MapPinIcon className="h-4 w-4 mr-1.5 text-gray-400" />
+                            End Point
+                          </span>
+                          <span className="font-semibold text-gray-900">
+                            {currentRoute.end_point || currentRoute.destination || currentRoute.end_location || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        {currentRoute.distance && (
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600">Distance</span>
+                            <span className="font-semibold text-gray-900">{currentRoute.distance} km</span>
+                          </div>
+                        )}
+                        {currentRoute.estimated_duration && (
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600 flex items-center">
+                              <ClockIcon className="h-4 w-4 mr-1.5 text-gray-400" />
+                              Duration
+                            </span>
+                            <span className="font-semibold text-gray-900">{currentRoute.estimated_duration} min</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                          <span className="text-sm font-medium text-gray-600">Stops</span>
+                          <span className="font-semibold text-gray-900">{currentRoute.stops_count || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                          <span className="text-sm font-medium text-gray-600">Active Buses</span>
+                          <span className="font-semibold text-gray-900">{currentRoute.active_buses_count || 0}</span>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                          <span className="text-sm font-medium text-gray-600">Students</span>
+                          <span className="font-semibold text-gray-900">{currentRoute.student_count || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
         {/* Pagination */}
         {!isLoading && routes.length > 0 && lastPage > 1 && (

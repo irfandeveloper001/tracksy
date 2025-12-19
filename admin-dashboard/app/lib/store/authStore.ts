@@ -2,7 +2,20 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import authService, { AdminRole } from '../api/authService';
 import type { AdminUser } from '../api/authService';
-import type { Session } from '@supabase/supabase-js';
+
+// Session type for Laravel API (compatible with Supabase session structure)
+interface Session {
+  access_token: string;
+  refresh_token: string;
+  user: {
+    id: string;
+    email: string;
+    user_metadata: {
+      name: string;
+      role: string;
+    };
+  };
+}
 
 interface AuthState {
   user: AdminUser | null;

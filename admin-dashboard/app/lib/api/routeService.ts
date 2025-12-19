@@ -1,11 +1,16 @@
 import api from './client';
-import { supabase } from '../config/supabase';
 
 export interface Route {
   id: string;
   name: string;
   start_location: string;
   end_location: string;
+  // Backend uses start_point/end_point, frontend uses start_location/end_location
+  start_point?: string;
+  end_point?: string;
+  // Supabase uses origin/destination
+  origin?: string;
+  destination?: string;
   start_latitude?: number;
   start_longitude?: number;
   end_latitude?: number;
@@ -16,6 +21,7 @@ export interface Route {
   active_buses_count?: number;
   student_count?: number;
   status: 'active' | 'inactive';
+  is_active?: boolean; // Backend uses this
   created_at: string;
   updated_at: string;
 }
@@ -46,35 +52,54 @@ export interface RouteListResponse {
 }
 
 class RouteService {
-  // Get all routes with filters and pagination - ALWAYS use Supabase first (primary source)
+  // Get all routes with filters and pagination - Use Laravel backend API only
   async getRoutes(
     page: number = 1,
     perPage: number = 20,
     filters?: RouteFilters
   ): Promise<RouteListResponse> {
     try {
-      // PRIMARY: Always try Supabase first - this is our main data source
-      const supabaseRoutes = await this.getRoutesFromSupabase(filters);
-      
-      if (supabaseRoutes && supabaseRoutes.length >= 0) {
-        // Apply pagination
-        const start = (page - 1) * perPage;
-        const end = start + perPage;
-        const paginatedRoutes = supabaseRoutes.slice(start, end);
-        
-        console.log(`✅ Returning ${supabaseRoutes.length} routes from Supabase (showing ${paginatedRoutes.length} on page ${page})`);
+      const params: any = {
+        page,
+        limit: perPage,
+      };
+
+      // Add filters to params
+      if (filters?.status) {
+        params.status = filters.status;
+      }
+      if (filters?.search) {
+        params.search = filters.search;
+      }
+
+      const response = await api.get('/admin/routes', { params });
+      const backendData = response.data.data || response.data;
+
+      // Handle Laravel pagination response format
+      if (backendData.data && Array.isArray(backendData.data)) {
+        // Laravel paginated response
+        const routes = backendData.data.map((route: any) => this.mapBackendRouteToFrontend(route));
         
         return {
-          routes: paginatedRoutes,
-          total: supabaseRoutes.length,
+          routes,
+          total: backendData.total || 0,
+          current_page: backendData.current_page || page,
+          per_page: backendData.per_page || perPage,
+          last_page: backendData.last_page || 1,
+        };
+      } else if (Array.isArray(backendData)) {
+        // Simple array response
+        const routes = backendData.map((route: any) => this.mapBackendRouteToFrontend(route));
+        
+        return {
+          routes,
+          total: routes.length,
           current_page: page,
           per_page: perPage,
-          last_page: Math.ceil(supabaseRoutes.length / perPage) || 1,
+          last_page: Math.ceil(routes.length / perPage) || 1,
         };
       }
       
-      // Return empty result if Supabase fails
-      console.warn('⚠️ Supabase returned empty routes - check RLS policies and authentication');
       return {
         routes: [],
         total: 0,
@@ -82,86 +107,53 @@ class RouteService {
         per_page: perPage,
         last_page: 1,
       };
-    } catch (supabaseError: any) {
-      console.error('❌ Supabase fetch error:', supabaseError);
-      // Return empty result instead of falling back to API
-      // This ensures we always use Supabase as the source of truth
-      return {
-        routes: [],
-        total: 0,
-        current_page: page,
-        per_page: perPage,
-        last_page: 1,
-      };
+    } catch (error: any) {
+      console.error('❌ Failed to fetch routes from backend:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch routes');
     }
   }
 
-  // Get routes directly from Supabase
+  // Map backend route data to frontend Route interface
+  private mapBackendRouteToFrontend(route: any): Route {
+    return {
+      id: route.id,
+      name: route.name || 'Unnamed Route',
+      start_location: route.start_point || route.origin || route.start_location || '',
+      end_location: route.end_point || route.destination || route.end_location || '',
+      start_latitude: route.start_latitude || null,
+      start_longitude: route.start_longitude || null,
+      end_latitude: route.end_latitude || null,
+      end_longitude: route.end_longitude || null,
+      distance: route.distance || null,
+      estimated_duration: route.estimated_duration || null,
+      stops_count: route.stops?.length || 0,
+      status: (route.status || (route.is_active ? 'active' : 'inactive')) as 'active' | 'inactive',
+      created_at: route.created_at,
+      updated_at: route.updated_at,
+        };
+  }
+
+  // Get routes directly from Supabase (DEPRECATED - Use Laravel API)
   async getRoutesFromSupabase(filters?: RouteFilters): Promise<Route[]> {
-    try {
-      // Check authentication
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('🔐 Route query - Session status:', session ? 'Authenticated' : 'Not authenticated');
-      
-      let query = supabase
-        .from('routes')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      // Apply filters
-      if (filters?.status) {
-        query = query.eq('status', filters.status);
-      }
-
-      if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,origin.ilike.%${filters.search}%,destination.ilike.%${filters.search}%`);
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('❌ Supabase error fetching routes:', error);
-        console.error('Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        // Return empty array instead of throwing - form can work without routes
-        return [];
-      }
-      
-      console.log(`✅ Supabase returned ${data?.length || 0} routes`);
-
-      // Map Supabase data to Route interface
-      return (data || []).map((route: any) => ({
-        id: route.id,
-        name: route.name || route.route_name || 'Unnamed Route',
-        start_location: route.origin || route.start_point || route.start_location || '',
-        end_location: route.destination || route.end_point || route.end_location || '',
-        distance: route.distance || null,
-        estimated_duration: route.estimated_duration || null,
-        status: (route.status || 'active') as 'active' | 'inactive',
-        created_at: route.created_at,
-        updated_at: route.updated_at,
-      }));
-    } catch (error) {
-      console.warn('⚠️ Failed to fetch routes from Supabase:', error);
-      // Return empty array - form can work without routes
-      return [];
-    }
+    // This method is deprecated - use getRoutes() instead
+    console.warn('⚠️ getRoutesFromSupabase is deprecated. Use getRoutes() with Laravel API instead.');
+    return [];
   }
 
-  // Get single route by ID
+  // Get single route by ID - Use Laravel backend API only
   async getRouteById(routeId: string): Promise<Route> {
     try {
       const response = await api.get(`/admin/routes/${routeId}`);
-      return response.data.data || response.data;
-    } catch (error: any) {
-      if (!error.response || error.response.status === 500) {
-        throw new Error('Backend unavailable');
+      const backendRoute = response.data.data || response.data;
+      
+      if (!backendRoute) {
+        throw new Error('Route not found');
       }
-      throw error;
+
+      return this.mapBackendRouteToFrontend(backendRoute);
+    } catch (error: any) {
+      console.error('❌ Failed to fetch route:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch route details');
     }
   }
 
@@ -178,175 +170,142 @@ class RouteService {
     }
   }
 
-  // Create new route - ALWAYS use Supabase (primary database)
+  // Create new route - Laravel API only
   async createRoute(routeData: Partial<Route>): Promise<Route> {
     try {
-      // PRIMARY: Always create in Supabase first - this is our main database
-      const supabaseRoute = await this.createRouteInSupabase(routeData);
-      if (supabaseRoute) {
-        console.log('✅ Route created in Supabase database:', supabaseRoute);
-        console.log('💾 Data is now stored in Supabase and will be fetched directly from there');
-        return supabaseRoute;
-      }
-      throw new Error('Route creation returned null');
-    } catch (supabaseError: any) {
-      console.error('❌ Supabase creation failed:', supabaseError);
-      // Don't fallback to API - Supabase is our source of truth
-      throw new Error(supabaseError.message || 'Failed to create route in database. Please check your connection and try again.');
-    }
-  }
-
-  // Create route directly in Supabase
-  async createRouteInSupabase(routeData: Partial<Route>): Promise<Route | null> {
-    try {
-      // Check if user is authenticated before making request
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError || !session) {
-        console.error('❌ No active session found:', sessionError);
-        throw new Error('You must be logged in to create routes. Please sign in and try again.');
-      }
-      
-      console.log('✅ Active session found, user ID:', session.user.id);
-      
-      // Map the data to Supabase schema (uses origin/destination, not start_point/end_point)
-      const supabaseData: any = {
-        name: routeData.name,
-        origin: routeData.start_location || routeData.start_point || '',
-        destination: routeData.end_location || routeData.end_point || '',
-        status: routeData.status || 'active',
+      // Map frontend Route interface to backend format
+      const backendData: any = {
+        name: routeData.name?.trim(),
+        start_point: (routeData.start_location || routeData.start_point || '').trim(),
+        end_point: (routeData.end_location || routeData.end_point || '').trim(),
       };
 
       // Add optional fields only if provided
       if (routeData.distance !== undefined && routeData.distance !== null) {
-        supabaseData.distance = routeData.distance;
+        backendData.distance = routeData.distance;
       }
       if (routeData.estimated_duration !== undefined && routeData.estimated_duration !== null) {
-        supabaseData.estimated_duration = routeData.estimated_duration;
+        backendData.estimated_duration = routeData.estimated_duration;
       }
-      
-      // Add coordinates if provided (only if columns exist in schema)
-      // These columns are optional - if they don't exist, Supabase will ignore them
-      // To add them, run ADD_ROUTE_COORDINATES.sql in Supabase
-      if (routeData.start_latitude !== undefined && routeData.start_latitude !== null) {
-        supabaseData.start_latitude = routeData.start_latitude;
+
+      // Handle status - Laravel accepts both 'status' and 'is_active'
+      if (routeData.status) {
+        backendData.status = routeData.status;
+        backendData.is_active = routeData.status === 'active';
+      } else if (routeData.is_active !== undefined) {
+        backendData.is_active = routeData.is_active;
+        backendData.status = routeData.is_active ? 'active' : 'inactive';
+      } else {
+        backendData.status = 'active';
+        backendData.is_active = true;
       }
-      if (routeData.start_longitude !== undefined && routeData.start_longitude !== null) {
-        supabaseData.start_longitude = routeData.start_longitude;
-      }
-      if (routeData.end_latitude !== undefined && routeData.end_latitude !== null) {
-        supabaseData.end_latitude = routeData.end_latitude;
-      }
-      if (routeData.end_longitude !== undefined && routeData.end_longitude !== null) {
-        supabaseData.end_longitude = routeData.end_longitude;
-      }
-      
-      // Remove any undefined/null values to avoid Supabase errors
-      Object.keys(supabaseData).forEach(key => {
-        if (supabaseData[key] === undefined || supabaseData[key] === null || supabaseData[key] === '') {
-          delete supabaseData[key];
+
+      // Remove undefined/null fields
+      Object.keys(backendData).forEach(key => {
+        if (backendData[key] === undefined || backendData[key] === null) {
+          delete backendData[key];
         }
       });
 
-      console.log('🛣️ Inserting route into Supabase:', supabaseData);
-
-      const { data, error } = await supabase
-        .from('routes')
-        .insert(supabaseData)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Supabase error:', error);
-        // Provide better error messages
-        if (error.code === '23505') {
-          throw new Error('A route with this name already exists. Please use a different name.');
-        }
-        
-        // Handle missing coordinate columns - retry without them
-        if (error.code === 'PGRST204' || error.message?.includes('column') || error.message?.includes('schema cache')) {
-          console.warn('⚠️ Coordinate columns not found in routes table, retrying without coordinates...');
-          const retryData: any = {
-            name: routeData.name,
-            origin: routeData.start_location || routeData.start_point || '',
-            destination: routeData.end_location || routeData.end_point || '',
-            status: routeData.status || 'active',
-          };
-          
-          // Add optional fields (but not coordinates)
-          if (routeData.distance !== undefined && routeData.distance !== null) {
-            retryData.distance = routeData.distance;
-          }
-          if (routeData.estimated_duration !== undefined && routeData.estimated_duration !== null) {
-            retryData.estimated_duration = routeData.estimated_duration;
-          }
-          
-          const { data: retryResult, error: retryError } = await supabase
-            .from('routes')
-            .insert(retryData)
-            .select()
-            .single();
-            
-          if (retryError) {
-            throw new Error(retryError.message || 'Failed to create route in database');
-          }
-          
-          // Return the retry result
-          const route: Route = {
-            id: retryResult.id,
-            name: retryResult.name,
-            start_location: retryResult.origin,
-            end_location: retryResult.destination,
-            distance: retryResult.distance,
-            estimated_duration: retryResult.estimated_duration,
-            status: retryResult.status as any,
-            created_at: retryResult.created_at,
-            updated_at: retryResult.updated_at,
-          };
-          
-          console.log('✅ Route created successfully (without coordinates)');
-          return route;
-        }
-        
-        throw new Error(error.message || 'Failed to create route in database');
+      console.log('🛣️ Creating route with data:', backendData);
+      const response = await api.post('/admin/routes', backendData);
+      const backendRoute = response.data.data || response.data;
+      
+      if (!backendRoute) {
+        throw new Error('Route creation succeeded but no data returned');
       }
 
-      // Map Supabase response to Route interface
-      const route: Route = {
-        id: data.id,
-        name: data.name,
-        start_location: data.origin,
-        end_location: data.destination,
-        distance: data.distance,
-        estimated_duration: data.estimated_duration,
-        status: data.status as any,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-      };
-
-      console.log('✅ Route created successfully in Supabase:', route);
-      return route;
+      console.log('✅ Route created successfully:', backendRoute);
+      return this.mapBackendRouteToFrontend(backendRoute);
     } catch (error: any) {
-      console.error('❌ Failed to create route in Supabase:', error);
-      throw error;
+      console.error('❌ Failed to create route:', error);
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to create route. Please try again.';
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.errors) {
+          // Laravel validation errors
+          const validationErrors = Object.entries(errorData.errors)
+            .map(([field, messages]: [string, any]) => {
+              const msg = Array.isArray(messages) ? messages[0] : messages;
+              return `${field}: ${msg}`;
+            })
+            .join(', ');
+          errorMessage = validationErrors;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   }
 
-  // Update route
+  // Create route directly in Supabase (DEPRECATED - Use Laravel API)
+  async createRouteInSupabase(routeData: Partial<Route>): Promise<Route | null> {
+    // This method is deprecated - use createRoute() instead
+    console.warn('⚠️ createRouteInSupabase is deprecated. Use createRoute() with Laravel API instead.');
+    return null;
+  }
+
+  // Update route - Use Laravel backend API only
   async updateRoute(routeId: string, routeData: Partial<Route>): Promise<Route> {
     try {
-      const response = await api.put(`/admin/routes/${routeId}`, routeData);
-      return response.data.data || response.data;
+      // Map Route interface to backend format
+      const backendData: any = {
+        name: routeData.name?.trim(),
+        start_point: (routeData.start_location || routeData.start_point || '').trim(),
+        end_point: (routeData.end_location || routeData.end_point || '').trim(),
+      };
+
+      // Add optional fields only if provided
+      if (routeData.distance !== undefined && routeData.distance !== null) {
+        backendData.distance = routeData.distance;
+      }
+      if (routeData.estimated_duration !== undefined && routeData.estimated_duration !== null) {
+        backendData.estimated_duration = routeData.estimated_duration;
+      }
+
+      // Handle status - Laravel accepts both 'status' and 'is_active'
+      if (routeData.status) {
+        backendData.status = routeData.status;
+        backendData.is_active = routeData.status === 'active';
+      } else if (routeData.is_active !== undefined) {
+        backendData.is_active = routeData.is_active;
+        backendData.status = routeData.is_active ? 'active' : 'inactive';
+      }
+
+      // Remove undefined/null fields
+      Object.keys(backendData).forEach(key => {
+        if (backendData[key] === undefined || backendData[key] === null) {
+          delete backendData[key];
+        }
+      });
+
+      console.log('🛣️ Updating route with data:', backendData);
+      const response = await api.put(`/admin/routes/${routeId}`, backendData);
+      const backendRoute = response.data.data || response.data;
+      
+      if (!backendRoute) {
+        throw new Error('Route update succeeded but no data returned');
+      }
+      
+      return this.mapBackendRouteToFrontend(backendRoute);
     } catch (error: any) {
+      console.error('❌ Failed to update route:', error);
       throw new Error(error.response?.data?.message || 'Failed to update route');
     }
   }
 
-  // Delete route
+  // Delete route - Use Laravel backend API only
   async deleteRoute(routeId: string): Promise<void> {
     try {
       await api.delete(`/admin/routes/${routeId}`);
     } catch (error: any) {
+      console.error('❌ Failed to delete route:', error);
       throw new Error(error.response?.data?.message || 'Failed to delete route');
     }
   }

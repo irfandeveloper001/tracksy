@@ -12,6 +12,8 @@ import MetricCard from '../../components/dashboard/MetricCard';
 import StatusPanel from '../../components/dashboard/StatusPanel';
 import QuickActions from '../../components/dashboard/QuickActions';
 import ActivityFeed from '../../components/dashboard/ActivityFeed';
+import BusListPanel from '../../components/dashboard/BusListPanel';
+import RouteListPanel from '../../components/dashboard/RouteListPanel';
 import dashboardService from '../../lib/api/dashboardService';
 import realtimeService from '../../lib/services/realtimeService';
 
@@ -231,6 +233,12 @@ export default function DashboardPage() {
             busesWithIssues={busStatus.busesWithIssues}
             activeRoutes={formattedMetrics.totalRoutes || 0}
           />
+
+          {/* Bus List with Filters */}
+          <BusListPanel defaultFilter="all" />
+
+          {/* Route List with Filters */}
+          <RouteListPanel defaultFilter="all" />
 
           {/* Activity Feed */}
           <ActivityFeed activities={activities} />

@@ -51,7 +51,7 @@ export default defineConfig({
       // Fix WebSocket connection issues
       protocol: 'ws',
       host: 'localhost',
-      port: 5173,
+      port: 5174,
     },
     // Increase timeouts to prevent 504 errors during dependency optimization
     fs: {
@@ -65,7 +65,9 @@ export default defineConfig({
     middlewareMode: false,
     // Ensure proper host binding
     host: 'localhost',
-    port: 5173,
+    port: 5174,
+    // Ensure all routes fall back to index.html for SPA routing
+    strictPort: false,
   },
   build: {
     ssr: false,

@@ -160,21 +160,21 @@ class AnalyticsService {
         },
       };
     } catch (error: any) {
-      console.warn('⚠️ Backend unavailable, returning default analytics');
-      return {
-        usage_stats: {
-          daily_trips: [],
-          weekly_trips: [],
-          monthly_trips: [],
-          peak_hours: [],
-          route_popularity: [],
-        },
-        performance_metrics: {
-          on_time_percentage: 0,
-          average_wait_time: [],
-          bus_utilization: [],
-        },
-      };
+        console.warn('⚠️ Backend unavailable, returning default analytics');
+        return {
+          usage_stats: {
+            daily_trips: [],
+            weekly_trips: [],
+            monthly_trips: [],
+            peak_hours: [],
+            route_popularity: [],
+          },
+          performance_metrics: {
+            on_time_percentage: 0,
+            average_wait_time: [],
+            bus_utilization: [],
+          },
+        };
     }
   }
 

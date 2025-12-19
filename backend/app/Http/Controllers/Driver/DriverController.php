@@ -14,7 +14,7 @@ class DriverController extends Controller
 {
     public function login(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'email' => 'required|string',
             'password' => 'required|string|min:6',
         ]);
@@ -84,7 +84,7 @@ class DriverController extends Controller
     {
         $driver = auth()->user();
         
-        $request->validate([
+        $this->validate($request, [
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|unique:users,email,' . $driver->id,
             'phone' => 'nullable|string',
@@ -99,7 +99,7 @@ class DriverController extends Controller
 
     public function changePassword(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'current_password' => 'required|string',
             'new_password' => 'required|string|min:6',
             'confirm_password' => 'required|string|same:new_password',
@@ -194,7 +194,7 @@ class DriverController extends Controller
 
     public function checkIn(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'student_id' => 'required|exists:users,id',
             'trip_id' => 'required|exists:trips,id',
             'seat_number' => 'nullable|string',
@@ -255,7 +255,7 @@ class DriverController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'driver_id' => 'required|string|unique:users,driver_id',
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|unique:users,email',
@@ -284,7 +284,7 @@ class DriverController extends Controller
     {
         $driver = User::drivers()->findOrFail($id);
 
-        $request->validate([
+        $this->validate($request, [
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|unique:users,email,' . $id,
             'password' => 'sometimes|string|min:6',

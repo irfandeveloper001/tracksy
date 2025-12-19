@@ -17,6 +17,7 @@ class Route extends Model
         'distance',
         'estimated_duration',
         'is_active',
+        'status',
     ];
 
     protected $casts = [

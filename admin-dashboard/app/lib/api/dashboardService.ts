@@ -1,9 +1,11 @@
-import { supabase } from '../config/supabase';
+import api from './client';
+import busService from './busService';
+import routeService from './routeService';
 
 // Types removed - defined locally in components to avoid import issues
 
 class DashboardService {
-  // Get dashboard metrics - Fetch from Supabase directly
+  // Get dashboard metrics - Fetch from Laravel API
   async getMetrics(): Promise<{
   totalActiveBuses: number;
   totalStudents: number;
@@ -13,17 +15,46 @@ class DashboardService {
   systemHealth: 'healthy' | 'warning' | 'critical';
   }> {
     try {
-      // Try Supabase first (preferred method)
-      const metrics = await this.getMetricsFromSupabase();
-      if (metrics) {
+      console.log('🔍 Fetching dashboard metrics from Laravel API...');
+      
+      // Fetch from Laravel analytics endpoint
+      const response = await api.get('/admin/analytics/overview');
+      const data = response.data.data || response.data;
+      
+      console.log('✅ Dashboard metrics fetched:', data);
+      
+      // Map Laravel response to frontend format
+      const metrics = {
+        totalActiveBuses: data.active_buses || 0,
+        totalStudents: data.total_students || 0,
+        totalRoutes: data.total_routes || 0,
+        onTimePercentage: data.on_time_percentage || 0,
+        currentAlerts: data.current_alerts || 0,
+        systemHealth: this.determineSystemHealth(data.current_alerts || 0, data.active_buses || 0),
+      };
+      
         return metrics;
-      }
-    } catch (supabaseError) {
-      console.warn('⚠️ Supabase fetch failed:', supabaseError);
-    }
-
-    // Skip API fallback to avoid CORS errors - just return defaults
-    console.log('ℹ️ Using default metrics (API skipped to avoid CORS)');
+    } catch (error: any) {
+      console.error('❌ Failed to fetch dashboard metrics from Laravel API:', error);
+      
+      // Fallback: Try to fetch from individual endpoints
+      try {
+        console.log('⚠️ Trying fallback: fetching from individual endpoints...');
+        const [busesResult, routesResult] = await Promise.all([
+          busService.getBuses(1, 1, { status: 'active' }).catch(() => ({ buses: [], total: 0 })),
+          routeService.getRoutes(1, 1, { status: 'active' }).catch(() => ({ routes: [], total: 0 })),
+        ]);
+        
+        return {
+          totalActiveBuses: busesResult.total || 0,
+          totalStudents: 0, // Would need separate endpoint
+          totalRoutes: routesResult.total || 0,
+          onTimePercentage: 0,
+          currentAlerts: 0,
+          systemHealth: 'healthy',
+        };
+      } catch (fallbackError) {
+        console.warn('⚠️ Fallback also failed, using defaults');
     return {
       totalActiveBuses: 0,
       totalStudents: 0,
@@ -33,114 +64,43 @@ class DashboardService {
       systemHealth: 'healthy',
     };
   }
-
-  // Get metrics directly from Supabase
-  async getMetricsFromSupabase(): Promise<{
-    totalActiveBuses: number;
-    totalStudents: number;
-    totalRoutes: number;
-    onTimePercentage: number;
-    currentAlerts: number;
-    systemHealth: 'healthy' | 'warning' | 'critical';
-  } | null> {
-    try {
-      // Fetch all metrics in parallel
-      const [busesResult, studentsResult, routesResult, alertsResult] = await Promise.all([
-        // Count active buses
-        supabase
-          .from('buses')
-          .select('id, status', { count: 'exact', head: false })
-          .eq('status', 'active'),
-        
-        // Count students (from user_profiles where role is student)
-        supabase
-          .from('user_profiles')
-          .select('id', { count: 'exact', head: false })
-          .eq('role', 'student'),
-        
-        // Count active routes
-        supabase
-          .from('routes')
-          .select('id', { count: 'exact', head: false })
-          .eq('status', 'active'),
-        
-        // Count active alerts
-        supabase
-          .from('alerts')
-          .select('id', { count: 'exact', head: false })
-          .eq('status', 'active')
-          .or('status.is.null'),
-      ]);
-
-      const totalActiveBuses = busesResult.count || busesResult.data?.length || 0;
-      const totalStudents = studentsResult.count || studentsResult.data?.length || 0;
-      const totalRoutes = routesResult.count || routesResult.data?.length || 0;
-      const currentAlerts = alertsResult.count || alertsResult.data?.length || 0;
-      
-      // Note: totalRoutes now represents active routes count (filtered by .eq('status', 'active'))
-
-      // Calculate on-time percentage (simplified - you can enhance this with actual trip data)
-      const onTimePercentage = 0; // TODO: Calculate from trips table
+    }
+  }
 
       // Determine system health based on alerts and buses
-      let systemHealth: 'healthy' | 'warning' | 'critical' = 'healthy';
-      if (currentAlerts > 5) {
-        systemHealth = 'critical';
-      } else if (currentAlerts > 2 || totalActiveBuses === 0) {
-        systemHealth = 'warning';
+  private determineSystemHealth(alerts: number, activeBuses: number): 'healthy' | 'warning' | 'critical' {
+    if (alerts > 5) {
+      return 'critical';
+    } else if (alerts > 2 || activeBuses === 0) {
+      return 'warning';
       }
-
-      return {
-        totalActiveBuses,
-        totalStudents,
-        totalRoutes,
-        onTimePercentage,
-        currentAlerts,
-        systemHealth,
-      };
-    } catch (error: any) {
-      console.error('❌ Error fetching metrics from Supabase:', error);
-      return null;
+    return 'healthy';
     }
-  }
 
-  // Get bus status - Fetch from Supabase directly
+
+  // Get bus status - Fetch from Laravel API
   async getBusStatus(): Promise<{ activeBuses: number; busesOnRoute: number; busesWithIssues: number }> {
     try {
-      // Try Supabase first
-      const status = await this.getBusStatusFromSupabase();
-      if (status) {
-        return status;
-      }
-    } catch (supabaseError) {
-      console.warn('⚠️ Supabase fetch failed, trying API:', supabaseError);
-    }
-
-    // Skip API fallback to avoid CORS errors - just return defaults
-    console.log('ℹ️ Using default bus status (API skipped to avoid CORS)');
-    return {
-      activeBuses: 0,
-      busesOnRoute: 0,
-      busesWithIssues: 0,
-    };
-  }
-
-  // Get bus status directly from Supabase
-  async getBusStatusFromSupabase(): Promise<{ activeBuses: number; busesOnRoute: number; busesWithIssues: number } | null> {
-    try {
-      // Get all buses with their status
-      const { data: buses, error } = await supabase
-        .from('buses')
-        .select('id, status, route_id');
-
-      if (error) {
-        console.error('❌ Error fetching buses:', error);
-        return null;
-      }
-
-      const activeBuses = buses?.filter(bus => bus.status === 'active').length || 0;
-      const busesOnRoute = buses?.filter(bus => bus.status === 'active' && bus.route_id).length || 0;
-      const busesWithIssues = buses?.filter(bus => bus.status === 'maintenance' || bus.status === 'emergency').length || 0;
+      console.log('🔍 Fetching bus status from Laravel API...');
+      
+      // Fetch all active buses (with pagination to get all)
+      const activeBusesResult = await busService.getBuses(1, 100, { status: 'active' }).catch(() => ({ buses: [], total: 0 }));
+      
+      // Count active buses
+      const activeBuses = activeBusesResult.total || 0;
+      
+      // Count buses on route (active buses with route_id or current_route_id)
+      const busesOnRoute = activeBusesResult.buses?.filter(bus => bus.route_id || bus.current_route_id).length || 0;
+      
+      // Fetch buses with issues (maintenance + emergency) in parallel
+      const [maintenanceResult, emergencyResult] = await Promise.all([
+        busService.getBuses(1, 100, { status: 'maintenance' }).catch(() => ({ buses: [], total: 0 })),
+        busService.getBuses(1, 100, { status: 'emergency' }).catch(() => ({ buses: [], total: 0 })),
+      ]);
+      
+      const busesWithIssues = (maintenanceResult.total || 0) + (emergencyResult.total || 0);
+      
+      console.log('✅ Bus status fetched:', { activeBuses, busesOnRoute, busesWithIssues });
 
       return {
         activeBuses,
@@ -148,12 +108,19 @@ class DashboardService {
         busesWithIssues,
       };
     } catch (error: any) {
-      console.error('❌ Error fetching bus status from Supabase:', error);
-      return null;
+      console.error('❌ Failed to fetch bus status from Laravel API:', error);
+      
+      // Return defaults on error
+      return {
+        activeBuses: 0,
+        busesOnRoute: 0,
+        busesWithIssues: 0,
+      };
     }
   }
 
-  // Get recent activities - Try Supabase first, skip API to avoid CORS errors
+
+  // Get recent activities - Fetch from Laravel API
   async getRecentActivities(limit: number = 10): Promise<Array<{
     id: string;
     type: 'bus' | 'user' | 'route' | 'alert' | 'system';
@@ -162,53 +129,45 @@ class DashboardService {
     user?: string;
   }>> {
     try {
-      // Try Supabase first (preferred method)
-      const activities = await this.getRecentActivitiesFromSupabase(limit);
-      if (activities) {
-        return activities;
-      }
-    } catch (supabaseError) {
-      console.warn('⚠️ Supabase activities fetch failed:', supabaseError);
-    }
-
-    // Skip backend API call to avoid CORS errors
-    // Return empty array if Supabase fails
-    console.log('ℹ️ Using empty activities list (backend API skipped to avoid CORS)');
-    return [];
-  }
-
-  // Get recent activities directly from Supabase
-  async getRecentActivitiesFromSupabase(limit: number = 10): Promise<Array<{
-    id: string;
-    type: 'bus' | 'user' | 'route' | 'alert' | 'system';
-    action: string;
-    timestamp: string;
-    user?: string;
-  }> | null> {
-    try {
-      // Try to get activities from audit_logs or alerts table
-      // For now, we'll check alerts as they're the most recent activities
-      const { data: alerts, error } = await supabase
-        .from('alerts')
-        .select('id, title, created_at, type')
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) {
-        console.error('❌ Error fetching activities from Supabase:', error);
-        return null;
+      console.log('🔍 Fetching recent activities from Laravel API...');
+      
+      // Fetch alerts from Laravel API
+      const response = await api.get('/admin/alerts', {
+        params: {
+          per_page: limit,
+          sort: 'created_at',
+          order: 'desc',
+        },
+      });
+      
+      // Handle different response formats from Laravel API
+      let alerts: any[] = [];
+      const responseData = response.data.data || response.data;
+      
+      if (Array.isArray(responseData)) {
+        alerts = responseData;
+      } else if (responseData && Array.isArray(responseData.alerts)) {
+        alerts = responseData.alerts;
+      } else if (responseData && responseData.data && Array.isArray(responseData.data)) {
+        alerts = responseData.data;
       }
 
       // Map alerts to activities format
-      return (alerts || []).map((alert: any) => ({
-        id: alert.id,
+      const activities = alerts.map((alert: any) => ({
+        id: alert.id?.toString() || Date.now().toString(),
         type: (alert.type || 'alert') as 'bus' | 'user' | 'route' | 'alert' | 'system',
-        action: alert.title || 'New alert',
+        action: alert.title || alert.message || 'New alert',
         timestamp: alert.created_at || new Date().toISOString(),
+        user: alert.user?.name || alert.created_by?.name,
       }));
+      
+      console.log('✅ Recent activities fetched:', activities.length);
+      
+      return activities;
     } catch (error: any) {
-      console.error('❌ Error fetching activities from Supabase:', error);
-      return null;
+      console.warn('⚠️ Failed to fetch recent activities from Laravel API:', error);
+      // Return empty array on error
+      return [];
     }
   }
 }

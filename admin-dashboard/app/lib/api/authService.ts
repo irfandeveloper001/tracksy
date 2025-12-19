@@ -1,5 +1,4 @@
-import { supabase } from '../config/supabase';
-import type { User } from '@supabase/supabase-js';
+import api from './client';
 
 // Admin user roles
 export enum AdminRole {
@@ -19,135 +18,125 @@ export interface AdminUser {
   last_login?: string;
 }
 
-// Transform Supabase user to AdminUser format
-const transformUser = (user: User | null): AdminUser | null => {
-  if (!user) return null;
-
-  // Get role from metadata, default to VIEWER if not set
-  const metadataRole = user.user_metadata?.role;
-  let role = AdminRole.VIEWER;
-  
-  if (metadataRole && Object.values(AdminRole).includes(metadataRole as AdminRole)) {
-    role = metadataRole as AdminRole;
-  }
-
-  return {
-    id: user.id,
-    email: user.email || '',
-    name: user.user_metadata?.name || user.user_metadata?.full_name || '',
-    role: role,
-    permissions: user.user_metadata?.permissions || [],
-    created_at: user.created_at,
-    last_login: user.user_metadata?.last_login,
-  };
-};
+// transformUser removed - Admin Dashboard now uses Laravel API only
 
 class AuthService {
-  // Login admin
-  async login(email: string, password: string, rememberMe: boolean = false): Promise<{ user: AdminUser; session: any }> {
+  // Login to Laravel backend (for API access) - REQUIRED for admin dashboard
+  async loginToLaravel(email: string, password: string): Promise<string> {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+      console.log('🔐 Attempting Laravel login to:', `${apiUrl}/admin/login`);
+      
+      const response = await fetch(`${apiUrl}/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        console.error('❌ Supabase login error:', error);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.message || errorData.data?.message || `Laravel login failed with status ${response.status}`;
+        console.error('❌ Laravel login failed:', errorMessage);
         
-        // Handle specific error cases
-        if (error.message.includes('Email not confirmed')) {
-          throw new Error('Please verify your email before logging in. Check your inbox for the verification link.');
-        }
-        
-        if (error.message.includes('Invalid login credentials') || error.message.includes('Invalid password')) {
-          throw new Error('Invalid email or password. Please check your credentials and try again.');
-        }
-        
-        // Handle rate limiting
-        if (error.status === 429 || /only request this after/i.test(error.message)) {
-          throw new Error('Too many login attempts. Please wait a moment and try again.');
-        }
-        
-        throw new Error(error.message || 'Login failed. Please check your credentials.');
+        // Throw error - Laravel login is required for admin dashboard
+        throw new Error(errorMessage);
       }
 
-      if (!data.user || !data.session) {
-        throw new Error('Login failed. Please check your credentials.');
-      }
-
-      // Check if admin profile exists in database
-      let adminProfile = null;
-      try {
-        const { data: profileData, error: profileError } = await supabase
-          .from('admin_profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors if not found
-
-        if (!profileError && profileData) {
-          adminProfile = profileData;
-        } else if (profileError && profileError.code !== 'PGRST116') {
-          // Only log if it's not a "not found" error
-          console.warn('⚠️ Could not fetch admin profile:', profileError);
-        }
-      } catch (profileErr) {
-        console.warn('⚠️ Could not fetch admin profile:', profileErr);
-        // Continue - we'll try to create it
-      }
-
-      // Transform user and check/assign admin role
-      let adminUser = transformUser(data.user);
+      const data = await response.json();
+      const token = data.data?.token || data.token;
       
-      // If user doesn't have admin role in metadata but has admin profile, use profile role
-      if (adminProfile && (!adminUser || !this.isAdminRole(adminUser.role))) {
-        adminUser = {
-          id: data.user.id,
-          email: data.user.email || '',
-          name: adminProfile.name || data.user.user_metadata?.name || '',
-          role: (adminProfile.role as AdminRole) || AdminRole.VIEWER,
-          permissions: adminProfile.permissions || [],
-          created_at: data.user.created_at,
-          last_login: adminProfile.last_login,
-        };
+      if (!token) {
+        console.error('❌ Laravel login succeeded but no token received');
+        throw new Error('No authentication token received from server. Please try again.');
+      }
+      
+      // Store token in localStorage
+      localStorage.setItem('laravel_token', token);
+      localStorage.setItem('tracksy_admin:auth_token', token);
+      console.log('✅ Laravel token stored successfully');
+      return token;
+    } catch (error: any) {
+      console.error('❌ Laravel login error:', error.message);
+      
+      // Re-throw with helpful message
+      if (error.message.includes('fetch') || error.message.includes('network')) {
+        throw new Error('Cannot connect to backend server. Please ensure Laravel backend is running on http://localhost:8000');
+      }
+      
+      throw error;
+    }
+  }
+
+  // Login admin - Laravel API only
+  async login(email: string, password: string, rememberMe: boolean = false): Promise<{ user: AdminUser; session: any }> {
+    try {
+      // Login to Laravel backend - REQUIRED
+      const laravelToken = await this.loginToLaravel(email, password);
+      console.log('✅ Laravel authentication successful');
+      
+      // Get user info from Laravel API
+      const response = await api.get('/admin/me');
+      const userData = response.data.data || response.data;
+      
+      if (!userData) {
+        throw new Error('Failed to retrieve user information from backend.');
       }
 
-      // If still no admin role, check if we should assign default
-      if (!adminUser || !this.isAdminRole(adminUser.role)) {
-        // If admin_profiles table exists and user is in it, they're an admin
-        if (adminProfile) {
-          adminUser = {
-            id: data.user.id,
-            email: data.user.email || '',
-            name: adminProfile.name || data.user.user_metadata?.name || '',
-            role: (adminProfile.role as AdminRole) || AdminRole.VIEWER,
-            permissions: adminProfile.permissions || [],
-            created_at: data.user.created_at,
-            last_login: adminProfile.last_login,
-          };
-        } else {
-          // No admin profile found - deny access
-        await supabase.auth.signOut();
-          throw new Error('Access denied. This account does not have admin privileges. Please contact your administrator.');
-        }
-      }
+      // Create admin user object from Laravel response
+      const adminUser: AdminUser = {
+        id: userData.id?.toString() || '',
+        email: userData.email || email,
+        name: userData.name || '',
+        role: this.mapRoleToAdminRole(userData.role || 'admin'),
+        permissions: userData.permissions || [],
+        created_at: userData.created_at || new Date().toISOString(),
+        last_login: userData.last_login || null,
+      };
 
-      // Update last login
-      await this.updateLastLogin(data.user.id);
-
-      // Ensure admin profile exists in database
-      await this.ensureAdminProfile(data.user, adminUser);
+      // Create session object
+      const session = {
+        access_token: laravelToken,
+        refresh_token: laravelToken,
+        user: {
+          id: adminUser.id,
+          email: adminUser.email,
+          user_metadata: {
+            name: adminUser.name,
+            role: adminUser.role,
+          },
+        },
+      };
 
       return {
         user: adminUser,
-        session: data.session,
+        session: session,
       };
     } catch (error: any) {
       console.error('❌ Admin login error:', error);
       throw new Error(error.message || 'Login failed. Please check your credentials.');
     }
   }
+  
+  // Map Laravel role to AdminRole enum
+  private mapRoleToAdminRole(role: string): AdminRole {
+    switch (role?.toLowerCase()) {
+      case 'super_admin':
+        return AdminRole.SUPER_ADMIN;
+      case 'admin':
+        return AdminRole.ADMIN;
+      case 'manager':
+        return AdminRole.MANAGER;
+      case 'viewer':
+        return AdminRole.VIEWER;
+      default:
+        return AdminRole.ADMIN;
+    }
+  }
 
-  // Signup admin
+  // Signup admin - Laravel API only
   async signup(
     email: string,
     password: string,
@@ -155,97 +144,133 @@ class AuthService {
     role: AdminRole = AdminRole.ADMIN
   ): Promise<{ user: AdminUser; session: any }> {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-            role,
-            full_name: name,
-          },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-        },
-      });
-
-      if (error) {
-        console.error('❌ Supabase signup error:', error);
-        
-        // Handle specific error cases
-        if (error.message.includes('User already registered')) {
-          throw new Error('An account with this email already exists. Please sign in instead.');
-        }
-        
-        if (error.message.includes('Password')) {
-          throw new Error('Password does not meet requirements. Please use a stronger password.');
-        }
-        
-        throw new Error(error.message || 'Signup failed. Please try again.');
-      }
-
-      if (!data.user) {
-        throw new Error('Signup failed. Please try again.');
-      }
-
-      // Transform user
-      let adminUser = transformUser(data.user);
+      // First, create user in Laravel backend
+      console.log('🔐 Creating user in Laravel backend...');
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
       
-      // Set role if not already set
-      if (!adminUser || !this.isAdminRole(adminUser.role)) {
-        adminUser = {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: name,
+      try {
+        const laravelResponse = await fetch(`${apiUrl}/admin/signup`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            password_confirmation: password,
+          }),
+        });
+
+        if (!laravelResponse.ok) {
+          const errorData = await laravelResponse.json().catch(() => ({}));
+          const errorMessage = errorData.message || errorData.data?.message || `Laravel signup failed with status ${laravelResponse.status}`;
+          
+          // Handle specific errors
+          if (errorData.errors) {
+            const validationErrors = Object.entries(errorData.errors)
+              .map(([field, messages]: [string, any]) => {
+                const msg = Array.isArray(messages) ? messages[0] : messages;
+                // Provide user-friendly message for email already taken
+                if (field === 'email' && (msg.includes('taken') || msg.includes('already'))) {
+                  return 'email: An account with this email already exists. Please sign in instead or use a different email address.';
+                }
+                return `${field}: ${msg}`;
+              })
+              .join(', ');
+            throw new Error(validationErrors);
+          }
+          
+          // Handle email already taken in general error message
+          if (errorMessage.toLowerCase().includes('email') && 
+              (errorMessage.toLowerCase().includes('taken') || 
+               errorMessage.toLowerCase().includes('already') ||
+               errorMessage.toLowerCase().includes('exists'))) {
+            throw new Error('An account with this email already exists. Please sign in instead or use a different email address.');
+          }
+          
+          throw new Error(errorMessage);
+        }
+
+        const laravelData = await laravelResponse.json();
+        const laravelToken = laravelData.data?.token || laravelData.token;
+        const laravelUser = laravelData.data?.user || laravelData.user;
+        
+        if (laravelToken) {
+          localStorage.setItem('laravel_token', laravelToken);
+          localStorage.setItem('tracksy_admin:auth_token', laravelToken);
+          console.log('✅ Laravel user created and token stored');
+        }
+
+        // Create admin user object from Laravel response
+        const adminUser: AdminUser = {
+          id: laravelUser?.id?.toString() || '',
+          email: laravelUser?.email || email,
+          name: laravelUser?.name || name,
           role: role,
           permissions: [],
-          created_at: data.user.created_at,
+          created_at: laravelUser?.created_at || new Date().toISOString(),
         };
-      }
 
-      // Admin profile should be created automatically by trigger
-      // The trigger runs with SECURITY DEFINER so it can bypass RLS
-      // We'll verify it exists after a short delay, but won't fail if it doesn't
-      // (it will be created on first login if trigger didn't fire)
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Verify profile exists (created by trigger)
-        const { data: profile } = await supabase
-          .from('admin_profiles')
-          .select('id, role')
-          .eq('id', data.user.id)
-          .single();
+        // Try to create in Supabase (optional, for UI state)
+        // Don't fail if this doesn't work
+        let session: any = null;
+        try {
+          console.log('🔐 Creating user in Supabase (optional)...');
+          const { data: supabaseData, error: supabaseError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name,
+                role,
+                full_name: name,
+              },
+              emailRedirectTo: `${window.location.origin}/dashboard`,
+            },
+          });
 
-        if (profile) {
-          console.log('✅ Admin profile exists (created by trigger)');
-        } else {
-          console.warn('⚠️ Admin profile not found. It will be created on first login or by trigger.');
-          // Don't throw error - user account was created successfully
+          if (supabaseError) {
+            console.warn('⚠️ Supabase signup failed (non-critical):', supabaseError.message);
+          } else if (supabaseData?.session) {
+            session = supabaseData.session;
+            console.log('✅ Supabase user also created');
+          }
+        } catch (supabaseErr: any) {
+          console.warn('⚠️ Supabase signup error (non-critical):', supabaseErr.message);
         }
-      } catch (profileCheckErr: any) {
-        // Profile check failed - this is non-critical
-        // The trigger should have created it, or it will be created on login
-        console.warn('⚠️ Could not verify admin profile:', profileCheckErr.message);
-        // Continue - don't fail signup
-      }
 
-      // Update user metadata with role
-      if (data.session) {
-        await supabase.auth.updateUser({
-          data: {
-            name,
-            role,
-            full_name: name,
-          },
-        });
-      }
+        // If no Supabase session, create a minimal one for compatibility
+        if (!session) {
+          session = {
+            access_token: laravelToken || '',
+            refresh_token: laravelToken || '',
+            user: {
+              id: adminUser.id,
+              email: adminUser.email,
+              user_metadata: {
+                name: adminUser.name,
+                role: adminUser.role,
+              },
+            },
+          } as any;
+        }
 
-      // Signup succeeded - user is created in auth.users
-      // Profile will be created by trigger or on first login
-      return {
-        user: adminUser,
-        session: data.session,
-      };
+        // Signup succeeded - user is created in Laravel database
+        console.log('✅ Admin account created successfully in Laravel backend');
+        return {
+          user: adminUser,
+          session: session,
+        };
+      } catch (laravelError: any) {
+        console.error('❌ Laravel signup error:', laravelError);
+        // Laravel signup is required - throw error
+        if (laravelError.message) {
+          throw laravelError;
+        }
+        throw new Error('Failed to create account in backend. Please try again.');
+      }
     } catch (error: any) {
       console.error('❌ Admin signup error:', error);
       
@@ -255,121 +280,140 @@ class AuthService {
     }
   }
 
-  // Logout admin
+  // Logout admin - Laravel API only
   async logout(): Promise<void> {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Clear Laravel tokens
+      localStorage.removeItem('laravel_token');
+      localStorage.removeItem('tracksy_admin:auth_token');
+      console.log('✅ Logged out successfully');
     } catch (error: any) {
       console.error('Logout error:', error);
-      throw new Error(error.message || 'Logout failed');
+      // Clear tokens even if there's an error
+      localStorage.removeItem('laravel_token');
+      localStorage.removeItem('tracksy_admin:auth_token');
     }
   }
 
-  // Get current admin user
+  // Get current admin user - Laravel API only
   async getCurrentUser(): Promise<AdminUser | null> {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) {
-        console.warn('⚠️ Error getting user:', error);
-        return null;
-      }
-      
-      if (!user) {
+      // Check if Laravel token exists
+      const token = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
+      if (!token) {
         return null;
       }
 
-      // Check if admin profile exists in database
-      let adminProfile = null;
-      try {
-        const { data: profileData, error: profileError } = await supabase
-          .from('admin_profiles')
-          .select('*')
-          .eq('id', user.id)
-                 .maybeSingle(); // Use maybeSingle() instead of single() to avoid errors if not found
+      // Fetch user from Laravel API
+      const response = await api.get('/admin/me');
+      const userData = response.data.data || response.data;
       
-        if (!profileError && profileData) {
-          adminProfile = profileData;
-               } else if (profileError && profileError.code !== 'PGRST116') {
-                 // Only log if it's not a "not found" error
-                 console.warn('⚠️ Could not fetch admin profile:', profileError);
-        }
-      } catch (profileErr) {
-        console.warn('⚠️ Could not fetch admin profile:', profileErr);
-      }
-
-      // Transform user
-      let adminUser = transformUser(user);
-      
-      // If user doesn't have admin role in metadata but has admin profile, use profile role
-      if (adminProfile) {
-        if (!adminUser || !this.isAdminRole(adminUser.role)) {
-          adminUser = {
-            id: user.id,
-            email: user.email || '',
-            name: adminProfile.name || user.user_metadata?.name || '',
-            role: (adminProfile.role as AdminRole) || AdminRole.VIEWER,
-            permissions: adminProfile.permissions || [],
-            created_at: user.created_at,
-            last_login: adminProfile.last_login,
-          };
-        }
-      } else if (!adminUser || !this.isAdminRole(adminUser.role)) {
-        // No admin profile and no admin role in metadata
+      if (!userData) {
         return null;
       }
+
+      // Create admin user object from Laravel response
+      const adminUser: AdminUser = {
+        id: userData.id?.toString() || '',
+        email: userData.email || '',
+        name: userData.name || '',
+        role: this.mapRoleToAdminRole(userData.role || 'admin'),
+        permissions: userData.permissions || [],
+        created_at: userData.created_at || new Date().toISOString(),
+        last_login: userData.last_login || null,
+      };
 
       return adminUser;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Get current user error:', error);
+      // If 401, clear tokens
+      if (error.response?.status === 401) {
+        localStorage.removeItem('laravel_token');
+        localStorage.removeItem('tracksy_admin:auth_token');
+      }
       return null;
     }
   }
 
-  // Get current session
+  // Get current session - Laravel API only
   async getCurrentSession() {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      return session;
+      const token = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
+      if (!token) {
+        return null;
+      }
+
+      // Verify token is still valid by checking user
+      const user = await this.getCurrentUser();
+      if (!user) {
+        return null;
+      }
+
+      return {
+        access_token: token,
+        refresh_token: token,
+        user: {
+          id: user.id,
+          email: user.email,
+          user_metadata: {
+            name: user.name,
+            role: user.role,
+          },
+        },
+      };
     } catch (error) {
       console.error('Get session error:', error);
       return null;
     }
   }
 
-  // Refresh session
+  // Refresh session - Laravel API only
   async refreshSession() {
     try {
-      const { data: { session }, error } = await supabase.auth.refreshSession();
-      if (error) throw error;
-      return session;
+      // For Laravel JWT, we just verify the token is still valid
+      // If it's expired, user needs to login again
+      const user = await this.getCurrentUser();
+      if (!user) {
+        throw new Error('Session expired. Please login again.');
+      }
+
+      const token = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
+      return {
+        access_token: token,
+        refresh_token: token,
+        user: {
+          id: user.id,
+          email: user.email,
+          user_metadata: {
+            name: user.name,
+            role: user.role,
+          },
+        },
+      };
     } catch (error) {
       console.error('Refresh session error:', error);
-      throw new Error('Failed to refresh session');
+      throw new Error('Failed to refresh session. Please login again.');
     }
   }
 
-  // Reset password
+  // Reset password - Laravel API only
   async resetPassword(email: string): Promise<void> {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (error) throw error;
+      // Use Laravel password reset endpoint if available
+      // For now, throw error indicating feature not implemented
+      throw new Error('Password reset via Laravel API is not yet implemented. Please contact administrator.');
     } catch (error: any) {
       console.error('Reset password error:', error);
       throw new Error(error.message || 'Failed to send password reset email');
     }
   }
 
-  // Update password
+  // Update password - Laravel API only
   async updatePassword(newPassword: string): Promise<void> {
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-      if (error) throw error;
+      // Use Laravel password update endpoint if available
+      // For now, throw error indicating feature not implemented
+      throw new Error('Password update via Laravel API is not yet implemented. Please contact administrator.');
     } catch (error: any) {
       console.error('Update password error:', error);
       throw new Error(error.message || 'Failed to update password');
@@ -381,89 +425,48 @@ class AuthService {
     return Object.values(AdminRole).includes(role as AdminRole);
   }
 
-  // Update last login timestamp
+  // Update last login timestamp - Laravel API only
+  // Note: This is handled by Laravel backend automatically
   private async updateLastLogin(userId: string): Promise<void> {
-    try {
-      await supabase
-        .from('admin_profiles')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', userId);
-    } catch (error) {
-      console.warn('Failed to update last login:', error);
-      // Non-critical error, don't throw
-    }
+    // Laravel backend handles last login tracking
+    // No action needed on frontend
   }
 
-  // Ensure admin profile exists in database
-  private async ensureAdminProfile(user: User, adminUser: AdminUser): Promise<void> {
-    try {
-      // First check if profile exists
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('admin_profiles')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle(); // Use maybeSingle() to avoid errors if not found
-      
-      // If table doesn't exist, skip profile creation
-      if (checkError && checkError.code === 'PGRST116') {
-        console.warn('⚠️ Admin profiles table does not exist. Please run SUPABASE_COMPLETE_SETUP.sql');
-        return;
-      }
+  // Ensure admin profile exists - Laravel API only
+  // Note: User profiles are managed by Laravel backend
+  private async ensureAdminProfile(user: any, adminUser: AdminUser): Promise<void> {
+    // Laravel backend manages user profiles
+    // No action needed on frontend
+  }
 
-      if (existingProfile) {
-        // Update existing profile
-        const { error } = await supabase
-          .from('admin_profiles')
-          .update({
-            email: user.email,
-            name: adminUser.name || existingProfile.name,
-            role: adminUser.role,
-            permissions: adminUser.permissions || [],
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
-
-        if (error) {
-          console.warn('⚠️ Failed to update admin profile:', error);
-          // Non-critical error, don't throw
+  // Auth state change listener - Laravel API only
+  // Note: For Laravel JWT, we don't have real-time auth state changes
+  // This is a minimal implementation for compatibility
+  onAuthStateChange(callback: (event: string, session: any, user: AdminUser | null) => void) {
+    // Check auth state periodically (every 5 minutes)
+    const interval = setInterval(async () => {
+      const token = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
+      if (token) {
+        const user = await this.getCurrentUser();
+        const session = await this.getCurrentSession();
+        if (user && session) {
+          callback('SIGNED_IN', session, user);
+        } else {
+          callback('SIGNED_OUT', null, null);
         }
       } else {
-        // Create new profile
-        const { error } = await supabase
-          .from('admin_profiles')
-          .insert({
-          id: user.id,
-          email: user.email,
-          name: adminUser.name,
-          role: adminUser.role,
-          permissions: adminUser.permissions || [],
-            created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error) {
-          console.warn('⚠️ Failed to create admin profile:', error);
-          // If it's a permission error, the table might not exist or RLS is blocking
-          if (error.code === 'PGRST116' || error.message.includes('permission denied')) {
-            console.warn('⚠️ Admin profiles table might not exist. Please run SUPABASE_DATABASE_SETUP.sql in Supabase SQL Editor.');
-          }
-        // Non-critical error, don't throw
-        } else {
-          console.log('✅ Admin profile created/updated successfully');
-        }
+        callback('SIGNED_OUT', null, null);
       }
-    } catch (error) {
-      console.warn('⚠️ Error ensuring admin profile:', error);
-      // Non-critical error, don't throw
-    }
-  }
+    }, 5 * 60 * 1000); // Check every 5 minutes
 
-  // Auth state change listener
-  onAuthStateChange(callback: (event: string, session: any, user: AdminUser | null) => void) {
-    return supabase.auth.onAuthStateChange((event, session) => {
-      const user = session?.user ? transformUser(session.user) : null;
-      callback(event, session, user);
-    });
+    // Return unsubscribe function
+    return {
+      data: {
+        subscription: {
+          unsubscribe: () => clearInterval(interval),
+        },
+      },
+    };
   }
 
   // Check if user is authenticated

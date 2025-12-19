@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Outlet } from 'react-router';
 import { useAuthStore } from '../../lib/store/authStore';
 import { AdminRole } from '../../lib/api/authService';
-import { supabase } from '../../lib/config/supabase';
 
 interface ProtectedRouteProps {
   requiredRole?: AdminRole;
@@ -92,15 +91,11 @@ export default function ProtectedRoute({
   const [hasSession, setHasSession] = useState(false);
   
   useEffect(() => {
-    // Check if we have a session token in URL or can get one quickly
-    const checkSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          setHasSession(true);
-        }
-      } catch (error) {
-        // Ignore
+    // Check if we have a Laravel token in localStorage
+    const checkSession = () => {
+      const token = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
+      if (token) {
+        setHasSession(true);
       }
     };
     checkSession();

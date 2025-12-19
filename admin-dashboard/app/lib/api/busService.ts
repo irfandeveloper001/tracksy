@@ -7,68 +7,60 @@ import type { Bus, BusFilters, BusListResponse } from './types';
 export type { Bus, BusFilters, BusListResponse };
 
 class BusService {
-  // Get all buses with filters and pagination - ALWAYS use Supabase first (primary source)
+  // Get all buses with filters and pagination - Use Laravel backend API only
   async getBuses(
     page: number = 1,
     perPage: number = 20,
     filters?: BusFilters
   ): Promise<BusListResponse> {
     try {
-      // PRIMARY: Always try Supabase first - this is our main data source
-      const supabaseBuses = await this.getBusesFromSupabase(filters);
-      
-      if (supabaseBuses !== null && supabaseBuses !== undefined) {
-        // Apply pagination
-        const start = (page - 1) * perPage;
-        const end = start + perPage;
-        const paginatedBuses = supabaseBuses.slice(start, end);
-        
-        console.log(`✅ Returning ${supabaseBuses.length} buses from Supabase (showing ${paginatedBuses.length} on page ${page})`);
-        console.log(`📊 Filter applied:`, filters);
-        if (supabaseBuses.length > 0) {
-          console.log(`📋 Bus statuses in result:`, [...new Set(supabaseBuses.map(b => b.status))]);
-        }
-        
-        // FALLBACK: If we got 0 buses with a status filter, try fetching all and filtering in memory
-        // This matches how the dashboard works and handles RLS edge cases
-        if (supabaseBuses.length === 0 && filters?.status) {
-          console.log('⚠️ Got 0 buses with status filter, trying fallback: fetch all buses and filter in memory...');
-          const allBuses = await this.getBusesFromSupabase({ ...filters, status: undefined });
-          if (allBuses && allBuses.length > 0) {
-            const statusValue = filters.status.toLowerCase().trim();
-            const filteredBuses = allBuses.filter(b => {
-              const busStatus = b.status?.toLowerCase().trim();
-              return busStatus === statusValue;
-            });
-            console.log(`✅ Fallback: Found ${filteredBuses.length} buses after in-memory filtering (from ${allBuses.length} total)`);
-            
-            if (filteredBuses.length > 0) {
-              const fallbackStart = (page - 1) * perPage;
-              const fallbackEnd = fallbackStart + perPage;
-              const paginatedFiltered = filteredBuses.slice(fallbackStart, fallbackEnd);
-              
-              return {
-                buses: paginatedFiltered,
-                total: filteredBuses.length,
-                current_page: page,
-                per_page: perPage,
-                last_page: Math.ceil(filteredBuses.length / perPage) || 1,
-              };
-            }
-          }
-        }
+      const params: any = {
+        page,
+        limit: perPage,
+      };
+
+      // Add filters to params
+      if (filters?.status) {
+        params.status = filters.status;
+      }
+      if (filters?.route_id) {
+        params.route_id = filters.route_id;
+      }
+      if (filters?.driver_id) {
+        params.driver_id = filters.driver_id;
+      }
+      if (filters?.search) {
+        params.search = filters.search;
+      }
+
+      const response = await api.get('/admin/buses', { params });
+      const backendData = response.data.data || response.data;
+
+      // Handle Laravel pagination response format
+      if (backendData.data && Array.isArray(backendData.data)) {
+        // Laravel paginated response
+        const buses = backendData.data.map((bus: any) => this.mapBackendBusToFrontend(bus));
         
         return {
-          buses: paginatedBuses,
-          total: supabaseBuses.length,
+          buses,
+          total: backendData.total || 0,
+          current_page: backendData.current_page || page,
+          per_page: backendData.per_page || perPage,
+          last_page: backendData.last_page || 1,
+        };
+      } else if (Array.isArray(backendData)) {
+        // Simple array response
+        const buses = backendData.map((bus: any) => this.mapBackendBusToFrontend(bus));
+        
+        return {
+          buses,
+          total: buses.length,
           current_page: page,
           per_page: perPage,
-          last_page: Math.ceil(supabaseBuses.length / perPage) || 1,
+          last_page: Math.ceil(buses.length / perPage) || 1,
         };
       }
-      
-      // If Supabase returns null, it means there was an error - log it but don't fallback
-      console.warn('⚠️ Supabase returned null - check RLS policies and authentication');
+
       return {
         buses: [],
         total: 0,
@@ -76,21 +68,34 @@ class BusService {
         per_page: perPage,
         last_page: 1,
       };
-    } catch (supabaseError: any) {
-      console.error('❌ Supabase fetch error:', supabaseError);
-      // Return empty result instead of falling back to API
-      // This ensures we always use Supabase as the source of truth
-      return {
-        buses: [],
-        total: 0,
-        current_page: page,
-        per_page: perPage,
-        last_page: 1,
-      };
+    } catch (error: any) {
+      console.error('❌ Failed to fetch buses from backend:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch buses');
     }
   }
 
-  // Get buses directly from Supabase
+  // Map backend bus data to frontend Bus interface
+  private mapBackendBusToFrontend(bus: any): Bus {
+    return {
+      id: bus.id,
+      bus_number: bus.bus_number,
+      license_plate: bus.license_plate,
+      bus_type: bus.bus_type || 'standard',
+      capacity: bus.capacity,
+      status: bus.status || 'active',
+      route_id: bus.current_route_id || bus.route_id,
+      route_name: bus.current_route?.name || bus.route_name || null,
+      driver_id: bus.current_driver_id || bus.driver_id,
+      driver_name: bus.current_driver?.name || bus.driver_name || null,
+      current_latitude: bus.locations?.[0]?.latitude || bus.current_latitude || null,
+      current_longitude: bus.locations?.[0]?.longitude || bus.current_longitude || null,
+      last_location_update: bus.locations?.[0]?.recorded_at || bus.last_location_update || null,
+      created_at: bus.created_at,
+      updated_at: bus.updated_at,
+    };
+  }
+
+  // Get buses directly from Supabase - DEPRECATED, use getBuses() instead
   async getBusesFromSupabase(filters?: BusFilters): Promise<Bus[] | null> {
     try {
       console.log('🔍 getBusesFromSupabase called with filters:', filters);
@@ -172,11 +177,11 @@ class BusService {
       
       if (buses.length > 0) {
         console.log('Sample buses:', buses.slice(0, 3).map((b: any) => ({ 
-          id: b.id, 
-          bus_number: b.bus_number, 
-          status: b.status,
-          route_id: b.route_id 
-        })));
+        id: b.id, 
+        bus_number: b.bus_number, 
+        status: b.status,
+        route_id: b.route_id 
+      })));
       } else {
         console.log('⚠️ Supabase returned 0 buses');
         console.log('🔍 Checking if this is due to RLS or no data...');
@@ -255,54 +260,41 @@ class BusService {
     }
   }
 
-  // Get single bus by ID - Try backend API first, fallback to Supabase
+  // Get single bus by ID - Use Laravel backend API only
   async getBusById(busId: string): Promise<Bus> {
     try {
-      // PRIMARY: Try backend API first
+      console.log('🔍 Fetching bus by ID:', busId);
+      
+      // Try the standard REST endpoint first (from apiResource)
+      let response;
       try {
-        console.log(`🔍 Fetching bus from backend API: GET /admin/buses/${busId}/view`);
-        const response = await api.get(`/admin/buses/${busId}/view`);
-        if (response.data?.success && response.data?.data) {
-          const backendBus = response.data.data;
-          // Map backend response to Bus interface
-          const mappedBus: Bus = {
-            id: backendBus.id,
-            bus_number: backendBus.bus_number,
-            license_plate: backendBus.license_plate,
-            bus_type: backendBus.bus_type || 'standard',
-            capacity: backendBus.capacity,
-            status: backendBus.status || 'active',
-            route_id: backendBus.current_route_id,
-            route_name: backendBus.current_route?.name || null,
-            driver_id: backendBus.current_driver_id,
-            driver_name: backendBus.current_driver?.name || null,
-            current_latitude: backendBus.locations?.[0]?.latitude || null,
-            current_longitude: backendBus.locations?.[0]?.longitude || null,
-            last_location_update: backendBus.locations?.[0]?.recorded_at || null,
-            created_at: backendBus.created_at,
-            updated_at: backendBus.updated_at,
-          };
-          console.log('✅ Bus fetched from backend API:', mappedBus.bus_number);
-          return mappedBus;
+        response = await api.get(`/admin/buses/${busId}`);
+      } catch (firstError: any) {
+        // If 404, try the /view endpoint
+        if (firstError.response?.status === 404) {
+          console.log('⚠️ Standard endpoint returned 404, trying /view endpoint...');
+          response = await api.get(`/admin/buses/${busId}/view`);
+        } else {
+          throw firstError;
         }
-      } catch (backendError: any) {
-        console.warn('⚠️ Backend API unavailable, falling back to Supabase:', backendError.message);
+      }
+      
+      const backendBus = response.data.data || response.data;
+      
+      if (!backendBus) {
+        throw new Error('Bus not found');
       }
 
-      // FALLBACK: Fetch from Supabase directly
-      const bus = await this.getBusByIdFromSupabase(busId);
-      if (bus) {
-        console.log('✅ Bus fetched from Supabase:', bus.bus_number);
-        return bus;
-      }
-      throw new Error('Bus not found');
+      console.log('✅ Bus fetched successfully:', backendBus);
+      return this.mapBackendBusToFrontend(backendBus);
     } catch (error: any) {
       console.error('❌ Failed to fetch bus:', error);
-      throw new Error(error.message || 'Failed to fetch bus details');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch bus details';
+      throw new Error(errorMessage);
     }
   }
 
-  // Get bus by ID directly from Supabase
+  // Get bus by ID directly from Supabase - DEPRECATED, use getBusById() instead
   async getBusByIdFromSupabase(busId: string): Promise<Bus | null> {
     try {
       console.log('🔍 Fetching bus by ID from Supabase:', busId);
@@ -382,25 +374,70 @@ class BusService {
     }
   }
 
-  // Create new bus - ALWAYS use Supabase (primary database)
+  // Create new bus - Use Laravel backend API only
   async createBus(busData: Partial<Bus>): Promise<Bus> {
     try {
-      // PRIMARY: Always create in Supabase first - this is our main database
-      const supabaseBus = await this.createBusInSupabase(busData);
-      if (supabaseBus) {
-        console.log('✅ Bus created in Supabase database:', supabaseBus);
-        console.log('💾 Data is now stored in Supabase and will be fetched directly from there');
-        return supabaseBus;
+      // Map frontend Bus interface to backend format
+      const backendData: any = {
+        bus_number: busData.bus_number?.trim(),
+        license_plate: busData.license_plate?.trim(),
+        bus_type: busData.bus_type || 'standard',
+        capacity: busData.capacity || 50,
+        status: busData.status || 'active',
+      };
+
+      // Add route and driver only if provided
+      if (busData.route_id && busData.route_id !== '') {
+        backendData.current_route_id = busData.route_id;
       }
-      throw new Error('Bus creation returned null');
-    } catch (supabaseError: any) {
-      console.error('❌ Supabase creation failed:', supabaseError);
-      // Don't fallback to API - Supabase is our source of truth
-      throw new Error(supabaseError.message || 'Failed to create bus in database. Please check your connection and try again.');
+      
+      if (busData.driver_id && busData.driver_id !== '') {
+        backendData.current_driver_id = busData.driver_id;
+      }
+
+      console.log('🚌 Creating bus with data:', backendData);
+      console.log('🔗 API URL:', api.defaults.baseURL);
+      console.log('🔑 Auth token present:', !!localStorage.getItem('laravel_token'));
+
+      const response = await api.post('/admin/buses', backendData);
+      const backendBus = response.data.data || response.data;
+      
+      if (!backendBus) {
+        throw new Error('Bus creation succeeded but no data returned');
+      }
+      
+      console.log('✅ Bus created successfully:', backendBus);
+      return this.mapBackendBusToFrontend(backendBus);
+    } catch (error: any) {
+      console.error('❌ Failed to create bus:', error);
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to create bus';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        
+        // Handle validation errors
+        if (errorData.errors) {
+          const validationErrors = Object.entries(errorData.errors)
+            .map(([field, messages]: [string, any]) => {
+              const msg = Array.isArray(messages) ? messages[0] : messages;
+              return `${field}: ${msg}`;
+            })
+            .join(', ');
+          errorMessage = validationErrors;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   }
 
-  // Create bus directly in Supabase
+  // Create bus directly in Supabase - DEPRECATED, use createBus() instead
   async createBusInSupabase(busData: Partial<Bus>): Promise<Bus | null> {
     try {
       // Check if user is authenticated before making request
@@ -504,65 +541,50 @@ class BusService {
     }
   }
 
-  // Update bus - ALWAYS use Supabase (primary database)
+  // Update bus - Use Laravel backend API only
   async updateBus(busId: string, busData: Partial<Bus>): Promise<Bus> {
     try {
-      // PRIMARY: Try backend API first
-      try {
-        // Map Bus interface to backend format
-        const backendData: any = {
-          bus_number: busData.bus_number,
-          license_plate: busData.license_plate,
-          bus_type: busData.bus_type,
-          capacity: busData.capacity,
-          status: busData.status,
-          current_route_id: busData.route_id || null,
-          current_driver_id: busData.driver_id || null,
-        };
+      // Map Bus interface to backend format
+      const backendData: any = {
+        bus_number: busData.bus_number,
+        license_plate: busData.license_plate,
+        bus_type: busData.bus_type,
+        capacity: busData.capacity,
+        status: busData.status,
+      };
 
-        console.log(`🔍 Updating bus via backend API: PUT /admin/buses/${busId}/edit`, backendData);
-        const response = await api.put(`/admin/buses/${busId}/edit`, backendData);
-        if (response.data?.success && response.data?.data) {
-          const backendBus = response.data.data;
-          // Map backend response to Bus interface
-          const mappedBus: Bus = {
-            id: backendBus.id,
-            bus_number: backendBus.bus_number,
-            license_plate: backendBus.license_plate,
-            bus_type: backendBus.bus_type || 'standard',
-            capacity: backendBus.capacity,
-            status: backendBus.status || 'active',
-            route_id: backendBus.current_route_id,
-            route_name: backendBus.current_route?.name || null,
-            driver_id: backendBus.current_driver_id,
-            driver_name: backendBus.current_driver?.name || null,
-            current_latitude: backendBus.locations?.[0]?.latitude || null,
-            current_longitude: backendBus.locations?.[0]?.longitude || null,
-            last_location_update: backendBus.locations?.[0]?.recorded_at || null,
-            created_at: backendBus.created_at,
-            updated_at: backendBus.updated_at,
-          };
-          console.log('✅ Bus updated via backend API:', mappedBus.bus_number);
-          return mappedBus;
+      // Add route and driver only if provided
+      if (busData.route_id && busData.route_id !== '') {
+        backendData.current_route_id = busData.route_id;
+      } else {
+        backendData.current_route_id = null;
+      }
+      
+      if (busData.driver_id && busData.driver_id !== '') {
+        backendData.current_driver_id = busData.driver_id;
+      } else {
+        backendData.current_driver_id = null;
+      }
+
+      // Remove undefined fields
+      Object.keys(backendData).forEach(key => {
+        if (backendData[key] === undefined) {
+          delete backendData[key];
         }
-      } catch (backendError: any) {
-        console.warn('⚠️ Backend API unavailable, falling back to Supabase:', backendError.message);
-      }
+      });
 
-      // FALLBACK: Update in Supabase
-      const updatedBus = await this.updateBusInSupabase(busId, busData);
-      if (updatedBus) {
-        console.log('✅ Bus updated in Supabase database:', updatedBus);
-        return updatedBus;
-      }
-      throw new Error('Bus update returned null');
+      // Use standard REST PUT endpoint
+      const response = await api.put(`/admin/buses/${busId}`, backendData);
+      const backendBus = response.data.data || response.data;
+      
+      return this.mapBackendBusToFrontend(backendBus);
     } catch (error: any) {
       console.error('❌ Failed to update bus:', error);
-      throw new Error(error.message || 'Failed to update bus in database. Please check your connection and try again.');
+      throw new Error(error.response?.data?.message || 'Failed to update bus');
     }
   }
 
-  // Update bus directly in Supabase
+  // Update bus directly in Supabase - DEPRECATED, use updateBus() instead
   async updateBusInSupabase(busId: string, busData: Partial<Bus>): Promise<Bus | null> {
     try {
       // Check if user is authenticated
@@ -684,31 +706,17 @@ class BusService {
     }
   }
 
-  // Delete/Deactivate bus - ALWAYS use Supabase (primary database)
+  // Delete/Deactivate bus - Use Laravel backend API only
   async deleteBus(busId: string): Promise<void> {
     try {
-      // PRIMARY: Try backend API first
-      try {
-        console.log(`🔍 Deleting bus via backend API: DELETE /admin/buses/${busId}/delete`);
-        const response = await api.delete(`/admin/buses/${busId}/delete`);
-        if (response.data?.success) {
-          console.log('✅ Bus deleted via backend API:', busId);
-          return;
-        }
-      } catch (backendError: any) {
-        console.warn('⚠️ Backend API unavailable, falling back to Supabase:', backendError.message);
-      }
-
-      // FALLBACK: Delete from Supabase
-      await this.deleteBusFromSupabase(busId);
-      console.log('✅ Bus deleted from Supabase database:', busId);
+      await api.delete(`/admin/buses/${busId}/delete`);
     } catch (error: any) {
       console.error('❌ Failed to delete bus:', error);
-      throw new Error(error.message || 'Failed to delete bus. Please check your connection and try again.');
+      throw new Error(error.response?.data?.message || 'Failed to delete bus');
     }
   }
 
-  // Delete bus directly from Supabase
+  // Delete bus directly from Supabase - DEPRECATED, use deleteBus() instead
   async deleteBusFromSupabase(busId: string): Promise<void> {
     try {
       // Check if user is authenticated

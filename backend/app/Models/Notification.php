@@ -12,17 +12,24 @@ class Notification extends Model
     protected $fillable = [
         'user_id',
         'type',
+        'notification_type',
         'title',
         'message',
         'data',
         'read',
         'read_at',
+        'audience_type',
+        'audience_ids',
+        'status',
+        'sent_at',
     ];
 
     protected $casts = [
         'data' => 'array',
+        'audience_ids' => 'array',
         'read' => 'boolean',
         'read_at' => 'datetime',
+        'sent_at' => 'datetime',
     ];
 
     // Relationships

@@ -10,11 +10,34 @@ import {
   TrashIcon,
   EyeIcon,
   MapPinIcon,
+  XMarkIcon,
+  UserIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import busService from '../../lib/api/busService';
 import type { Bus, BusFilters } from '../../lib/api/types';
 import routeService from '../../lib/api/routeService';
+import userService from '../../lib/api/userService';
+import StatusBadge from '../../components/buses/StatusBadge';
 import toast from 'react-hot-toast';
+
+const busSchema = z.object({
+  bus_number: z.string().min(1, 'Bus number is required'),
+  license_plate: z.string().min(1, 'License plate is required'),
+  bus_type: z.enum(['standard', 'premium', 'luxury']),
+  capacity: z.number().min(1, 'Capacity must be at least 1').max(100),
+  status: z.enum(['active', 'inactive', 'maintenance', 'emergency']),
+  route_id: z.string().optional(),
+  driver_id: z.string().optional(),
+});
+
+type BusFormData = z.infer<typeof busSchema>;
 
 export default function BusesPage() {
   const navigate = useNavigate();
@@ -27,6 +50,9 @@ export default function BusesPage() {
   const initialStatus = (searchParams.get('status') || 'all').toLowerCase().trim();
   const [statusFilter, setStatusFilter] = useState<string>(initialStatus);
   const [routeFilter, setRouteFilter] = useState<string>('all');
+  const [selectedBus, setSelectedBus] = useState<Bus | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Read URL parameters on mount and when they change
   useEffect(() => {
@@ -145,7 +171,102 @@ export default function BusesPage() {
     retry: 1,
   });
 
+  // Fetch drivers for dropdown
+  const { data: driversData } = useQuery({
+    queryKey: ['drivers', 'all', 'dropdown'],
+    queryFn: async () => {
+      try {
+        const response = await userService.getDrivers(1, 100);
+        return response;
+      } catch (error) {
+        console.warn('⚠️ Failed to fetch drivers:', error);
+        return { users: [], total: 0 };
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  // Fetch selected bus details when modal opens
+  const { data: selectedBusData, isLoading: isLoadingBus } = useQuery({
+    queryKey: ['bus', selectedBus?.id],
+    queryFn: async () => {
+      if (!selectedBus?.id) return null;
+      return await busService.getBusById(selectedBus.id);
+    },
+    enabled: !!selectedBus?.id && !isEditMode,
+  });
+
   const routes = routesData?.routes || [];
+  const drivers = driversData?.users || [];
+  const currentBus = selectedBusData || selectedBus;
+
+  // Form for editing bus
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<BusFormData>({
+    resolver: zodResolver(busSchema),
+  });
+
+  // Populate form when bus data loads in edit mode
+  useEffect(() => {
+    if (currentBus && isEditMode) {
+      reset({
+        bus_number: currentBus.bus_number,
+        license_plate: currentBus.license_plate,
+        bus_type: currentBus.bus_type as 'standard' | 'premium' | 'luxury',
+        capacity: currentBus.capacity,
+        status: currentBus.status as 'active' | 'inactive' | 'maintenance' | 'emergency',
+        route_id: currentBus.route_id || '',
+        driver_id: currentBus.driver_id || '',
+      });
+    }
+  }, [currentBus, isEditMode, reset]);
+
+  // Update bus mutation
+  const updateMutation = useMutation({
+    mutationFn: (data: BusFormData) => {
+      if (!selectedBus?.id) throw new Error('Bus ID is required');
+      return busService.updateBus(selectedBus.id, data);
+    },
+    onSuccess: () => {
+      toast.success('✅ Bus updated successfully!', {
+        duration: 3000,
+        icon: '🚌',
+      });
+      queryClient.invalidateQueries({ queryKey: ['buses'] });
+      queryClient.invalidateQueries({ queryKey: ['bus', selectedBus?.id] });
+      setIsEditMode(false);
+      // Refresh selected bus data
+      if (selectedBus?.id) {
+        queryClient.invalidateQueries({ queryKey: ['bus', selectedBus.id] });
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update bus. Please try again.', {
+        duration: 4000,
+      });
+      setIsSubmitting(false);
+    },
+  });
+
+  const onSubmit = async (data: BusFormData) => {
+    setIsSubmitting(true);
+    updateMutation.mutate(data);
+  };
+
+  const handleBusClick = (bus: Bus) => {
+    setSelectedBus(bus);
+    setIsEditMode(false);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedBus(null);
+    setIsEditMode(false);
+  };
 
   // Delete bus mutation with optimistic updates
   const deleteMutation = useMutation({
@@ -563,21 +684,34 @@ export default function BusesPage() {
                     {/* Professional Action Buttons */}
                     <div className="flex space-x-2 pt-4 border-t border-gray-100">
                       <button
-                        onClick={() => navigate(`/buses/${bus.id}`)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleBusClick(bus);
+                        }}
                         className="flex-1 flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold text-sm shadow-sm hover:shadow-md"
                       >
                         <EyeIcon className="h-4 w-4 mr-1.5" />
                         View
                       </button>
                       <button
-                        onClick={() => navigate(`/buses/${bus.id}/edit`)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedBus(bus);
+                          setIsEditMode(true);
+                        }}
                         className="flex-1 flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-600 text-white rounded-lg hover:from-amber-600 hover:to-yellow-700 transition-all duration-200 font-semibold text-sm shadow-sm hover:shadow-md"
                       >
                         <PencilIcon className="h-4 w-4 mr-1.5" />
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDeleteClick(bus.id)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteClick(bus.id);
+                        }}
                         disabled={deleteMutation.isPending}
                         className="px-4 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:from-red-600 hover:to-rose-700 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed relative"
                         title="Delete Bus"
@@ -685,6 +819,274 @@ export default function BusesPage() {
           </div>
         )}
       </div>
+
+      {/* Bus Details/Edit Modal */}
+      {selectedBus && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 flex flex-col">
+            {/* Modal Header */}
+            <div className={`px-6 py-5 border-b border-gray-200 bg-gradient-to-r ${
+              currentBus?.status === 'active' ? 'from-green-50 to-emerald-50' :
+              currentBus?.status === 'maintenance' ? 'from-amber-50 to-yellow-50' :
+              currentBus?.status === 'emergency' ? 'from-red-50 to-rose-50' :
+              'from-gray-50 to-slate-50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-3 rounded-xl ${
+                    currentBus?.status === 'active' ? 'bg-green-100' :
+                    currentBus?.status === 'maintenance' ? 'bg-amber-100' :
+                    currentBus?.status === 'emergency' ? 'bg-red-100' :
+                    'bg-gray-100'
+                  }`}>
+                    <TruckIcon className="h-6 w-6 text-gray-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {isEditMode ? 'Edit Bus' : 'Bus Details'}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {currentBus?.bus_number || 'Loading...'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  {!isEditMode && (
+                    <button
+                      onClick={() => setIsEditMode(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center space-x-2"
+                    >
+                      <PencilIcon className="h-4 w-4" />
+                      <span>Edit</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={handleCloseModal}
+                    className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    <XMarkIcon className="h-6 w-6 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {isLoadingBus && !currentBus ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+              ) : isEditMode ? (
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Bus Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        {...register('bus_number')}
+                        type="text"
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                          errors.bus_number ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      {errors.bus_number && (
+                        <p className="mt-2 text-sm text-red-600">{errors.bus_number.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        License Plate <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        {...register('license_plate')}
+                        type="text"
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                          errors.license_plate ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      {errors.license_plate && (
+                        <p className="mt-2 text-sm text-red-600">{errors.license_plate.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Bus Type <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...register('bus_type')}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="standard">Standard</option>
+                        <option value="premium">Premium</option>
+                        <option value="luxury">Luxury</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Capacity <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        {...register('capacity', { valueAsNumber: true })}
+                        type="number"
+                        min="1"
+                        max="100"
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                          errors.capacity ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                      />
+                      {errors.capacity && (
+                        <p className="mt-2 text-sm text-red-600">{errors.capacity.message}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        {...register('status')}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="inactive">Inactive</option>
+                        <option value="active">Active</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="emergency">Emergency</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Assigned Route (Optional)
+                      </label>
+                      <select
+                        {...register('route_id')}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">No Route Assigned</option>
+                        {routes.map((route) => (
+                          <option key={route.id} value={route.id}>
+                            {route.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Assigned Driver (Optional)
+                      </label>
+                      <select
+                        {...register('driver_id')}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">No Driver Assigned</option>
+                        {drivers.map((driver) => (
+                          <option key={driver.id} value={driver.id}>
+                            {driver.name || driver.email || 'Unnamed Driver'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditMode(false)}
+                      className="px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 font-semibold disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Updating...' : 'Update Bus'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-6">
+                  {currentBus && (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600">Bus Number</span>
+                            <span className="font-bold text-gray-900">{currentBus.bus_number}</span>
+                          </div>
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600">License Plate</span>
+                            <span className="font-bold text-gray-900 tracking-wider">{currentBus.license_plate}</span>
+                          </div>
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600">Bus Type</span>
+                            <span className="font-semibold text-gray-900 capitalize">{currentBus.bus_type}</span>
+                          </div>
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600">Capacity</span>
+                            <span className="font-semibold text-gray-900">{currentBus.capacity} seats</span>
+                          </div>
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600">Status</span>
+                            <StatusBadge status={currentBus.status} />
+                          </div>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600">Assigned Route</span>
+                            <span className={`font-semibold ${currentBus.route_name ? 'text-blue-600' : 'text-gray-400'}`}>
+                              {currentBus.route_name || 'Unassigned'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600">Assigned Driver</span>
+                            <span className={`font-semibold ${currentBus.driver_name ? 'text-gray-900' : 'text-gray-400'}`}>
+                              {currentBus.driver_name || 'Unassigned'}
+                            </span>
+                          </div>
+                          {currentBus.current_latitude && currentBus.current_longitude && (
+                            <div className="py-3 bg-blue-50 rounded-lg px-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-blue-600 flex items-center">
+                                  <MapPinIcon className="h-4 w-4 mr-1.5" />
+                                  Current Location
+                                </span>
+                                <span className="font-mono text-xs text-blue-700">
+                                  {currentBus.current_latitude.toFixed(4)}, {currentBus.current_longitude.toFixed(4)}
+                                </span>
+                              </div>
+                              {currentBus.last_location_update && (
+                                <p className="text-xs text-blue-500">
+                                  Updated: {new Date(currentBus.last_location_update).toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                            <span className="text-sm font-medium text-gray-600 flex items-center">
+                              <CalendarIcon className="h-4 w-4 mr-1.5" />
+                              Created At
+                            </span>
+                            <span className="font-semibold text-gray-900 text-sm">
+                              {new Date(currentBus.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Professional Delete Confirmation Modal */}
       {deleteConfirm && (
