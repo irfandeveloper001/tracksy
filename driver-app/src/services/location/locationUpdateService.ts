@@ -1,5 +1,4 @@
 import api from '../api/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LocationData } from './locationService';
 import { initializeSocket, getSocket, disconnectSocket } from '../socketService';
 import offlineService from '../offlineService';
@@ -179,7 +178,7 @@ class LocationUpdateService {
         cached.shift(); // Remove oldest
       }
 
-      await AsyncStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(cached));
+      localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(cached));
     } catch (error) {
       console.error('Error caching location:', error);
     }
@@ -188,7 +187,7 @@ class LocationUpdateService {
   // Get cached locations
   async getCachedLocations(): Promise<CachedLocation[]> {
     try {
-      const cached = await AsyncStorage.getItem(LOCATION_CACHE_KEY);
+      const cached = localStorage.getItem(LOCATION_CACHE_KEY);
       return cached ? JSON.parse(cached) : [];
     } catch (error) {
       console.error('Error getting cached locations:', error);
@@ -216,7 +215,7 @@ class LocationUpdateService {
           ...loc,
           synced: true,
         }));
-        await AsyncStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(updated));
+        localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(updated));
       }
     } catch (error) {
       console.error('Error syncing cached locations:', error);
@@ -251,7 +250,7 @@ class LocationUpdateService {
   // Clear location cache
   async clearCache(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(LOCATION_CACHE_KEY);
+      localStorage.removeItem(LOCATION_CACHE_KEY);
       console.log('✅ Location cache cleared');
     } catch (error) {
       console.error('Error clearing cache:', error);

@@ -4,6 +4,7 @@ import {
   MapIcon,
   BellIcon,
   DocumentArrowDownIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 
 export default function QuickActions() {
@@ -53,8 +54,15 @@ export default function QuickActions() {
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow duration-300">
-      <h3 className="text-xl font-bold text-gray-900 mb-6">Quick Actions</h3>
+    <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 hover:shadow-2xl transition-all duration-500">
+      <div className="flex items-center space-x-3 mb-8">
+        <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+          <SparklesIcon className="h-5 w-5 text-white" />
+        </div>
+        <h3 className="text-2xl font-extrabold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+          Quick Actions
+        </h3>
+      </div>
       <div className="grid grid-cols-1 gap-4">
         {actions.map((action, index) => {
           const Icon = action.icon;
@@ -80,10 +88,10 @@ export default function QuickActions() {
               }}
               className={`
                 group relative overflow-hidden cursor-pointer
-                flex items-center space-x-4 p-4 rounded-xl border-2 border-transparent
-                ${action.bg} hover:border-gray-300
-                transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${action.shadow}
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                flex items-center space-x-4 p-5 rounded-2xl border-2 border-transparent
+                ${action.bg} hover:border-gray-300 backdrop-blur-sm
+                transition-all duration-500 hover:scale-[1.05] hover:shadow-2xl ${action.shadow}
+                focus:outline-none focus:ring-4 focus:ring-blue-500/50 focus:ring-offset-2
               `}
               style={{ animationDelay: `${index * 50}ms` }}
             >

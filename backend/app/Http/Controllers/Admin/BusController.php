@@ -7,6 +7,8 @@ use App\Models\Bus;
 use App\Models\Location;
 use App\Models\Trip;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BusController extends Controller
 {
@@ -44,17 +46,89 @@ class BusController extends Controller
             'status' => 'nullable|in:active,inactive,maintenance,emergency',
         ]);
 
-        $bus = Bus::create($request->only([
-            'bus_number',
-            'license_plate',
-            'bus_type',
-            'capacity',
-            'current_route_id',
-            'current_driver_id',
-            'status',
-        ]));
+        // Use database transaction to ensure atomicity
+        DB::beginTransaction();
+        
+        try {
+            // Validate route exists if provided
+            if ($request->has('current_route_id') && $request->current_route_id) {
+                $route = \App\Models\Route::find($request->current_route_id);
+                if (!$route) {
+                    DB::rollBack();
+                    return $this->errorResponse('Selected route does not exist', null, 422);
+                }
+            }
 
-        return $this->successResponse($bus, 'Bus created successfully', 201);
+            // Validate driver exists and is a driver if provided
+            if ($request->has('current_driver_id') && $request->current_driver_id) {
+                $driver = \App\Models\User::find($request->current_driver_id);
+                if (!$driver) {
+                    DB::rollBack();
+                    return $this->errorResponse('Selected driver does not exist', null, 422);
+                }
+                
+                // Ensure the user is actually a driver
+                if ($driver->role !== 'driver') {
+                    DB::rollBack();
+                    return $this->errorResponse('Selected user is not a driver', null, 422);
+                }
+
+                // Check if driver is already assigned to another bus
+                $existingBus = Bus::where('current_driver_id', $request->current_driver_id)
+                    ->where('status', 'active')
+                    ->first();
+                
+                if ($existingBus && $existingBus->id != ($request->bus_id ?? null)) {
+                    DB::rollBack();
+                    return $this->errorResponse('Driver is already assigned to another active bus', null, 422);
+                }
+            }
+
+            // Create bus with all data
+            $bus = Bus::create($request->only([
+                'bus_number',
+                'license_plate',
+                'bus_type',
+                'capacity',
+                'current_route_id',
+                'current_driver_id',
+                'status',
+            ]));
+
+            // Update driver's assigned_bus_id if driver is assigned
+            if ($request->current_driver_id) {
+                $driver = \App\Models\User::find($request->current_driver_id);
+                if ($driver) {
+                    $driver->update(['assigned_bus_id' => $bus->id]);
+                }
+            }
+
+            // Auto-assign students if route is assigned
+            if ($request->current_route_id) {
+                try {
+                    $assignmentService = new \App\Services\Bus\StudentAssignmentService();
+                    $assignmentResult = $assignmentService->assignStudentsToBus($bus->id, $request->current_route_id);
+                    
+                    if ($assignmentResult['assigned_count'] > 0) {
+                        Log::info("Auto-assigned {$assignmentResult['assigned_count']} students to bus {$bus->id}");
+                    }
+                } catch (\Exception $e) {
+                    // Log error but don't fail bus creation
+                    Log::warning('Failed to auto-assign students to bus: ' . $e->getMessage());
+                }
+            }
+
+            // Load relationships for response
+            $bus->load(['currentRoute', 'currentDriver']);
+
+            DB::commit();
+
+            return $this->successResponse($bus, 'Bus created successfully with assigned route and driver', 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Bus creation failed: ' . $e->getMessage());
+            return $this->errorResponse('Failed to create bus: ' . $e->getMessage(), null, 500);
+        }
     }
 
     public function show($id)
@@ -81,6 +155,11 @@ class BusController extends Controller
             'status' => 'sometimes|in:active,inactive,maintenance,emergency',
         ]);
 
+        // Check if route is being assigned or changed
+        $oldRouteId = $bus->current_route_id;
+        $newRouteId = $request->input('current_route_id');
+        $routeChanged = $oldRouteId != $newRouteId && $newRouteId;
+
         $bus->update($request->only([
             'bus_number',
             'license_plate',
@@ -90,6 +169,21 @@ class BusController extends Controller
             'current_driver_id',
             'status',
         ]));
+
+        // Auto-assign students if route is newly assigned or changed
+        if ($routeChanged && $newRouteId) {
+            try {
+                $assignmentService = new \App\Services\Bus\StudentAssignmentService();
+                $assignmentResult = $assignmentService->assignStudentsToBus($bus->id, $newRouteId);
+                
+                if ($assignmentResult['assigned_count'] > 0) {
+                    Log::info("Auto-assigned {$assignmentResult['assigned_count']} students to bus {$bus->id} for route {$newRouteId}");
+                }
+            } catch (\Exception $e) {
+                // Log error but don't fail bus update
+                Log::warning('Failed to auto-assign students to bus: ' . $e->getMessage());
+            }
+        }
 
         return $this->successResponse($bus, 'Bus updated successfully');
     }

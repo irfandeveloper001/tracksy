@@ -102,8 +102,8 @@ api.interceptors.response.use(
       let authError: Error;
       if (errorType === 'token_expired' || errorType === 'token_invalid' || errorType === 'token_error') {
         authError = new Error('Your session has expired. Please log in again.');
-      } else if (errorType === 'missing_token') {
-        authError = new Error('Please log in to continue.');
+      } else if (errorType === 'missing_token' || errorMessage.toLowerCase().includes('token not provided')) {
+        authError = new Error('Token not provided. Please log in again.');
       } else {
         authError = new Error(errorMessage);
       }

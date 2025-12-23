@@ -16,8 +16,28 @@ const busSchema = z.object({
   bus_type: z.enum(['standard', 'premium', 'luxury']),
   capacity: z.number().min(1, 'Capacity must be at least 1').max(100),
   status: z.enum(['active', 'inactive', 'maintenance', 'emergency']),
-  route_id: z.string().optional(),
-  driver_id: z.string().optional(),
+  route_id: z.preprocess(
+    (val) => {
+      // Handle null, undefined, empty string
+      if (val === null || val === undefined || val === '' || val === 'null') {
+        return undefined;
+      }
+      // Convert number to string, keep string as is
+      return typeof val === 'number' ? String(val) : val;
+    },
+    z.string().optional()
+  ),
+  driver_id: z.preprocess(
+    (val) => {
+      // Handle null, undefined, empty string
+      if (val === null || val === undefined || val === '' || val === 'null') {
+        return undefined;
+      }
+      // Convert number to string, keep string as is
+      return typeof val === 'number' ? String(val) : val;
+    },
+    z.string().optional()
+  ),
 });
 
 type BusFormData = z.infer<typeof busSchema>;
@@ -91,7 +111,7 @@ export default function NewBusPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting: formIsSubmitting },
     watch,
     setValue,
   } = useForm<BusFormData>({
@@ -151,24 +171,53 @@ export default function NewBusPage() {
   }, [watchedDriverId, drivers]);
 
   const createMutation = useMutation({
-    mutationFn: (busData: any) => busService.createBus(busData),
+    mutationFn: async (busData: any) => {
+      console.log('🚀 Mutation function called with data:', busData);
+      const result = await busService.createBus(busData);
+      console.log('✅ Mutation function completed:', result);
+      return result;
+    },
     onSuccess: (data) => {
-      console.log('✅ Bus created successfully in Supabase:', data);
-      toast.success('✅ Bus created and saved to database! It will appear in the list shortly.', {
-        duration: 3000,
+      console.log('✅ Bus created successfully:', data);
+      
+      // Build success message with assignment details
+      let successMessage = 'Bus created and saved to database successfully!';
+      const assignments = [];
+      
+      if (data.currentRoute) {
+        assignments.push(`Route: ${data.currentRoute.name}`);
+      }
+      if (data.currentDriver) {
+        assignments.push(`Driver: ${data.currentDriver.name}`);
+      }
+      
+      if (assignments.length > 0) {
+        successMessage += `\nAssignments: ${assignments.join(', ')}`;
+      }
+      
+      toast.success(successMessage, {
+        duration: 4000,
         icon: '🚌',
+        style: {
+          background: '#10b981',
+          color: '#fff',
+          fontSize: '14px',
+          fontWeight: '600',
+          whiteSpace: 'pre-line',
+        },
       });
-      // Invalidate all bus-related queries to force refetch from Supabase
-      // This ensures the newly created bus appears immediately
+      
+      // Invalidate all bus-related queries to force refetch
       queryClient.invalidateQueries({ queryKey: ['buses'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['routes', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['drivers', 'all'] });
       setIsSubmitting(false);
-      // Small delay before navigation to show success message
+      
+      // Navigate after a short delay to show success message
       setTimeout(() => {
         navigate('/buses', { replace: true });
-      }, 1500);
+      }, 2000);
     },
     onError: (error: any) => {
       console.error('❌ Bus creation error:', error);
@@ -209,44 +258,204 @@ export default function NewBusPage() {
   });
 
   const onSubmit = async (data: BusFormData) => {
+    // Prevent double submission
+    if (isSubmitting) {
+      console.warn('⚠️ Form submission already in progress, ignoring duplicate submit');
+      return;
+    }
+
     setIsSubmitting(true);
+    console.log('🚀 Form submission started');
+    // Safely log form data (avoid circular references)
+    console.log('📋 Raw form data from react-hook-form:', {
+      bus_number: data.bus_number,
+      license_plate: data.license_plate,
+      bus_type: data.bus_type,
+      capacity: data.capacity,
+      status: data.status,
+      route_id: data.route_id,
+      driver_id: data.driver_id,
+    });
+    console.log('📋 Available routes:', routes.length);
+    console.log('📋 Available drivers:', drivers.length);
+    
     try {
       // Validate required fields
       if (!data.bus_number || !data.license_plate) {
-        toast.error('Please fill in all required fields');
+        toast.error('Please fill in all required fields (Bus Number and License Plate)', {
+          duration: 4000,
+        });
         setIsSubmitting(false);
         return;
       }
 
-      // Map form data - works for both Supabase and API
+      // Get actual values - prefer form data, fallback to watch values
+      // Handle empty strings, null, undefined, and 'null' string
+      const getValidId = (formValue: string | undefined | null, watchValue: string | undefined | null) => {
+        const value = formValue || watchValue;
+        if (!value || value === '' || value === 'null' || value === null || value === undefined) {
+          return undefined;
+        }
+        return String(value);
+      };
+      
+      const actualRouteId = getValidId(data.route_id, watch('route_id'));
+      const actualDriverId = getValidId(data.driver_id, watch('driver_id'));
+      
+      console.log('🔍 Route ID from form:', data.route_id);
+      console.log('🔍 Route ID from watch:', watch('route_id'));
+      console.log('🔍 Driver ID from form:', data.driver_id);
+      console.log('🔍 Driver ID from watch:', watch('driver_id'));
+      console.log('🔍 Final route ID to use:', actualRouteId);
+      console.log('🔍 Final driver ID to use:', actualDriverId);
+
+      // Validate that if route/driver are selected, they are valid
+      let validationErrors: string[] = [];
+      
+      // Validate route if selected - use string comparison for ID matching
+      if (actualRouteId) {
+        // Convert both to string for comparison to handle number/string mismatches
+        const routeIdStr = String(actualRouteId);
+        const selectedRoute = routes.find(r => String(r.id) === routeIdStr);
+        console.log('🔍 Looking for route with ID:', actualRouteId, '(type:', typeof actualRouteId, ')');
+        console.log('🔍 Available route IDs:', routes.map(r => ({ id: r.id, idStr: String(r.id), type: typeof r.id, name: r.name })));
+        console.log('🔍 Found route:', selectedRoute);
+        if (!selectedRoute) {
+          console.error('❌ Route not found in routes array');
+          validationErrors.push('Selected route is invalid or no longer available');
+        } else {
+          console.log('✅ Route validation passed:', selectedRoute.name);
+        }
+      }
+
+      // Validate driver if selected - use string comparison for ID matching
+      if (actualDriverId) {
+        // Convert both to string for comparison to handle number/string mismatches
+        const driverIdStr = String(actualDriverId);
+        const selectedDriver = drivers.find(d => String(d.id) === driverIdStr);
+        console.log('🔍 Looking for driver with ID:', actualDriverId, '(type:', typeof actualDriverId, ')');
+        console.log('🔍 Available driver IDs:', drivers.map(d => ({ id: d.id, idStr: String(d.id), type: typeof d.id, name: d.name })));
+        console.log('🔍 Found driver:', selectedDriver);
+        if (!selectedDriver) {
+          console.error('❌ Driver not found in drivers array');
+          validationErrors.push('Selected driver is invalid or no longer available');
+        } else {
+          // getDrivers() already filters for drivers only, so no role check needed
+          // But log if there's a role field for debugging
+          if ('role' in selectedDriver) {
+            console.log('🔍 Driver role:', (selectedDriver as any).role);
+          }
+          console.log('✅ Driver validation passed:', selectedDriver.name);
+        }
+      }
+
+      // Show validation errors if any
+      if (validationErrors.length > 0) {
+        console.error('❌ Validation errors:', validationErrors);
+        toast.error(validationErrors.join('. '), {
+          duration: 5000,
+          style: {
+            background: '#ef4444',
+            color: '#fff',
+            fontSize: '14px',
+            fontWeight: '600',
+          },
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Map form data for Laravel API
       const busData: any = {
         bus_number: data.bus_number.trim(),
         license_plate: data.license_plate.trim(),
-        bus_type: data.bus_type, // For API, Supabase doesn't use this
-        capacity: data.capacity,
-        status: data.status,
+        bus_type: data.bus_type,
+        capacity: Number(data.capacity),
+        status: data.status || 'active',
       };
       
-      // Add route and driver only if they're provided
-      // Supabase uses route_id and driver_id directly
-      // API uses current_route_id and current_driver_id
-      if (data.route_id && data.route_id !== '') {
-        busData.route_id = data.route_id; // For Supabase
-        busData.current_route_id = data.route_id; // For API
+      // Add route and driver only if they're provided and valid
+      // Use string comparison to handle number/string ID mismatches
+      if (actualRouteId) {
+        const routeExists = routes.some(r => String(r.id) === String(actualRouteId));
+        console.log('✅ Route exists check:', routeExists, 'for ID:', actualRouteId);
+        if (routeExists) {
+          busData.current_route_id = actualRouteId;
+        } else {
+          console.error('❌ Route validation failed');
+          toast.error('Selected route is invalid. Please select a valid route.', {
+            duration: 5000,
+          });
+          setIsSubmitting(false);
+          return;
+        }
       }
       
-      if (data.driver_id && data.driver_id !== '') {
-        busData.driver_id = data.driver_id; // For Supabase
-        busData.current_driver_id = data.driver_id; // For API
+      if (actualDriverId) {
+        // Since getDrivers() already filters for role='driver', we just check existence
+        const driverExists = drivers.some(d => String(d.id) === String(actualDriverId));
+        console.log('✅ Driver exists check:', driverExists, 'for ID:', actualDriverId);
+        if (driverExists) {
+          busData.current_driver_id = actualDriverId;
+        } else {
+          console.error('❌ Driver validation failed');
+          toast.error('Selected driver is invalid. Please select a valid driver.', {
+            duration: 5000,
+          });
+          setIsSubmitting(false);
+          return;
+        }
       }
       
-      console.log('🚌 Creating bus with data:', busData);
-      console.log('📝 Calling createMutation.mutate...');
-      createMutation.mutate(busData);
-      console.log('✅ Mutation called successfully');
-    } catch (error) {
+      console.log('🚌 Final bus data to send:', busData);
+      console.log('📝 Route assigned:', busData.current_route_id ? `Yes (${busData.current_route_id})` : 'No');
+      console.log('📝 Driver assigned:', busData.current_driver_id ? `Yes (${busData.current_driver_id})` : 'No');
+      console.log('📝 Calling createMutation.mutateAsync...');
+      
+      // Use mutateAsync to properly handle promises and errors
+      try {
+        const result = await createMutation.mutateAsync(busData);
+        console.log('✅ Bus created successfully:', result);
+        console.log('✅ Created bus ID:', result.id);
+        
+        // Show success message with assignment details
+        const assignmentDetails = [];
+        if (busData.current_route_id) {
+          const routeName = routes.find(r => r.id === busData.current_route_id)?.name || 'route';
+          assignmentDetails.push(`Route: ${routeName}`);
+        }
+        if (busData.current_driver_id) {
+          const driverName = drivers.find(d => d.id === busData.current_driver_id)?.name || 'driver';
+          assignmentDetails.push(`Driver: ${driverName}`);
+        }
+        
+        if (assignmentDetails.length > 0) {
+          console.log('✅ Assignments confirmed:', assignmentDetails.join(', '));
+        }
+      } catch (mutationError: any) {
+        console.error('❌ Mutation error caught:', mutationError);
+        console.error('❌ Mutation error details:', {
+          message: mutationError?.message,
+          response: mutationError?.response?.data,
+          status: mutationError?.response?.status,
+        });
+        // Error is already handled in mutation onError, but ensure submitting state is reset
+        setIsSubmitting(false);
+        throw mutationError; // Re-throw to let mutation error handler deal with it
+      }
+    } catch (error: any) {
       console.error('❌ Error in onSubmit:', error);
-      toast.error('Failed to create bus. Please try again.');
+      console.error('❌ Error details:', {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status,
+      });
+      // Fallback error handling
+      if (!error.response) {
+        toast.error('Failed to create bus. Please check your connection and try again.', {
+          duration: 5000,
+        });
+      }
       setIsSubmitting(false);
     }
   };
@@ -280,14 +489,6 @@ export default function NewBusPage() {
               </div>
             </div>
           </div>
-          <div className="hidden md:block">
-            <div className="bg-white/20 backdrop-blur-md rounded-2xl px-6 py-3 shadow-lg border border-white/10">
-              <span className="text-base font-semibold flex items-center space-x-2">
-                <span className="text-2xl">🚌</span>
-                <span>Fleet Management</span>
-              </span>
-            </div>
-          </div>
         </div>
         {/* Enhanced decorative background elements */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-48 -mt-48 blur-3xl animate-pulse"></div>
@@ -305,7 +506,31 @@ export default function NewBusPage() {
       )}
 
       {/* Enhanced Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all hover:shadow-3xl">
+      <form 
+        onSubmit={handleSubmit(
+          async (data) => {
+            console.log('📝 Form validation passed, calling onSubmit');
+            console.log('📝 Form data received:', data);
+            await onSubmit(data);
+          },
+          (errors) => {
+            // Safely log errors without circular references
+            const safeErrors = Object.entries(errors).map(([field, error]: [string, any]) => ({
+              field,
+              message: error?.message || 'Invalid',
+              type: error?.type || 'unknown'
+            }));
+            console.error('❌ Form validation errors:', safeErrors);
+            const errorMessages = safeErrors
+              .map(err => `${err.field}: ${err.message}`)
+              .join(', ');
+            toast.error(`Form validation failed: ${errorMessages}`, {
+              duration: 5000,
+            });
+          }
+        )}
+        className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all hover:shadow-3xl"
+      >
         {/* Form Header with gradient */}
         <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 px-8 py-6">
           <div className="flex items-center space-x-3">
@@ -393,7 +618,14 @@ export default function NewBusPage() {
             </label>
             <select
               {...register('bus_type')}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400"
+              className="w-full px-4 py-3.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400 font-medium bg-white cursor-pointer appearance-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
+                backgroundPosition: 'right 0.75rem center',
+                backgroundRepeat: 'no-repeat',
+                backgroundSize: '1.5em 1.5em',
+                paddingRight: '2.5rem',
+              }}
             >
               <option value="standard">🚌 Standard Bus</option>
               <option value="premium">⭐ Premium Bus</option>
@@ -411,7 +643,7 @@ export default function NewBusPage() {
               type="number"
               min="1"
               max="100"
-              className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+              className={`w-full px-4 py-3.5 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium ${
                 errors.capacity ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
               }`}
               placeholder="e.g., 40"
@@ -432,7 +664,14 @@ export default function NewBusPage() {
           </label>
           <select
             {...register('status')}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400"
+            className="w-full px-4 py-3.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400 font-medium bg-white cursor-pointer appearance-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
+              backgroundPosition: 'right 0.75rem center',
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: '1.5em 1.5em',
+              paddingRight: '2.5rem',
+            }}
           >
             <option value="inactive">⏸️ Inactive</option>
             <option value="active">✅ Active</option>
@@ -477,7 +716,7 @@ export default function NewBusPage() {
                     }}
                     onFocus={() => setShowRouteDropdown(true)}
                     placeholder="Search routes..."
-                    className="w-full pl-10 pr-10 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className="w-full pl-10 pr-10 py-3.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400 font-medium"
                   />
                   <ChevronDownIcon 
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 cursor-pointer"
@@ -485,40 +724,86 @@ export default function NewBusPage() {
                   />
                 </div>
                 {showRouteDropdown && filteredRoutes.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+                  <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-2xl shadow-2xl max-h-72 overflow-auto backdrop-blur-lg">
                     <div
-                      className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer"
+                      className="px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 cursor-pointer transition-all duration-200 border-b border-gray-100"
                       onClick={() => {
                         setValue('route_id', '');
                         setRouteSearch('');
                         setShowRouteDropdown(false);
                       }}
                     >
-                      🚫 No Route Assigned
+                      <span className="flex items-center">
+                        <svg className="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Clear Selection
+                      </span>
                     </div>
                     {filteredRoutes.map((route) => (
                       <div
                         key={route.id}
-                        className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        className="px-5 py-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 cursor-pointer border-b border-gray-50 last:border-b-0 transition-all duration-200 group"
                         onClick={() => {
-                          setValue('route_id', route.id);
+                          setValue('route_id', route.id, { shouldValidate: true, shouldDirty: true });
                           setRouteSearch(route.name || '');
                           setShowRouteDropdown(false);
+                          console.log('✅ Route selected:', route.id, route.name);
                         }}
                       >
-                        <div className="font-medium text-gray-900">🗺️ {route.name}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {route.start_location} → {route.end_location}
-                          {route.status === 'active' && <span className="ml-2 text-green-600">✓ Active</span>}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">{route.name}</div>
+                              <div className="text-xs text-gray-500 mt-1 flex items-center space-x-2">
+                                <span>{route.start_location} → {route.end_location}</span>
+                                {route.status === 'active' && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Active
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-                <input type="hidden" {...register('route_id')} />
-                {watch('route_id') && (
-                  <div className="mt-2 text-sm text-blue-600">
-                    Selected: {routes.find(r => r.id === watch('route_id'))?.name}
+                <input 
+                  type="hidden" 
+                  {...register('route_id')} 
+                  value={watch('route_id') || ''}
+                />
+                {watch('route_id') && routes.find(r => r.id === watch('route_id')) && (
+                  <div className="mt-3 flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Selected Route</span>
+                      <p className="text-sm font-bold text-gray-900">{routes.find(r => r.id === watch('route_id'))?.name}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setValue('route_id', '');
+                        setRouteSearch('');
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                 )}
               </div>
@@ -558,7 +843,7 @@ export default function NewBusPage() {
                     }}
                     onFocus={() => setShowDriverDropdown(true)}
                     placeholder="Search drivers..."
-                    className="w-full pl-10 pr-10 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className="w-full pl-10 pr-10 py-3.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all hover:border-gray-400 font-medium"
                   />
                   <ChevronDownIcon 
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 cursor-pointer"
@@ -566,41 +851,106 @@ export default function NewBusPage() {
                   />
                 </div>
                 {showDriverDropdown && filteredDrivers.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-lg max-h-60 overflow-auto">
+                  <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-2xl shadow-2xl max-h-72 overflow-auto backdrop-blur-lg">
                     <div
-                      className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer"
+                      className="px-5 py-3 text-sm font-medium text-gray-600 hover:bg-gradient-to-r hover:from-gray-50 hover:to-blue-50 cursor-pointer transition-all duration-200 border-b border-gray-100"
                       onClick={() => {
                         setValue('driver_id', '');
                         setDriverSearch('');
                         setShowDriverDropdown(false);
                       }}
                     >
-                      🚫 No Driver Assigned
+                      <span className="flex items-center">
+                        <svg className="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Clear Selection
+                      </span>
                     </div>
                     {filteredDrivers.map((driver) => (
                       <div
                         key={driver.id}
-                        className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        className="px-5 py-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 cursor-pointer border-b border-gray-50 last:border-b-0 transition-all duration-200 group"
                         onClick={() => {
-                          setValue('driver_id', driver.id);
+                          setValue('driver_id', driver.id, { shouldValidate: true, shouldDirty: true });
                           setDriverSearch(driver.name || '');
                           setShowDriverDropdown(false);
+                          console.log('✅ Driver selected:', driver.id, driver.name);
                         }}
                       >
-                        <div className="font-medium text-gray-900">👤 {driver.name || 'Unknown Driver'}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {driver.license_number && `License: ${driver.license_number}`}
-                          {driver.email && ` • ${driver.email}`}
-                          {driver.status === 'active' && <span className="ml-2 text-green-600">✓ Active</span>}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-900 group-hover:text-indigo-700 transition-colors">{driver.name || 'Unknown Driver'}</div>
+                              <div className="text-xs text-gray-500 mt-1 flex items-center space-x-2 flex-wrap">
+                                {driver.license_number && (
+                                  <span className="inline-flex items-center">
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    {driver.license_number}
+                                  </span>
+                                )}
+                                {driver.email && (
+                                  <span className="inline-flex items-center">
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    {driver.email}
+                                  </span>
+                                )}
+                                {driver.status === 'active' && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                    Active
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-                <input type="hidden" {...register('driver_id')} />
-                {watch('driver_id') && (
-                  <div className="mt-2 text-sm text-blue-600">
-                    Selected: {drivers.find(d => d.id === watch('driver_id'))?.name}
+                <input 
+                  type="hidden" 
+                  {...register('driver_id')} 
+                  value={watch('driver_id') || ''}
+                />
+                {watch('driver_id') && drivers.find(d => d.id === watch('driver_id')) && (
+                  <div className="mt-3 flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl">
+                    <svg className="w-5 h-5 text-indigo-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">Selected Driver</span>
+                      <p className="text-sm font-bold text-gray-900">{drivers.find(d => d.id === watch('driver_id'))?.name || 'Unknown Driver'}</p>
+                      {drivers.find(d => d.id === watch('driver_id'))?.license_number && (
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          License: {drivers.find(d => d.id === watch('driver_id'))?.license_number}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setValue('driver_id', '');
+                        setDriverSearch('');
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                 )}
               </div>
@@ -608,23 +958,6 @@ export default function NewBusPage() {
           </div>
         </div>
 
-        {/* Enhanced Info Box */}
-        <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-2xl p-6 shadow-lg relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-200/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-          <div className="relative z-10 flex items-start space-x-4">
-            <div className="flex-shrink-0 bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
-              <svg className="h-6 w-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-bold text-gray-900 mb-2">💡 Important Information</h3>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                <strong className="text-blue-700">Note:</strong> The bus will be saved to the database and will be immediately available in the driver and student apps. Make sure all information is correct before submitting.
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Enhanced Actions */}
         <div className="flex justify-end space-x-4 pt-6 border-t-2 border-gray-100 bg-gradient-to-r from-gray-50 to-transparent -mx-8 px-8 pb-8">
@@ -651,7 +984,7 @@ export default function NewBusPage() {
               </span>
             ) : (
               <span className="flex items-center relative z-10">
-                <svg className="w-6 h-6 mr-3 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Add Bus to Database

@@ -5,7 +5,7 @@ import {
   ExclamationTriangleIcon,
   ClockIcon,
 } from '@heroicons/react/24/outline';
-import { ReportData } from '../../lib/api/analyticsService';
+import type { ReportData } from '../../lib/api/analyticsService';
 
 interface ReportSummaryProps {
   report: ReportData;

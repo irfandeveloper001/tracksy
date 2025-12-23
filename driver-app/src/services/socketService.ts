@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { STORAGE_KEYS, WS_BASE_URL } from '../constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import secureStorage from '../utils/secureStorage';
 
 let socket: Socket | null = null;
 
@@ -9,7 +9,7 @@ export const initializeSocket = async (): Promise<Socket> => {
     return socket;
   }
 
-  const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+  const token = await secureStorage.getToken();
 
   socket = io(WS_BASE_URL, {
     auth: {

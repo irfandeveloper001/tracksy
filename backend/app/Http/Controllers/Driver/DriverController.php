@@ -8,7 +8,9 @@ use App\Models\Route;
 use App\Models\Trip;
 use App\Models\Booking;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Http\Resources\RouteResource;
 
 class DriverController extends Controller
 {
@@ -25,7 +27,7 @@ class DriverController extends Controller
             ->orWhere('driver_id', $credentials['email'])
             ->first();
 
-        if (!$user || !\Hash::check($credentials['password'], $user->password)) {
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return $this->errorResponse('Invalid credentials', null, 401);
         }
 
@@ -38,6 +40,16 @@ class DriverController extends Controller
             return $this->errorResponse('Could not create token', null, 500);
         }
 
+        // Load relationships
+        $user->load(['assignedBus', 'assignedRoute']);
+        
+        // Get route - prefer direct assignment, otherwise from bus
+        $route = $user->assignedRoute;
+        if (!$route && $user->assignedBus && $user->assignedBus->current_route_id) {
+            // Load route from bus if driver doesn't have direct assignment
+            $route = Route::find($user->assignedBus->current_route_id);
+        }
+        
         return $this->successResponse([
             'token' => $token,
             'refreshToken' => $token,
@@ -47,8 +59,11 @@ class DriverController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'driver_id' => $user->driver_id,
+                'license_number' => $user->license_number,
+                'phone' => $user->phone,
                 'assigned_bus' => $user->assignedBus,
-                'assigned_route' => $user->assignedRoute,
+                'assigned_route' => $route, // Use computed route (direct or from bus)
+                'status' => $user->status,
             ],
         ], 'Login successful');
     }
@@ -56,18 +71,44 @@ class DriverController extends Controller
     public function me()
     {
         // Get driver profile
-        $driver = auth()->user();
+        $driver = auth()->user()->fresh(); // Get fresh data from database
+        
+        // Load relationships
+        $driver->load(['assignedBus', 'assignedRoute']);
+        
+        // Get route - prefer direct assignment, otherwise from bus
+        $route = $driver->assignedRoute;
+        if (!$route && $driver->assignedBus && $driver->assignedBus->current_route_id) {
+            // Load route from bus if driver doesn't have direct assignment
+            $route = Route::find($driver->assignedBus->current_route_id);
+        }
         
         return $this->successResponse([
             'id' => $driver->id,
             'name' => $driver->name,
             'email' => $driver->email,
+            'role' => $driver->role,
             'driver_id' => $driver->driver_id,
             'license_number' => $driver->license_number,
+            'phone' => $driver->phone,
             'assigned_bus' => $driver->assignedBus,
-            'assigned_route' => $driver->assignedRoute,
+            'assigned_route' => $route, // Use computed route (direct or from bus)
             'status' => $driver->status,
         ]);
+    }
+
+    public function logout()
+    {
+        try {
+            // Invalidate the current token
+            JWTAuth::invalidate(JWTAuth::getToken());
+            
+            return $this->successResponse(null, 'Logged out successfully');
+        } catch (\Exception $e) {
+            // Even if token invalidation fails, return success
+            // (token might already be invalid or expired)
+            return $this->successResponse(null, 'Logged out successfully');
+        }
     }
 
     public function refreshToken()
@@ -107,12 +148,12 @@ class DriverController extends Controller
 
         $driver = auth()->user();
 
-        if (!\Hash::check($request->current_password, $driver->password)) {
+        if (!Hash::check($request->current_password, $driver->password)) {
             return $this->errorResponse('Current password is incorrect', null, 400);
         }
 
         $driver->update([
-            'password' => \Hash::make($request->new_password),
+            'password' => Hash::make($request->new_password),
         ]);
 
         return $this->successResponse(null, 'Password changed successfully');
@@ -120,30 +161,66 @@ class DriverController extends Controller
 
     public function getRoute()
     {
-        // Get assigned route
-        $driver = auth()->user();
+        // Get assigned route - try from assigned_route_id first, then from assigned bus
+        $driver = auth()->user()->fresh(); // Get fresh data from database
         
-        if (!$driver->assigned_route_id) {
-            return $this->errorResponse('No route assigned', null, 404);
+        // Check if driver has direct route assignment
+        if ($driver->assigned_route_id) {
+            $route = Route::with('stops')->findOrFail($driver->assigned_route_id);
+            return $this->successResponse(new RouteResource($route));
         }
-
-        $route = Route::with('stops')->findOrFail($driver->assigned_route_id);
         
-        return $this->successResponse($route);
+        // If no direct assignment, check if driver's bus has a route
+        if ($driver->assigned_bus_id) {
+            $bus = \App\Models\Bus::where('id', $driver->assigned_bus_id)->first();
+            if ($bus && $bus->current_route_id) {
+                $route = Route::with('stops')->findOrFail($bus->current_route_id);
+                return $this->successResponse(new RouteResource($route));
+            }
+        }
+        
+        return $this->errorResponse('No route assigned', null, 404);
     }
 
     public function getRouteStops()
     {
-        // Get route stops
+        // Get route stops - try from assigned_route_id first, then from assigned bus
         $driver = auth()->user();
         
-        if (!$driver->assigned_route_id) {
+        $routeId = null;
+        
+        // Check if driver has direct route assignment
+        if ($driver->assigned_route_id) {
+            $routeId = $driver->assigned_route_id;
+        } elseif ($driver->assigned_bus_id) {
+            // If no direct assignment, check if driver's bus has a route
+            $bus = \App\Models\Bus::find($driver->assigned_bus_id);
+            if ($bus && $bus->current_route_id) {
+                $routeId = $bus->current_route_id;
+            }
+        }
+        
+        if (!$routeId) {
             return $this->errorResponse('No route assigned', null, 404);
         }
 
-        $stops = Route::findOrFail($driver->assigned_route_id)->stops;
+        $stops = Route::findOrFail($routeId)->stops;
         
         return $this->successResponse($stops);
+    }
+
+    public function getBus()
+    {
+        // Get assigned bus - try from assigned_bus_id first
+        $driver = auth()->user();
+        
+        if (!$driver->assigned_bus_id) {
+            return $this->errorResponse('No bus assigned', null, 404);
+        }
+
+        $bus = \App\Models\Bus::with(['currentRoute'])->findOrFail($driver->assigned_bus_id);
+        
+        return $this->successResponse($bus);
     }
 
     public function markStopArrival($id)
@@ -253,8 +330,37 @@ class DriverController extends Controller
         return $this->successResponse($drivers);
     }
 
+    public function signup(Request $request)
+    {
+        // Public driver signup endpoint
+        $this->validate($request, [
+            'driver_id' => 'required|string|unique:users,driver_id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'license_number' => 'nullable|string',
+            'phone' => 'nullable|string',
+        ]);
+
+        $driver = User::create([
+            'driver_id' => $request->driver_id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'license_number' => $request->license_number ?? null,
+            'phone' => $request->phone ?? null,
+            'role' => 'driver',
+            'status' => 'active',
+        ]);
+
+        $driver->assignRole('driver');
+
+        return $this->successResponse($driver, 'Driver registered successfully', 201);
+    }
+
     public function store(Request $request)
     {
+        // Admin endpoint for creating drivers
         $this->validate($request, [
             'driver_id' => 'required|string|unique:users,driver_id',
             'name' => 'required|string|max:255',
@@ -268,7 +374,7 @@ class DriverController extends Controller
             'driver_id' => $request->driver_id,
             'name' => $request->name,
             'email' => $request->email,
-            'password' => \Hash::make($request->password),
+            'password' => Hash::make($request->password),
             'license_number' => $request->license_number,
             'phone' => $request->phone ?? null,
             'role' => 'driver',
@@ -299,7 +405,7 @@ class DriverController extends Controller
         $updateData = $request->only(['name', 'email', 'license_number', 'phone', 'status', 'assigned_bus_id', 'assigned_route_id', 'driver_id']);
         
         if ($request->has('password')) {
-            $updateData['password'] = \Hash::make($request->password);
+            $updateData['password'] = Hash::make($request->password);
         }
 
         $driver->update($updateData);

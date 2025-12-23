@@ -1,7 +1,6 @@
 import api from './api/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '../../constants';
-import secureStorage from '../../utils/secureStorage';
+import { STORAGE_KEYS } from '../constants';
+import secureStorage from '../utils/secureStorage';
 
 export interface LoginCredentials {
   email: string;
@@ -44,11 +43,11 @@ class AuthService {
       await secureStorage.setToken(token);
 
       // Store user data
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
 
       // Store remember me preference
       if (credentials.rememberMe) {
-        await AsyncStorage.setItem(STORAGE_KEYS.REMEMBER_ME, 'true');
+        localStorage.setItem(STORAGE_KEYS.REMEMBER_ME, 'true');
       }
 
       return { token, refreshToken, user };
@@ -72,8 +71,55 @@ class AuthService {
       // Clear local storage (secure and regular)
       await secureStorage.removeToken();
       await secureStorage.clearAll();
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA);
-      await AsyncStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
+      localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+      localStorage.removeItem(STORAGE_KEYS.REMEMBER_ME);
+    }
+  }
+
+  // Signup driver
+  async signup(signupData: {
+    name: string;
+    email: string;
+    password: string;
+    driver_id: string;
+    phone?: string;
+    license_number?: string;
+  }): Promise<AuthResponse> {
+    try {
+      // Use the public driver signup endpoint
+      const response = await api.post('/driver/signup', {
+        name: signupData.name,
+        email: signupData.email,
+        password: signupData.password,
+        driver_id: signupData.driver_id,
+        phone: signupData.phone || null,
+        license_number: signupData.license_number || null,
+      });
+
+      const data = response.data.data || response.data;
+      
+      // After signup, automatically login
+      const loginResponse = await this.login({
+        email: signupData.email,
+        password: signupData.password,
+      });
+
+      return loginResponse;
+    } catch (error: any) {
+      // Parse Laravel validation errors
+      if (error.response?.status === 422 && error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        const firstError = Object.values(errors)[0] as string[];
+        const errorMessage = firstError?.[0] || 'Validation failed';
+        throw new Error(errorMessage);
+      }
+      
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        'Signup failed. Please check your information.';
+      throw new Error(errorMessage);
     }
   }
 
@@ -85,7 +131,7 @@ class AuthService {
       const user = response.data.data || response.data;
       
       // Update stored user data
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
       
       return user;
     } catch (error) {
@@ -93,7 +139,7 @@ class AuthService {
       
       // Fallback to stored user data
       try {
-        const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
+        const storedUser = localStorage.getItem(STORAGE_KEYS.USER_DATA);
         return storedUser ? JSON.parse(storedUser) : null;
       } catch {
         return null;
@@ -129,7 +175,7 @@ class AuthService {
   // Get stored user
   async getStoredUser(): Promise<DriverUser | null> {
     try {
-      const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
+      const storedUser = localStorage.getItem(STORAGE_KEYS.USER_DATA);
       return storedUser ? JSON.parse(storedUser) : null;
     } catch {
       return null;
@@ -148,7 +194,7 @@ class AuthService {
       const user = response.data.data || response.data;
       
       // Update stored user data
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+      localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
       
       return user;
     } catch (error: any) {

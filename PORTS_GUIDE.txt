@@ -1,0 +1,50 @@
+TRACKSY - PORT ASSIGNMENTS
+===========================
+
+Student App:     19007
+Driver App:      19008
+Admin Dashboard: 19009 (optional)
+Laravel Backend: 8000
+
+STARTING APPS
+=============
+
+Start Both (Student + Driver):
+  /home/irfan/tracksy/START_BOTH_APPS.sh
+
+Start Student Only:
+  cd /home/irfan/tracksy/studentapp && npm run web
+
+Start Driver Only:
+  cd /home/irfan/tracksy/driver-app && npm run web
+
+Start Backend:
+  cd /home/irfan/tracksy/backend && php artisan serve
+
+STOPPING APPS
+=============
+
+Stop All Frontend:
+  pkill -f "react-router"
+
+Stop Backend:
+  Press Ctrl+C in the terminal running php artisan serve
+
+CHECK STATUS
+============
+
+  /home/irfan/tracksy/CHECK_ALL_APPS.sh
+
+TROUBLESHOOTING
+===============
+
+If ports are conflicting:
+  1. pkill -f "react-router"
+  2. Wait 3 seconds
+  3. Run START_BOTH_APPS.sh
+
+If wrong dashboard shows:
+  1. Check the URL carefully (19007 vs 19008)
+  2. Clear browser cache (Ctrl+Shift+R)
+  3. Close all tabs and reopen
+

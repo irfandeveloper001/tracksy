@@ -61,7 +61,10 @@ export default function ReportsPage() {
       document.body.removeChild(a);
       toast.success(`Report exported as ${format.toUpperCase()}`);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to export report');
+      console.error('Export error:', error);
+      // Show a more informative error message
+      const errorMessage = error.message || 'Failed to export report. Export functionality may not be fully implemented yet.';
+      toast.error(errorMessage, { duration: 5000 });
     }
   };
 

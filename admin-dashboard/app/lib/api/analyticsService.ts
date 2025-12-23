@@ -192,21 +192,21 @@ class AnalyticsService {
       const response = await api.get('/admin/reports/generate', { params });
       const reportData = response.data.data || response.data;
       
-      // Transform backend response to match ReportData interface
+      // Backend now returns data in the correct format, just map it directly
       return {
-        total_trips: reportData.summary?.total_trips || 0,
+        total_trips: reportData.total_trips || 0,
         student_usage: {
-          total_students: 0,
-          active_students: 0,
-          total_bookings: reportData.summary?.total_bookings || 0,
+          total_students: reportData.student_usage?.total_students || 0,
+          active_students: reportData.student_usage?.active_students || 0,
+          total_bookings: reportData.student_usage?.total_bookings || 0,
         },
         bus_performance: {
-          total_buses: 0,
-          active_buses: 0,
-          average_utilization: 0,
+          total_buses: reportData.bus_performance?.total_buses || 0,
+          active_buses: reportData.bus_performance?.active_buses || 0,
+          average_utilization: reportData.bus_performance?.average_utilization || 0,
         },
-        route_efficiency: [],
-        incidents: [],
+        route_efficiency: reportData.route_efficiency || [],
+        incidents: reportData.incidents || [],
       };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
@@ -270,6 +270,10 @@ class AnalyticsService {
       });
       return response.data;
     } catch (error: any) {
+      // Handle 501 (Not Implemented) gracefully
+      if (error.response?.status === 501) {
+        throw new Error('Export functionality is not yet implemented. Please use the generate endpoint to view report data.');
+      }
       throw new Error(error.response?.data?.message || 'Failed to export report');
     }
   }

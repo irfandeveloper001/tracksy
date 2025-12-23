@@ -21,11 +21,13 @@ export default function RouteDetailPage() {
   const queryClient = useQueryClient();
 
   // Fetch route details
-  const { data: route, isLoading, refetch } = useQuery({
+  const { data: route, isLoading, error, refetch } = useQuery({
     queryKey: ['route', id],
     queryFn: () => routeService.getRouteById(id!),
     enabled: !!id,
     refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 2, // Retry twice on failure
+    retryDelay: 1000, // Wait 1 second between retries
   });
 
   // Fetch route stops
@@ -62,16 +64,30 @@ export default function RouteDetailPage() {
     );
   }
 
-  if (!route) {
+  if (error || !route) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Route not found</p>
-        <button
-          onClick={() => navigate('/routes')}
-          className="mt-4 text-blue-600 hover:text-blue-700"
-        >
-          Back to Routes
-        </button>
+        <div className="bg-red-100 rounded-full p-6 w-24 h-24 mx-auto flex items-center justify-center mb-6">
+          <MapIcon className="h-12 w-12 text-red-400" />
+        </div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">Route Not Found</h3>
+        <p className="text-gray-500 mb-6">
+          {error instanceof Error ? error.message : 'The route you\'re looking for doesn\'t exist or may have been deleted.'}
+        </p>
+        <div className="flex justify-center space-x-4">
+          <button
+            onClick={() => refetch()}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Retry
+          </button>
+          <button
+            onClick={() => navigate('/routes')}
+            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          >
+            Back to Routes
+          </button>
+        </div>
       </div>
     );
   }

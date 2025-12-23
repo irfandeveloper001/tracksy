@@ -116,7 +116,7 @@ class RouteService {
   // Map backend route data to frontend Route interface
   private mapBackendRouteToFrontend(route: any): Route {
     return {
-      id: route.id,
+      id: route.id?.toString() || String(route.id), // Ensure ID is always a string
       name: route.name || 'Unnamed Route',
       start_location: route.start_point || route.origin || route.start_location || '',
       end_location: route.end_point || route.destination || route.end_location || '',
@@ -200,9 +200,14 @@ class RouteService {
         backendData.is_active = true;
       }
 
-      // Remove undefined/null fields
+      // Handle stops array if provided (from route creation form)
+      if ((routeData as any).stops && Array.isArray((routeData as any).stops)) {
+        backendData.stops = (routeData as any).stops;
+      }
+
+      // Remove undefined/null fields (but keep stops array even if empty)
       Object.keys(backendData).forEach(key => {
-        if (backendData[key] === undefined || backendData[key] === null) {
+        if (key !== 'stops' && (backendData[key] === undefined || backendData[key] === null)) {
           delete backendData[key];
         }
       });

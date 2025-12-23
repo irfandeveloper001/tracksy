@@ -62,40 +62,51 @@ export default function MetricCard({
   const config = colorConfig[color];
 
   return (
-    <div className="group relative bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300 hover:-translate-y-1 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-      {/* Gradient background effect */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+    <div className="group relative bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-200/50 p-6 hover:shadow-2xl hover:shadow-gray-300/50 transition-all duration-500 hover:-translate-y-2 overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+      {/* Animated gradient background */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
       
-      <div className="relative flex items-center justify-between">
+      {/* Shimmer effect on hover */}
+      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+      
+      <div className="relative flex items-center justify-between z-10">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-500 mb-2 uppercase tracking-wide">{title}</p>
-          <p className="text-4xl font-bold text-gray-900 mb-1 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
-            {typeof value === 'number' ? value.toLocaleString() : value}
-          </p>
-          {change && (
-            <div className="mt-3 flex items-center">
+          <div className="flex items-center space-x-2 mb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
+            {change && (
               <span
-                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
                   change.isPositive 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-red-100 text-red-700'
+                    ? 'bg-green-100 text-green-700 border border-green-200' 
+                    : 'bg-red-100 text-red-700 border border-red-200'
                 }`}
               >
                 {change.isPositive ? '↑' : '↓'} {Math.abs(change.value)}%
               </span>
-              <span className="text-xs text-gray-500 ml-2">vs last month</span>
-            </div>
+            )}
+          </div>
+          <p className="text-5xl font-extrabold bg-gradient-to-br from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2 transition-all duration-500 group-hover:scale-105">
+            {typeof value === 'number' ? value.toLocaleString() : value}
+          </p>
+          {change && (
+            <p className="text-xs text-gray-400 font-medium">vs last month</p>
           )}
         </div>
-        <div className={`${config.iconBg} p-4 rounded-xl text-white shadow-lg ${config.shadow} group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-          <div className="h-8 w-8">
+        <div className={`${config.iconBg} p-5 rounded-2xl text-white shadow-xl ${config.shadow} group-hover:scale-125 group-hover:rotate-12 transition-all duration-500 relative overflow-hidden`}>
+          {/* Icon glow effect */}
+          <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-500`}></div>
+          <div className="relative h-8 w-8 z-10">
             {icon}
           </div>
         </div>
       </div>
       
-      {/* Decorative corner element */}
-      <div className={`absolute top-0 right-0 w-20 h-20 ${config.bg} rounded-bl-full opacity-10`} />
+      {/* Enhanced decorative elements */}
+      <div className={`absolute top-0 right-0 w-32 h-32 ${config.bg} rounded-bl-[3rem] opacity-5 group-hover:opacity-20 transition-opacity duration-500`} />
+      <div className={`absolute bottom-0 left-0 w-24 h-24 ${config.bg} rounded-tr-[3rem] opacity-5 group-hover:opacity-15 transition-opacity duration-500`} />
+      
+      {/* Bottom border accent */}
+      <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r ${config.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
     </div>
   );
 }

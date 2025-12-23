@@ -48,7 +48,7 @@ class StudentController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'institution' => 'required|string',
+            'institution' => 'nullable|string',
         ]);
 
         $student = User::create([

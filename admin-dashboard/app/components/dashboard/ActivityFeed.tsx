@@ -61,24 +61,38 @@ export default function ActivityFeed({ activities }: ActivityFeedProps) {
 
   if (activities.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow duration-300">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Activities</h3>
-        <div className="text-center py-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-            <BellIcon className="h-8 w-8 text-gray-400" />
+      <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 hover:shadow-2xl transition-all duration-500">
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+            <BellIcon className="h-5 w-5 text-white" />
           </div>
-          <p className="text-gray-500 font-medium">No recent activities</p>
-          <p className="text-sm text-gray-400 mt-1">Activities will appear here as they occur</p>
+          <h3 className="text-2xl font-extrabold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            Recent Activities
+          </h3>
+        </div>
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl mb-6 shadow-lg">
+            <BellIcon className="h-10 w-10 text-gray-400" />
+          </div>
+          <p className="text-gray-600 font-semibold text-lg mb-2">No recent activities</p>
+          <p className="text-sm text-gray-400">Activities will appear here as they occur</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow duration-300">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-900">Recent Activities</h3>
-        <span className="text-xs text-gray-500 font-medium bg-gray-100 px-3 py-1 rounded-full">
+    <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 hover:shadow-2xl transition-all duration-500">
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+            <BellIcon className="h-5 w-5 text-white" />
+          </div>
+          <h3 className="text-2xl font-extrabold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            Recent Activities
+          </h3>
+        </div>
+        <span className="text-sm text-gray-600 font-bold bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-2 rounded-xl border border-purple-200">
           {activities.length} {activities.length === 1 ? 'activity' : 'activities'}
         </span>
       </div>
@@ -89,12 +103,12 @@ export default function ActivityFeed({ activities }: ActivityFeedProps) {
           return (
             <div
               key={activity.id}
-              className="group flex items-start space-x-4 p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50/50 transition-all duration-300 hover:scale-[1.01]"
+              className="group flex items-start space-x-4 p-5 rounded-2xl border-2 border-gray-100 hover:border-gray-200 hover:bg-gradient-to-r hover:from-gray-50/50 hover:to-transparent transition-all duration-500 hover:scale-[1.02] hover:shadow-lg backdrop-blur-sm"
               style={{ animationDelay: `${index * 50}ms` }}
             >
-              <div className={`relative ${config.bg} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300`}>
-                <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-0 group-hover:opacity-20 rounded-xl transition-opacity duration-300`}></div>
-                <Icon className={`relative h-5 w-5 ${config.text}`} />
+              <div className={`relative ${config.bg} p-4 rounded-2xl group-hover:scale-125 group-hover:rotate-6 transition-all duration-500 shadow-md`}>
+                <div className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-0 group-hover:opacity-30 rounded-2xl transition-opacity duration-500 blur-sm`}></div>
+                <Icon className={`relative h-6 w-6 ${config.text} z-10`} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 group-hover:text-gray-950 transition-colors">

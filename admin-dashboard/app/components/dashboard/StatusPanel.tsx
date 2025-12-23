@@ -78,15 +78,25 @@ export default function StatusPanel({
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-shadow duration-300">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-8 hover:shadow-2xl transition-all duration-500">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h3 className="text-xl font-bold text-gray-900">Real-time Status</h3>
-          <p className="text-xs text-gray-500 mt-1">Click any item to view details</p>
+          <div className="flex items-center space-x-3 mb-2">
+            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
+              <TruckIcon className="h-5 w-5 text-white" />
+            </div>
+            <h3 className="text-2xl font-extrabold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              Real-time Status
+            </h3>
+          </div>
+          <p className="text-sm text-gray-500 font-medium ml-11">Click any item to view detailed information</p>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          <span className="text-xs text-gray-500 font-medium">Live</span>
+        <div className="flex items-center space-x-3 bg-green-50 px-4 py-2 rounded-xl border border-green-200">
+          <div className="relative">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-ping absolute"></div>
+            <div className="w-3 h-3 bg-green-500 rounded-full relative"></div>
+          </div>
+          <span className="text-sm text-green-700 font-bold">Live</span>
         </div>
       </div>
       <div className="space-y-4">
@@ -167,7 +177,7 @@ export default function StatusPanel({
                   window.location.href = navUrl;
                 }
               }}
-              className={`group relative overflow-hidden w-full flex items-center justify-between p-5 ${item.bg} rounded-xl border-2 border-transparent ${item.borderHover} cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 animate-in fade-in slide-in-from-left-4`}
+              className={`group relative overflow-hidden w-full flex items-center justify-between p-6 ${item.bg} rounded-2xl border-2 border-transparent ${item.borderHover} cursor-pointer transition-all duration-500 hover:scale-[1.03] hover:shadow-2xl active:scale-[0.97] focus:outline-none focus:ring-4 focus:ring-blue-500/50 focus:ring-offset-2 animate-in fade-in slide-in-from-left-4 backdrop-blur-sm`}
               style={{ 
                 animationDelay: `${index * 100}ms`
               }}

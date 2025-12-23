@@ -375,9 +375,10 @@ class BusService {
   }
 
   // Create new bus - Use Laravel backend API only
-  async createBus(busData: Partial<Bus>): Promise<Bus> {
+  async createBus(busData: any): Promise<Bus> {
     try {
       // Map frontend Bus interface to backend format
+      // Accept both route_id/driver_id and current_route_id/current_driver_id for flexibility
       const backendData: any = {
         bus_number: busData.bus_number?.trim(),
         license_plate: busData.license_plate?.trim(),
@@ -386,18 +387,25 @@ class BusService {
         status: busData.status || 'active',
       };
 
-      // Add route and driver only if provided
-      if (busData.route_id && busData.route_id !== '') {
+      // Handle route assignment - accept both formats
+      if (busData.current_route_id && busData.current_route_id !== '') {
+        backendData.current_route_id = busData.current_route_id;
+      } else if (busData.route_id && busData.route_id !== '') {
         backendData.current_route_id = busData.route_id;
       }
       
-      if (busData.driver_id && busData.driver_id !== '') {
+      // Handle driver assignment - accept both formats
+      if (busData.current_driver_id && busData.current_driver_id !== '') {
+        backendData.current_driver_id = busData.current_driver_id;
+      } else if (busData.driver_id && busData.driver_id !== '') {
         backendData.current_driver_id = busData.driver_id;
       }
 
       console.log('🚌 Creating bus with data:', backendData);
       console.log('🔗 API URL:', api.defaults.baseURL);
-      console.log('🔑 Auth token present:', !!localStorage.getItem('laravel_token'));
+      console.log('🔑 Auth token present:', !!localStorage.getItem('laravel_token') || !!localStorage.getItem('tracksy_admin:auth_token'));
+      console.log('📍 Route ID:', backendData.current_route_id || 'None');
+      console.log('👤 Driver ID:', backendData.current_driver_id || 'None');
 
       const response = await api.post('/admin/buses', backendData);
       const backendBus = response.data.data || response.data;
@@ -410,6 +418,8 @@ class BusService {
       return this.mapBackendBusToFrontend(backendBus);
     } catch (error: any) {
       console.error('❌ Failed to create bus:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
       
       // Extract detailed error message
       let errorMessage = 'Failed to create bus';
@@ -431,6 +441,11 @@ class BusService {
         }
       } else if (error.message) {
         errorMessage = error.message;
+      }
+      
+      // Add network error details
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        errorMessage = 'Network error: Unable to connect to server. Please check your connection and ensure the backend is running.';
       }
       
       throw new Error(errorMessage);

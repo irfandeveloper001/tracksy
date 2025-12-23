@@ -6,7 +6,7 @@ import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store/store';
 import { getCurrentUser } from '../store/slices/authSlice';
-import supabaseAuthService from '../services/supabaseAuthService';
+import authService from '../services/authService';
 
 // Screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -221,14 +221,11 @@ export default function AppNavigator() {
 
       try {
         console.log('🔍 Checking auth in AppNavigator...');
-        const session = await Promise.race([
-          supabaseAuthService.getCurrentSession(),
-          new Promise((resolve) => setTimeout(() => resolve(null), 1000)), // 1 second timeout
-        ]);
-        const authenticated = !!session;
+        const token = await authService.getToken();
+        const authenticated = !!token;
         console.log('🔐 Auth status:', authenticated ? 'Authenticated' : 'Not authenticated');
         
-        // Don't wait for getCurrentUser - dispatch it but don't await
+        // If token exists, fetch user
         if (authenticated) {
           // Dispatch without awaiting - let it run in background
           dispatch(getCurrentUser()).catch((err) => {

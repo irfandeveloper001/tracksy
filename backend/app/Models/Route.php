@@ -26,6 +26,18 @@ class Route extends Model
         'is_active' => 'boolean',
     ];
 
+    // Override toArray to include compatibility fields
+    public function toArray()
+    {
+        $array = parent::toArray();
+        
+        // Add origin and destination for frontend compatibility
+        $array['origin'] = $this->start_point;
+        $array['destination'] = $this->end_point;
+        
+        return $array;
+    }
+
     // Relationships
     public function stops()
     {

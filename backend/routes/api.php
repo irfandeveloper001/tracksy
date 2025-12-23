@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BusController;
 use App\Http\Controllers\Admin\RouteController;
 use App\Http\Controllers\Admin\StopController;
+use App\Http\Controllers\Admin\LocationDataController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\AlertController;
@@ -56,9 +57,11 @@ Route::prefix('auth')->group(function () {
 // ============================================
 Route::prefix('driver')->group(function () {
     Route::post('/login', [DriverController::class, 'login']);
+    Route::post('/signup', [DriverController::class, 'signup']); // Public driver signup
     
     Route::middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
         Route::get('/me', [DriverController::class, 'me']);
+        Route::post('/logout', [DriverController::class, 'logout']);
         Route::post('/refresh-token', [DriverController::class, 'refreshToken']);
         Route::put('/profile', [DriverController::class, 'updateProfile']);
         Route::post('/change-password', [DriverController::class, 'changePassword']);
@@ -66,6 +69,9 @@ Route::prefix('driver')->group(function () {
         // Location routes
         Route::post('/location', [LocationController::class, 'update']);
         Route::post('/location/batch', [LocationController::class, 'batchUpdate']);
+        
+        // Bus route
+        Route::get('/bus', [DriverController::class, 'getBus']);
         
         // Route routes
         Route::get('/route', [DriverController::class, 'getRoute']);
@@ -86,6 +92,13 @@ Route::prefix('driver')->group(function () {
         // Emergency routes
         Route::post('/emergency', [EmergencyController::class, 'sendEmergency']);
         Route::post('/incidents', [EmergencyController::class, 'reportIncident']);
+        
+        // Notification routes
+        Route::get('/notifications', [\App\Http\Controllers\Driver\NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [\App\Http\Controllers\Driver\NotificationController::class, 'getUnreadCount']);
+        Route::get('/notifications/{id}', [\App\Http\Controllers\Driver\NotificationController::class, 'show']);
+        Route::put('/notifications/{id}/read', [\App\Http\Controllers\Driver\NotificationController::class, 'markAsRead']);
+        Route::put('/notifications/read-all', [\App\Http\Controllers\Driver\NotificationController::class, 'markAllAsRead']);
     });
 });
 
@@ -121,6 +134,16 @@ Route::prefix('bookings')->middleware(\App\Http\Middleware\ApiAuth::class)->grou
 Route::prefix('admin')->group(function () {
     Route::post('/login', [AdminController::class, 'login']);
     Route::post('/signup', [AdminController::class, 'signup']);
+    
+    // Location data (countries, states, cities, universities) - Public access (reference data)
+    Route::prefix('locations')->group(function () {
+        Route::get('/countries', [LocationDataController::class, 'getCountries']);
+        Route::get('/states/{countryId?}', [LocationDataController::class, 'getStates']);
+        Route::get('/cities/{stateId?}', [LocationDataController::class, 'getCities']);
+        Route::get('/universities', [LocationDataController::class, 'getUniversities']); // Query params: country, state, city
+        Route::get('/universities/by-location', [LocationDataController::class, 'getUniversitiesByCountryAndState']); // Alternative endpoint
+        Route::get('/search', [LocationDataController::class, 'search']);
+    });
     
     Route::middleware([\App\Http\Middleware\ApiAuth::class, \App\Http\Middleware\RoleMiddleware::class . ':admin|manager'])->group(function () {
         Route::get('/me', [AdminController::class, 'me']);
@@ -171,6 +194,7 @@ Route::prefix('admin')->group(function () {
         
         // Reports
         Route::get('/reports/generate', [ReportController::class, 'generate']);
+        Route::get('/reports/export', [ReportController::class, 'export']);
         
         // Alerts
         Route::get('/alerts', [AlertController::class, 'index']);
@@ -200,3 +224,13 @@ Route::prefix('admin')->group(function () {
     });
 });
 
+
+// Student Fee Management Routes
+Route::middleware(['auth:api'])->prefix('student')->group(function () {
+    Route::get('/fees', [App\Http\Controllers\Student\FeeController::class, 'index']);
+    Route::get('/fees/statistics', [App\Http\Controllers\Student\FeeController::class, 'getStatistics']);
+    Route::get('/fees/payment-history', [App\Http\Controllers\Student\FeeController::class, 'getPaymentHistory']);
+    Route::get('/fees/{id}', [App\Http\Controllers\Student\FeeController::class, 'show']);
+    Route::post('/fees/{id}/pay', [App\Http\Controllers\Student\FeeController::class, 'makePayment']);
+    Route::get('/fees/{id}/invoice', [App\Http\Controllers\Student\FeeController::class, 'downloadInvoice']);
+});
