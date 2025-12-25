@@ -91,6 +91,11 @@ api.interceptors.request.use(
 // Response interceptor with error handling
 api.interceptors.response.use(
   (response) => {
+    // Skip processing for blob responses (PDFs, images, etc.)
+    if (response.config.responseType === 'blob') {
+      return response;
+    }
+    
     if (response.status >= 400) {
       const error: any = new Error(response.data?.message || `Request failed with status ${response.status}`);
       error.response = response;
@@ -111,6 +116,39 @@ api.interceptors.response.use(
       const offlineError = new Error('Network error. You are currently offline.');
       toast.error(offlineError.message);
       return Promise.reject(offlineError);
+    }
+
+    // Handle fee restriction (403 with OVERDUE_FEES error code)
+    if (error.response?.status === 403) {
+      const errorData: any = error.response.data || {};
+      
+      if (errorData.error_code === 'OVERDUE_FEES') {
+        const feeError = new Error(errorData.message || 'You have overdue fees. Please pay your fees to continue.');
+        
+        if (typeof window !== 'undefined' && !isRedirecting) {
+          const currentPath = window.location.pathname;
+          const isFeesPage = currentPath === '/fees' || currentPath.startsWith('/fees');
+          
+          if (!isFeesPage) {
+            isRedirecting = true;
+            toast.error(feeError.message, {
+              duration: 5000,
+              icon: '⚠️',
+            });
+            
+            setTimeout(() => {
+              if (window.location.pathname !== '/fees') {
+                window.location.href = '/fees';
+              }
+              setTimeout(() => {
+                isRedirecting = false;
+              }, 1000);
+            }, 2000);
+          }
+        }
+        
+        return Promise.reject(feeError);
+      }
     }
 
     if (error.response?.status === 401) {

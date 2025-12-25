@@ -59,3 +59,9 @@ export default function MiniChart({ data, color = 'blue', height = 40 }: MiniCha
 
 
 
+
+
+
+
+
+

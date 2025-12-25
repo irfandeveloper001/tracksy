@@ -105,20 +105,20 @@ Route::prefix('driver')->group(function () {
 // ============================================
 // STUDENT ROUTES (Public API)
 // ============================================
-Route::prefix('buses')->middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
+Route::prefix('buses')->middleware([\App\Http\Middleware\ApiAuth::class, \App\Http\Middleware\CheckFeePayment::class])->group(function () {
     Route::get('/', [ApiBusController::class, 'index']);
     Route::get('/{id}', [ApiBusController::class, 'show']);
     Route::get('/{id}/location', [ApiBusController::class, 'getLocation']);
     Route::get('/{id}/seats', [ApiBusController::class, 'getSeatAvailability']);
 });
 
-Route::prefix('routes')->middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
+Route::prefix('routes')->middleware([\App\Http\Middleware\ApiAuth::class, \App\Http\Middleware\CheckFeePayment::class])->group(function () {
     Route::get('/', [ApiRouteController::class, 'index']);
     Route::get('/{id}', [ApiRouteController::class, 'show']);
     Route::get('/{id}/stops', [ApiRouteController::class, 'getStops']);
 });
 
-Route::prefix('bookings')->middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
+Route::prefix('bookings')->middleware([\App\Http\Middleware\ApiAuth::class, \App\Http\Middleware\CheckFeePayment::class])->group(function () {
     Route::get('/', [BookingController::class, 'index']);
     Route::post('/', [BookingController::class, 'store']);
     Route::get('/statistics', [BookingController::class, 'getStatistics']);
@@ -221,16 +221,34 @@ Route::prefix('admin')->group(function () {
         Route::get('/settings/integrations', [SettingsController::class, 'getIntegrationSettings']);
         Route::put('/settings/integrations', [SettingsController::class, 'updateIntegrationSettings']);
         Route::post('/settings/upload-logo', [SettingsController::class, 'uploadLogo']);
+        
+        // Fee Management (Admin)
+        Route::prefix('fees')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\FeeController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\Admin\FeeController::class, 'store']);
+            Route::post('/bulk', [\App\Http\Controllers\Admin\FeeController::class, 'createBulkFees']);
+            Route::get('/statistics', [\App\Http\Controllers\Admin\FeeController::class, 'getStatistics']);
+            Route::get('/export', [\App\Http\Controllers\Admin\FeeController::class, 'exportReport']);
+            Route::put('/update-overdue', [\App\Http\Controllers\Admin\FeeController::class, 'updateOverdueFees']);
+            Route::get('/{id}', [\App\Http\Controllers\Admin\FeeController::class, 'show']);
+            Route::put('/{id}', [\App\Http\Controllers\Admin\FeeController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\Admin\FeeController::class, 'destroy']);
+            Route::post('/{id}/generate-invoice', [\App\Http\Controllers\Admin\FeeController::class, 'generateInvoice']);
+            Route::post('/generate-bulk-invoices', [\App\Http\Controllers\Admin\FeeController::class, 'generateBulkInvoices']);
+            Route::put('/{id}/due-date', [\App\Http\Controllers\Admin\FeeController::class, 'updateDueDate']);
+            Route::post('/{id}/record-payment', [\App\Http\Controllers\Admin\FeeController::class, 'recordPayment']);
+        });
     });
 });
 
 
 // Student Fee Management Routes
-Route::middleware(['auth:api'])->prefix('student')->group(function () {
+Route::middleware([\App\Http\Middleware\ApiAuth::class])->prefix('student')->group(function () {
     Route::get('/fees', [App\Http\Controllers\Student\FeeController::class, 'index']);
     Route::get('/fees/statistics', [App\Http\Controllers\Student\FeeController::class, 'getStatistics']);
     Route::get('/fees/payment-history', [App\Http\Controllers\Student\FeeController::class, 'getPaymentHistory']);
     Route::get('/fees/{id}', [App\Http\Controllers\Student\FeeController::class, 'show']);
     Route::post('/fees/{id}/pay', [App\Http\Controllers\Student\FeeController::class, 'makePayment']);
     Route::get('/fees/{id}/invoice', [App\Http\Controllers\Student\FeeController::class, 'downloadInvoice']);
+    Route::get('/payments/{id}/receipt', [App\Http\Controllers\Student\FeeController::class, 'downloadReceipt']);
 });

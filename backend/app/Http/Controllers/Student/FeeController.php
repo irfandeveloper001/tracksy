@@ -7,6 +7,7 @@ use App\Models\Fee;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -69,11 +70,19 @@ class FeeController extends Controller
     // Make payment
     public function makePayment(Request $request, $feeId)
     {
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:0.01',
             'payment_method' => 'required|string|in:cash,card,online',
             'notes' => 'nullable|string',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
 
         $fee = Fee::where('user_id', Auth::id())->findOrFail($feeId);
 
@@ -120,24 +129,122 @@ class FeeController extends Controller
     // Generate invoice PDF
     public function downloadInvoice($feeId)
     {
-        $fee = Fee::where('user_id', Auth::id())
-            ->with(['user', 'payments' => function ($query) {
-                $query->where('status', 'completed')->orderBy('created_at', 'desc');
-            }])
-            ->findOrFail($feeId);
+        try {
+            $fee = Fee::where('user_id', Auth::id())
+                ->with(['user', 'payments' => function ($query) {
+                    $query->where('status', 'completed')->orderBy('created_at', 'desc');
+                }])
+                ->findOrFail($feeId);
 
-        $data = [
-            'fee' => $fee,
-            'user' => $fee->user,
-            'payments' => $fee->payments,
-            'invoice_number' => 'INV-' . str_pad($fee->id, 6, '0', STR_PAD_LEFT),
-            'invoice_date' => now()->format('F d, Y'),
-        ];
+            $data = [
+                'fee' => $fee,
+                'user' => $fee->user,
+                'payments' => $fee->payments,
+                'invoice_number' => 'INV-' . str_pad($fee->id, 6, '0', STR_PAD_LEFT),
+                'invoice_date' => now()->format('F d, Y'),
+            ];
 
-        $pdf = Pdf::loadView('invoices.fee-invoice', $data)
-            ->setPaper('a4', 'portrait');
+            // Generate PDF with proper error handling - use simplified template that works better with DomPDF
+            $pdf = Pdf::loadView('invoices.fee-invoice-simple', $data)
+                ->setPaper('a4', 'portrait')
+                ->setOption('isHtml5ParserEnabled', true)
+                ->setOption('isPhpEnabled', false)
+                ->setOption('isRemoteEnabled', false)
+                ->setOption('isFontSubsettingEnabled', false)
+                ->setOption('dpi', 96)
+                ->setOption('defaultFont', 'DejaVu Sans');
 
-        return $pdf->download('invoice-' . $data['invoice_number'] . '.pdf');
+            // Return PDF download response with proper headers
+            return response()->streamDownload(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                'invoice-' . $data['invoice_number'] . '.pdf',
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="invoice-' . $data['invoice_number'] . '.pdf"',
+                    'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                    'Pragma' => 'no-cache',
+                    'Expires' => '0',
+                ]
+            );
+        } catch (\Exception $e) {
+            \Log::error('Invoice PDF generation failed', [
+                'fee_id' => $feeId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate invoice PDF: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // Generate receipt PDF
+    public function downloadReceipt($paymentId)
+    {
+        try {
+            $payment = Payment::where('user_id', Auth::id())
+                ->with(['fee', 'user'])
+                ->findOrFail($paymentId);
+
+            // Only allow download for completed payments
+            if ($payment->status !== 'completed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Receipt is only available for completed payments',
+                ], 400);
+            }
+
+            $data = [
+                'payment' => $payment,
+                'fee' => $payment->fee,
+                'user' => $payment->user,
+                'receipt_number' => 'RCP-' . str_pad($payment->id, 6, '0', STR_PAD_LEFT),
+                'receipt_date' => $payment->created_at->format('F d, Y'),
+                'payment_date' => $payment->created_at->format('F d, Y'),
+            ];
+
+            // Generate PDF with proper error handling - use simplified template that works better with DomPDF
+            $pdf = Pdf::loadView('receipts.payment-receipt-simple', $data)
+                ->setPaper('a4', 'portrait')
+                ->setOption('isHtml5ParserEnabled', true)
+                ->setOption('isPhpEnabled', false)
+                ->setOption('isRemoteEnabled', false)
+                ->setOption('isFontSubsettingEnabled', false)
+                ->setOption('dpi', 96)
+                ->setOption('defaultFont', 'DejaVu Sans');
+
+            // Return PDF download response with proper headers
+            return response()->streamDownload(
+                function () use ($pdf) {
+                    echo $pdf->output();
+                },
+                'receipt-' . $data['receipt_number'] . '.pdf',
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="receipt-' . $data['receipt_number'] . '.pdf"',
+                    'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                    'Pragma' => 'no-cache',
+                    'Expires' => '0',
+                ]
+            );
+        } catch (\Exception $e) {
+            \Log::error('Receipt PDF generation failed', [
+                'payment_id' => $paymentId,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate receipt PDF: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     // Get payment statistics

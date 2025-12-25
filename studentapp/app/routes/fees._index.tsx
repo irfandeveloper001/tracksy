@@ -19,9 +19,17 @@ export default function Fees() {
   const [fees, setFees] = useState<any[]>([]);
   const [statistics, setStatistics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
 
   useEffect(() => {
     loadData();
+    
+    // Update current date/time every second
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const loadData = async () => {
@@ -80,143 +88,199 @@ export default function Fees() {
     );
   }
 
+  const hasOverdueFees = fees.some(fee => fee.status === 'overdue');
+
   return (
     <DashboardLayout user={user}>
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 max-w-7xl mx-auto w-full">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Fee Management</h1>
-            <p className="text-gray-600 mt-1">Manage your fees and payments</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-1">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Fee Management</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Manage your fees and payments</p>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              {currentDateTime.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })} - {currentDateTime.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+              })}
+            </p>
           </div>
           <Link
             to="/fees/payment-history"
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-2"
+            className="px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 transform hover:scale-105 text-sm sm:text-base flex-shrink-0"
           >
-            <ChartBarIcon className="w-5 h-5" />
+            <ChartBarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Payment History</span>
           </Link>
         </div>
 
+        {/* Overdue Warning Banner */}
+        {hasOverdueFees && (
+          <div className="bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-500 rounded-xl p-4 sm:p-6 shadow-lg animate-pulse">
+            <div className="flex items-start">
+              <ExclamationTriangleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 mr-3 sm:mr-4 flex-shrink-0 mt-1" />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-red-900 mb-2">
+                  ⚠️ Overdue Fees - Action Required!
+                </h3>
+                <p className="text-sm sm:text-base text-red-800 mb-3">
+                  You have overdue fees that must be paid immediately. Access to bus tracking, routes, and bookings is restricted until all overdue fees are cleared.
+                </p>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <p className="text-red-900 font-semibold text-base sm:text-lg">
+                    Total Overdue: ${parseFloat(statistics?.overdue_fees || 0).toFixed(2)}
+                  </p>
+                  <button
+                    onClick={() => {
+                      const firstOverdueFee = fees.find(f => f.status === 'overdue');
+                      if (firstOverdueFee) {
+                        window.location.href = `/fees/${firstOverdueFee.id}/pay`;
+                      }
+                    }}
+                    className="px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold shadow-md hover:shadow-lg transform hover:scale-105 text-sm sm:text-base"
+                  >
+                    Pay Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Statistics Cards */}
         {statistics && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg hover:shadow-xl p-4 sm:p-6 text-white transform hover:scale-[1.02] transition-all">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm">Total Fees</p>
-                  <p className="text-3xl font-bold mt-2">${parseFloat(statistics.total_fees || 0).toFixed(2)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-blue-100 text-xs sm:text-sm font-medium">Total Fees</p>
+                  <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 truncate">${parseFloat(statistics.total_fees || 0).toFixed(2)}</p>
                 </div>
-                <BanknotesIcon className="w-12 h-12 text-blue-200 opacity-50" />
+                <div className="bg-white bg-opacity-20 p-2 sm:p-3 rounded-lg flex-shrink-0 ml-2">
+                  <BanknotesIcon className="w-6 h-6 sm:w-10 sm:h-10 text-white" />
+                </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg hover:shadow-xl p-4 sm:p-6 text-white transform hover:scale-[1.02] transition-all">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm">Total Paid</p>
-                  <p className="text-3xl font-bold mt-2">${parseFloat(statistics.total_paid || 0).toFixed(2)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-green-100 text-xs sm:text-sm font-medium">Total Paid</p>
+                  <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 truncate">${parseFloat(statistics.total_paid || 0).toFixed(2)}</p>
                 </div>
-                <CheckCircleIcon className="w-12 h-12 text-green-200 opacity-50" />
+                <div className="bg-white bg-opacity-20 p-2 sm:p-3 rounded-lg flex-shrink-0 ml-2">
+                  <CheckCircleIcon className="w-6 h-6 sm:w-10 sm:h-10 text-white" />
+                </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg p-6 text-white">
+            <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl shadow-lg hover:shadow-xl p-4 sm:p-6 text-white transform hover:scale-[1.02] transition-all">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-yellow-100 text-sm">Pending</p>
-                  <p className="text-3xl font-bold mt-2">${parseFloat(statistics.pending_fees || 0).toFixed(2)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-yellow-100 text-xs sm:text-sm font-medium">Pending</p>
+                  <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 truncate">${parseFloat(statistics.pending_fees || 0).toFixed(2)}</p>
                 </div>
-                <ClockIcon className="w-12 h-12 text-yellow-200 opacity-50" />
+                <div className="bg-white bg-opacity-20 p-2 sm:p-3 rounded-lg flex-shrink-0 ml-2">
+                  <ClockIcon className="w-6 h-6 sm:w-10 sm:h-10 text-white" />
+                </div>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white">
+            <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg hover:shadow-xl p-4 sm:p-6 text-white transform hover:scale-[1.02] transition-all">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-red-100 text-sm">Overdue</p>
-                  <p className="text-3xl font-bold mt-2">${parseFloat(statistics.overdue_fees || 0).toFixed(2)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-red-100 text-xs sm:text-sm font-medium">Overdue</p>
+                  <p className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 truncate">${parseFloat(statistics.overdue_fees || 0).toFixed(2)}</p>
                 </div>
-                <ExclamationTriangleIcon className="w-12 h-12 text-red-200 opacity-50" />
+                <div className="bg-white bg-opacity-20 p-2 sm:p-3 rounded-lg flex-shrink-0 ml-2">
+                  <ExclamationTriangleIcon className="w-6 h-6 sm:w-10 sm:h-10 text-white" />
+                </div>
               </div>
             </div>
           </div>
         )}
 
         {/* Fees List */}
-        <div className="bg-white rounded-xl shadow-md">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Your Fees</h2>
+        <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900">Your Fees</h2>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {fees.length === 0 ? (
-              <div className="text-center py-12">
-                <BanknotesIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600">No fees found</p>
+              <div className="text-center py-16">
+                <BanknotesIcon className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg font-medium">No fees found</p>
+                <p className="text-gray-500 text-sm mt-2">You don't have any fees at the moment</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {fees.map((fee) => (
                   <div
                     key={fee.id}
-                    className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all"
+                    className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-lg hover:border-indigo-300 transition-all bg-gradient-to-r from-white to-gray-50"
                   >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3 sm:mb-4 gap-3">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
                         {getStatusIcon(fee.status)}
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate">
                             {fee.fee_type.charAt(0).toUpperCase() + fee.fee_type.slice(1)} Fee
                           </h3>
-                          <p className="text-sm text-gray-600">{fee.description}</p>
+                          <p className="text-xs sm:text-sm text-gray-600 truncate">{fee.description}</p>
                         </div>
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(fee.status)}`}>
+                      <span className={`px-3 sm:px-4 py-1.5 rounded-full text-xs font-bold border-2 ${getStatusColor(fee.status)} whitespace-nowrap self-start sm:self-auto`}>
                         {fee.status.toUpperCase()}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                      <div>
-                        <p className="text-xs text-gray-500">Semester</p>
-                        <p className="font-semibold text-gray-900">{fee.semester || 'N/A'}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-3 sm:mb-4">
+                      <div className="bg-blue-50 rounded-lg p-2 sm:p-3">
+                        <p className="text-xs text-blue-700 font-semibold">Semester</p>
+                        <p className="font-bold text-gray-900 mt-1 text-sm sm:text-base truncate">{fee.semester || 'N/A'}</p>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Amount</p>
-                        <p className="font-semibold text-gray-900">${parseFloat(fee.amount).toFixed(2)}</p>
+                      <div className="bg-green-50 rounded-lg p-2 sm:p-3">
+                        <p className="text-xs text-green-700 font-semibold">Amount</p>
+                        <p className="font-bold text-gray-900 mt-1 text-sm sm:text-base">${parseFloat(fee.amount).toFixed(2)}</p>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Paid</p>
-                        <p className="font-semibold text-green-600">${parseFloat(fee.total_paid).toFixed(2)}</p>
+                      <div className="bg-emerald-50 rounded-lg p-2 sm:p-3">
+                        <p className="text-xs text-emerald-700 font-semibold">Paid</p>
+                        <p className="font-bold text-green-600 mt-1 text-sm sm:text-base">${parseFloat(fee.total_paid).toFixed(2)}</p>
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Balance</p>
-                        <p className="font-semibold text-red-600">${parseFloat(fee.remaining_balance).toFixed(2)}</p>
+                      <div className="bg-red-50 rounded-lg p-2 sm:p-3">
+                        <p className="text-xs text-red-700 font-semibold">Balance</p>
+                        <p className="font-bold text-red-600 mt-1 text-sm sm:text-base">${parseFloat(fee.remaining_balance).toFixed(2)}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <p className="text-sm text-gray-600">
-                        Due: {new Date(fee.due_date).toLocaleDateString('en-US', {
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-3 sm:pt-4 border-t-2 border-gray-200 gap-3">
+                      <p className="text-xs sm:text-sm text-gray-600 font-medium">
+                        📅 Due: {new Date(fee.due_date).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
                         })}
                       </p>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <button
                           onClick={() => handleDownloadInvoice(fee.id)}
-                          className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center space-x-1"
+                          className="px-3 sm:px-4 py-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all flex items-center space-x-1 border-2 border-indigo-200 hover:border-indigo-400 font-medium transform hover:scale-105 text-sm sm:text-base"
                         >
-                          <DocumentArrowDownIcon className="w-5 h-5" />
+                          <DocumentArrowDownIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                           <span>Invoice</span>
                         </button>
                         {fee.status !== 'paid' && (
                           <Link
                             to={`/fees/${fee.id}/pay`}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center space-x-1"
+                            className="px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center space-x-1 shadow-md hover:shadow-lg font-medium transform hover:scale-105 text-sm sm:text-base"
                           >
-                            <CreditCardIcon className="w-5 h-5" />
+                            <CreditCardIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                             <span>Pay Now</span>
                           </Link>
                         )}

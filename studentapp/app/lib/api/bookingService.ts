@@ -16,9 +16,9 @@ export interface Booking {
 
 export interface CreateBookingData {
   bus_id: number;
-  route_id: number;
-  booking_date: string;
-  seat_number?: string;
+  route_id?: number;
+  trip_date: string;
+  seat_number: string;
 }
 
 class BookingService {

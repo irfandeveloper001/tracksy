@@ -8,7 +8,7 @@ interface MapSettingsProps {
   settings: MapSettings;
 }
 
-export default function MapSettings({ settings }: MapSettingsProps) {
+export default function MapSettingsComponent({ settings }: MapSettingsProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<MapSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);

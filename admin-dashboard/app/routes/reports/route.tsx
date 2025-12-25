@@ -45,27 +45,264 @@ export default function ReportsPage() {
 
   const handleExport = async (format: 'pdf' | 'excel') => {
     try {
-      const blob = await analyticsService.exportReport(
-        reportType,
-        format,
-        dateRange.start,
-        dateRange.end
-      );
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report-${reportType}-${dateRange.start}-${dateRange.end}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success(`Report exported as ${format.toUpperCase()}`);
+      toast.loading(`Generating ${format.toUpperCase()} report...`);
+      
+      // Generate actual file download
+      if (format === 'excel') {
+        await downloadExcelReport();
+      } else {
+        await downloadPDFReport();
+      }
+      
+      toast.dismiss();
+      toast.success(`${format.toUpperCase()} report downloaded successfully!`, {
+        duration: 3000,
+      });
     } catch (error: any) {
       console.error('Export error:', error);
-      // Show a more informative error message
-      const errorMessage = error.message || 'Failed to export report. Export functionality may not be fully implemented yet.';
-      toast.error(errorMessage, { duration: 5000 });
+      toast.dismiss();
+      toast.error('Failed to download report. Please try again.', { duration: 3000 });
     }
+  };
+
+  const downloadExcelReport = async () => {
+    // Create CSV content (Excel-compatible)
+    const csvContent = generateCSVContent();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tracksy-report-${reportType}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPDFReport = async () => {
+    // Create HTML content for PDF
+    const htmlContent = generatePDFContent();
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for content to load then trigger print
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
+  };
+
+  const generateCSVContent = () => {
+    const data = reportData;
+    let csv = 'Tracksy Bus Tracking System - Daily Operations Report\n\n';
+    csv += `Generated on: ${new Date().toLocaleString()}\n\n`;
+    
+    // Summary Statistics
+    csv += 'Summary Statistics\n';
+    csv += 'Metric,Value\n';
+    csv += `Total Trips,${data.total_trips}\n`;
+    csv += `Total Students,${data.student_usage.total_students}\n`;
+    csv += `Active Students,${data.student_usage.active_students}\n`;
+    csv += `Total Bookings,${data.student_usage.total_bookings}\n`;
+    csv += `Total Buses,${data.bus_performance.total_buses}\n`;
+    csv += `Active Buses,${data.bus_performance.active_buses}\n`;
+    csv += `Average Utilization,${data.bus_performance.average_utilization}%\n\n`;
+    
+    // Route Efficiency
+    if (data.route_efficiency.length > 0) {
+      csv += 'Route Efficiency\n';
+      csv += 'Route Name,Trips Count,Avg Duration (min),On-Time %\n';
+      data.route_efficiency.forEach(route => {
+        csv += `${route.route_name},${route.trips_count},${route.average_duration},${route.on_time_percentage}%\n`;
+      });
+      csv += '\n';
+    }
+    
+    // Incidents
+    if (data.incidents.length > 0) {
+      csv += 'Incidents\n';
+      csv += 'Type,Description,Timestamp,Status\n';
+      data.incidents.forEach(incident => {
+        csv += `${incident.type},${incident.description},${incident.timestamp},${incident.status}\n`;
+      });
+    }
+    
+    return csv;
+  };
+
+  const generatePDFContent = () => {
+    const data = reportData;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Tracksy Report</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            color: #333;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #4F46E5;
+            padding-bottom: 20px;
+          }
+          .header h1 {
+            color: #4F46E5;
+            margin: 0;
+          }
+          .header p {
+            color: #666;
+            margin: 10px 0 0 0;
+          }
+          .section {
+            margin: 30px 0;
+          }
+          .section h2 {
+            color: #4F46E5;
+            border-bottom: 2px solid #E5E7EB;
+            padding-bottom: 10px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+          }
+          th, td {
+            border: 1px solid #E5E7EB;
+            padding: 12px;
+            text-align: left;
+          }
+          th {
+            background-color: #4F46E5;
+            color: white;
+          }
+          tr:nth-child(even) {
+            background-color: #F9FAFB;
+          }
+          .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+          }
+          .stat-box {
+            border: 1px solid #E5E7EB;
+            padding: 20px;
+            border-radius: 8px;
+            background: #F9FAFB;
+          }
+          .stat-label {
+            color: #666;
+            font-size: 14px;
+          }
+          .stat-value {
+            color: #4F46E5;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+          }
+          @media print {
+            body { padding: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🚌 Tracksy Bus Tracking System</h1>
+          <p><strong>${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Operations Report</strong></p>
+          <p>Generated on: ${new Date().toLocaleString()}</p>
+        </div>
+
+        <div class="section">
+          <h2>📊 Summary Statistics</h2>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-label">Total Trips</div>
+              <div class="stat-value">${data.total_trips}</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Active Students</div>
+              <div class="stat-value">${data.student_usage.active_students}</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Total Bookings</div>
+              <div class="stat-value">${data.student_usage.total_bookings}</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Active Buses</div>
+              <div class="stat-value">${data.bus_performance.active_buses}</div>
+            </div>
+          </div>
+        </div>
+
+        ${data.route_efficiency.length > 0 ? `
+        <div class="section">
+          <h2>🗺️ Route Efficiency</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Route Name</th>
+                <th>Trips Count</th>
+                <th>Avg Duration (min)</th>
+                <th>On-Time %</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.route_efficiency.map(route => `
+                <tr>
+                  <td>${route.route_name}</td>
+                  <td>${route.trips_count}</td>
+                  <td>${route.average_duration}</td>
+                  <td>${route.on_time_percentage}%</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        ${data.incidents.length > 0 ? `
+        <div class="section">
+          <h2>⚠️ Incidents Report</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Timestamp</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.incidents.map(incident => `
+                <tr>
+                  <td>${incident.type}</td>
+                  <td>${incident.description}</td>
+                  <td>${new Date(incident.timestamp).toLocaleString()}</td>
+                  <td>${incident.status}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div class="section">
+          <p style="text-align: center; color: #666; margin-top: 40px;">
+            <strong>Tracksy Bus Tracking System</strong><br>
+            Professional Bus Management Solution
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
   };
 
   const handleSchedule = () => {
@@ -96,18 +333,49 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300 p-6">
       {/* Header with gradient */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 p-6 text-white shadow-xl">
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-1">Generate Report</h1>
-            <p className="text-purple-100">Create and export comprehensive reports</p>
-          </div>
-          <div className="hidden md:block">
-            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-              <span className="text-sm font-medium">📊 Analytics</span>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-8 text-white shadow-2xl">
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex-1">
+              <h1 className="text-4xl font-bold mb-2 flex items-center">
+                <DocumentTextIcon className="w-10 h-10 mr-3" />
+                Generate Reports
+              </h1>
+              <p className="text-indigo-100 text-lg">Create and export comprehensive analytics reports</p>
             </div>
+            <div className="hidden lg:block">
+              <div className="bg-white/20 backdrop-blur-lg rounded-xl p-6 text-center">
+                <p className="text-3xl font-bold">📊</p>
+                <p className="text-sm text-indigo-100 mt-1">Analytics</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => handleExport('excel')}
+              className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            >
+              <ArrowDownTrayIcon className="w-5 h-5" />
+              <span>Export Excel</span>
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            >
+              <ArrowDownTrayIcon className="w-5 h-5" />
+              <span>Export PDF</span>
+            </button>
+            <button
+              onClick={() => setShowScheduleModal(true)}
+              className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            >
+              <EnvelopeIcon className="w-5 h-5" />
+              <span>Schedule Report</span>
+            </button>
           </div>
         </div>
         {/* Decorative background elements */}

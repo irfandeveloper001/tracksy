@@ -88,4 +88,19 @@ export default [
   route("settings", "routes/settings/route.tsx", {
     layout: DashboardLayout,
   }),
+  route("fees", "routes/fees/route.tsx", {
+    layout: DashboardLayout,
+  }),
+  route("fees/new", "routes/fees.new/route.tsx", {
+    layout: DashboardLayout,
+  }),
+  route("fees/reports", "routes/fees.reports/route.tsx", {
+    layout: DashboardLayout,
+  }),
+  route("fees.$id", "routes/fees.$id/route.tsx", {
+    layout: DashboardLayout,
+  }),
+  route("fees/invoices", "routes/fees.invoices/route.tsx", {
+    layout: DashboardLayout,
+  }),
 ] satisfies RouteConfig;

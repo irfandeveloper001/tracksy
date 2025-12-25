@@ -40,12 +40,29 @@ type Pages = {
   "/profile": {
     params: {};
   };
+  "/fees": {
+    params: {};
+  };
+  "/fees/:id/pay": {
+    params: {
+      "id": string;
+    };
+  };
+  "/fees/payment-history": {
+    params: {};
+  };
+  "/notifications": {
+    params: {};
+  };
+  "/settings": {
+    params: {};
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/register" | "/dashboard" | "/routes" | "/routes/:id" | "/bookings" | "/tracking" | "/profile";
+    page: "/" | "/login" | "/register" | "/dashboard" | "/routes" | "/routes/:id" | "/bookings" | "/tracking" | "/profile" | "/fees" | "/fees/:id/pay" | "/fees/payment-history" | "/notifications" | "/settings";
   };
   "routes/home.tsx": {
     id: "routes/home";
@@ -83,6 +100,26 @@ type RouteFiles = {
     id: "routes/profile";
     page: "/profile";
   };
+  "routes/fees._index.tsx": {
+    id: "routes/fees._index";
+    page: "/fees";
+  };
+  "routes/fees.$id.pay.tsx": {
+    id: "routes/fees.$id.pay";
+    page: "/fees/:id/pay";
+  };
+  "routes/payment-history.tsx": {
+    id: "routes/payment-history";
+    page: "/fees/payment-history";
+  };
+  "routes/notifications.tsx": {
+    id: "routes/notifications";
+    page: "/notifications";
+  };
+  "routes/settings.tsx": {
+    id: "routes/settings";
+    page: "/settings";
+  };
 };
 
 type RouteModules = {
@@ -96,4 +133,9 @@ type RouteModules = {
   "routes/bookings": typeof import("./app/routes/bookings.tsx");
   "routes/tracking": typeof import("./app/routes/tracking.tsx");
   "routes/profile": typeof import("./app/routes/profile.tsx");
+  "routes/fees._index": typeof import("./app/routes/fees._index.tsx");
+  "routes/fees.$id.pay": typeof import("./app/routes/fees.$id.pay.tsx");
+  "routes/payment-history": typeof import("./app/routes/payment-history.tsx");
+  "routes/notifications": typeof import("./app/routes/notifications.tsx");
+  "routes/settings": typeof import("./app/routes/settings.tsx");
 };

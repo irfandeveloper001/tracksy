@@ -52,6 +52,7 @@ export default function DashboardPage() {
   });
   const [activities, setActivities] = useState<Activity[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showWelcome, setShowWelcome] = useState(true);
 
   // Update time every second
   useEffect(() => {
