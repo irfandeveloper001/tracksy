@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\BusController as ApiBusController;
 use App\Http\Controllers\Api\RouteController as ApiRouteController;
@@ -237,6 +238,15 @@ Route::prefix('admin')->group(function () {
             Route::post('/generate-bulk-invoices', [\App\Http\Controllers\Admin\FeeController::class, 'generateBulkInvoices']);
             Route::put('/{id}/due-date', [\App\Http\Controllers\Admin\FeeController::class, 'updateDueDate']);
             Route::post('/{id}/record-payment', [\App\Http\Controllers\Admin\FeeController::class, 'recordPayment']);
+        });
+
+        // Booking Management (Admin)
+        Route::prefix('bookings')->group(function () {
+            Route::get('/', [AdminBookingController::class, 'index']);
+            Route::get('/statistics', [AdminBookingController::class, 'getStatistics']);
+            Route::get('/{id}', [AdminBookingController::class, 'show']);
+            Route::post('/{id}/approve', [AdminBookingController::class, 'approve']);
+            Route::post('/{id}/reject', [AdminBookingController::class, 'reject']);
         });
     });
 });

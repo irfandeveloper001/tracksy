@@ -18,7 +18,7 @@ class LocationController extends Controller
             return $this->errorResponse('No bus assigned', null, 400);
         }
 
-        $request->validate([
+        $this->validate($request, [
             'latitude' => 'required|numeric|between:-90,90',
             'longitude' => 'required|numeric|between:-180,180',
             'accuracy' => 'nullable|numeric|min:0',
@@ -53,7 +53,7 @@ class LocationController extends Controller
             return $this->errorResponse('No bus assigned', null, 400);
         }
 
-        $request->validate([
+        $this->validate($request, [
             'locations' => 'required|array|min:1',
             'locations.*.latitude' => 'required|numeric|between:-90,90',
             'locations.*.longitude' => 'required|numeric|between:-180,180',

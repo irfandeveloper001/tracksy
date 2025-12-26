@@ -36,17 +36,17 @@ class BookingController extends Controller
         // Create booking (for students)
         $student = auth()->user();
         
-        $request->validate([
+        $this->validate($request, [
             'bus_id' => 'required|exists:buses,id',
             'seat_number' => 'required|string',
             'trip_date' => 'required|date|after_or_equal:today',
         ]);
 
-        // Check seat availability
+        // Check seat availability (only check confirmed bookings, not pending)
         $existingBooking = Booking::where('bus_id', $request->bus_id)
             ->where('seat_number', $request->seat_number)
             ->where('trip_date', $request->trip_date)
-            ->where('status', '!=', 'cancelled')
+            ->whereIn('status', ['confirmed', 'completed'])
             ->first();
 
         if ($existingBooking) {
@@ -56,26 +56,20 @@ class BookingController extends Controller
         // Generate booking reference
         $bookingReference = 'BK-' . strtoupper(uniqid());
 
-        // Create booking
+        // Create booking with pending status (requires admin approval)
         $booking = Booking::create([
             'student_id' => $student->id,
             'bus_id' => $request->bus_id,
             'seat_number' => $request->seat_number,
             'trip_date' => $request->trip_date,
             'booking_reference' => $bookingReference,
-            'status' => 'confirmed',
+            'status' => 'pending', // Changed to pending - requires admin approval
         ]);
 
-        // Create seat assignment
-        \App\Models\SeatAssignment::create([
-            'booking_id' => $booking->id,
-            'bus_id' => $request->bus_id,
-            'seat_number' => $request->seat_number,
-            'trip_date' => $request->trip_date,
-            'status' => 'reserved',
-        ]);
+        // Don't create seat assignment yet - wait for admin approval
+        // Seat assignment will be created when admin approves the booking
 
-        return $this->successResponse($booking, 'Booking created successfully', 201);
+        return $this->successResponse($booking, 'Booking request submitted successfully. Waiting for admin approval.', 201);
     }
 
     public function show($id)

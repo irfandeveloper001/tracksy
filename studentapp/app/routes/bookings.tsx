@@ -48,7 +48,9 @@ export default function Bookings() {
     switch (status) {
       case 'confirmed': return <CheckCircleIcon className="w-5 h-5 text-green-600" />;
       case 'cancelled': return <XCircleIcon className="w-5 h-5 text-red-600" />;
+      case 'rejected': return <XCircleIcon className="w-5 h-5 text-red-600" />;
       case 'completed': return <CheckCircleIcon className="w-5 h-5 text-blue-600" />;
+      case 'pending': return <ClockIcon className="w-5 h-5 text-yellow-600" />;
       default: return <ClockIcon className="w-5 h-5 text-yellow-600" />;
     }
   };
@@ -58,6 +60,7 @@ export default function Bookings() {
       case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
       case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
       case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -102,6 +105,7 @@ export default function Bookings() {
               { key: 'pending', label: 'Pending', count: bookings.filter(b => b.status === 'pending').length },
               { key: 'completed', label: 'Completed', count: bookings.filter(b => b.status === 'completed').length },
               { key: 'cancelled', label: 'Cancelled', count: bookings.filter(b => b.status === 'cancelled').length },
+              { key: 'rejected', label: 'Rejected', count: bookings.filter(b => b.status === 'rejected').length },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -161,9 +165,21 @@ export default function Bookings() {
                         </div>
                         <div>
                           <h3 className="text-2xl font-bold text-gray-900">Booking #{booking.id}</h3>
-                          <span className={`inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(booking.status)}`}>
-                            {booking.status.toUpperCase()}
-                          </span>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(booking.status)}`}>
+                              {booking.status.toUpperCase()}
+                            </span>
+                            {booking.status === 'pending' && (
+                              <span className="text-xs text-yellow-600 font-medium">
+                                Waiting for admin approval
+                              </span>
+                            )}
+                            {booking.status === 'rejected' && booking.rejection_reason && (
+                              <span className="text-xs text-red-600 font-medium">
+                                Reason: {booking.rejection_reason}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       

@@ -45,7 +45,7 @@ class FeeController extends Controller
     // Create fee for specific student
     public function store(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'user_id' => 'required|exists:users,id',
             'fee_type' => 'required|string|in:tuition,transport,library,hostel,exam,other',
             'amount' => 'required|numeric|min:0',
@@ -81,7 +81,7 @@ class FeeController extends Controller
     // Create fees for all students
     public function createBulkFees(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'fee_type' => 'required|string|in:tuition,transport,library,hostel,exam,other',
             'amount' => 'required|numeric|min:0',
             'semester' => 'required|string',
@@ -137,7 +137,7 @@ class FeeController extends Controller
     {
         $fee = Fee::findOrFail($id);
 
-        $request->validate([
+        $this->validate($request, [
             'fee_type' => 'sometimes|string|in:tuition,transport,library,hostel,exam,other',
             'amount' => 'sometimes|numeric|min:0',
             'semester' => 'sometimes|string',
@@ -200,7 +200,7 @@ class FeeController extends Controller
     // Generate and send invoices in bulk
     public function generateBulkInvoices(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'fee_ids' => 'required|array',
             'fee_ids.*' => 'exists:fees,id',
         ]);
@@ -243,7 +243,7 @@ class FeeController extends Controller
     // Update due date
     public function updateDueDate(Request $request, $id)
     {
-        $request->validate([
+        $this->validate($request, [
             'due_date' => 'required|date',
             'send_notification' => 'boolean',
         ]);
@@ -321,7 +321,7 @@ class FeeController extends Controller
     // Record manual payment
     public function recordPayment(Request $request, $feeId)
     {
-        $request->validate([
+        $this->validate($request, [
             'amount' => 'required|numeric|min:0.01',
             'payment_method' => 'required|string|in:cash,card,online,bank_transfer',
             'transaction_id' => 'nullable|string',

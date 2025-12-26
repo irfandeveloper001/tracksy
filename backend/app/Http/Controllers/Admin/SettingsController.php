@@ -31,7 +31,7 @@ class SettingsController extends Controller
      */
     public function updateSystemSettings(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $this->validate($request, [
             'app_name' => 'sometimes|string|max:255',
             'timezone' => 'sometimes|string|max:50',
             'date_format' => 'sometimes|string|max:20',
@@ -70,7 +70,7 @@ class SettingsController extends Controller
      */
     public function updateNotificationSettings(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $this->validate($request, [
             'email_enabled' => 'sometimes|boolean',
             'email_provider' => 'sometimes|string|max:50',
             'email_from' => 'sometimes|string|email|max:255',
@@ -109,7 +109,7 @@ class SettingsController extends Controller
      */
     public function updateMapSettings(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $this->validate($request, [
             'map_provider' => 'sometimes|in:google,mapbox,openstreetmap',
             'api_key' => 'sometimes|string|max:255',
             'default_zoom' => 'sometimes|integer|min:1|max:20',
@@ -158,7 +158,7 @@ class SettingsController extends Controller
      */
     public function updateSecuritySettings(Request $request)
     {
-        $validated = $request->validate([
+        $validated = $this->validate($request, [
             'password_min_length' => 'sometimes|integer|min:6|max:32',
             'password_require_uppercase' => 'sometimes|boolean',
             'password_require_lowercase' => 'sometimes|boolean',
@@ -218,7 +218,7 @@ class SettingsController extends Controller
      */
     public function uploadLogo(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 

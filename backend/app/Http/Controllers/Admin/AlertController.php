@@ -29,7 +29,7 @@ class AlertController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'type' => 'required|in:route_deviation,delay,emergency,maintenance,system',
             'title' => 'required|string|max:255',
             'message' => 'required|string',

@@ -13,7 +13,7 @@ class EmergencyController extends Controller
         // Send emergency alert
         $driver = auth()->user();
         
-        $request->validate([
+        $this->validate($request, [
             'type' => 'required|in:accident,breakdown,medical,other',
             'description' => 'nullable|string',
             'location' => 'nullable|array',
@@ -44,7 +44,7 @@ class EmergencyController extends Controller
         // Report incident
         $driver = auth()->user();
         
-        $request->validate([
+        $this->validate($request, [
             'type' => 'required|string',
             'description' => 'required|string',
             'location' => 'nullable|array',

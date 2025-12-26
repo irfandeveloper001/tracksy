@@ -14,6 +14,7 @@ import {
   MapPinIcon,
   BanknotesIcon,
   ReceiptPercentIcon,
+  TicketIcon,
   SparklesIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -32,6 +33,7 @@ import {
   MapPinIcon as MapPinIconSolid,
   BanknotesIcon as BanknotesIconSolid,
   ReceiptPercentIcon as ReceiptPercentIconSolid,
+  TicketIcon as TicketIconSolid,
 } from '@heroicons/react/24/solid';
 import { useAuthStore } from '../../lib/store/authStore';
 import { hasPermission, PERMISSIONS } from '../../lib/utils/permissions';
@@ -125,6 +127,15 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       icon: MapPinIcon,
       iconSolid: MapPinIconSolid,
       permission: PERMISSIONS.BUSES_VIEW,
+      badge: null,
+      section: 'operations',
+    },
+    {
+      name: 'Bookings',
+      href: '/bookings',
+      icon: TicketIcon,
+      iconSolid: TicketIconSolid,
+      permission: PERMISSIONS.USERS_VIEW,
       badge: null,
       section: 'operations',
     },

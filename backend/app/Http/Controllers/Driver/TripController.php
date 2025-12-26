@@ -17,7 +17,7 @@ class TripController extends Controller
             return $this->errorResponse('No bus assigned to driver', null, 400);
         }
 
-        $request->validate([
+        $this->validate($request, [
             'route_id' => 'required|exists:routes,id',
             'start_location' => 'nullable|array',
             'start_location.latitude' => 'required_with:start_location|numeric',
@@ -67,7 +67,7 @@ class TripController extends Controller
             return $this->errorResponse('Trip is not in progress', null, 422);
         }
 
-        $request->validate([
+        $this->validate($request, [
             'end_location' => 'nullable|array',
             'end_location.latitude' => 'required_with:end_location|numeric',
             'end_location.longitude' => 'required_with:end_location|numeric',

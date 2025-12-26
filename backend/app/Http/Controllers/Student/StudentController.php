@@ -43,7 +43,7 @@ class StudentController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'student_id' => 'required|string|unique:users,student_id',
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|unique:users,email',
@@ -70,7 +70,7 @@ class StudentController extends Controller
     {
         $student = User::students()->findOrFail($id);
 
-        $request->validate([
+        $this->validate($request, [
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|unique:users,email,' . $id,
             'password' => 'sometimes|string|min:6',
