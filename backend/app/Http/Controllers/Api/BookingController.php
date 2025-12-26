@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -68,6 +70,33 @@ class BookingController extends Controller
 
         // Don't create seat assignment yet - wait for admin approval
         // Seat assignment will be created when admin approves the booking
+        $adminIds = User::whereIn('role', ['admin', 'manager', 'super_admin'])->pluck('id');
+        if ($adminIds->isNotEmpty()) {
+            $booking->load('bus');
+            $tripDate = $booking->trip_date ? $booking->trip_date->format('M d, Y') : 'N/A';
+            $busLabel = $booking->bus ? ($booking->bus->name . ' (' . $booking->bus->number . ')') : 'N/A';
+
+            foreach ($adminIds as $adminId) {
+                Notification::create([
+                    'user_id' => $adminId,
+                    'type' => 'general',
+                    'notification_type' => 'info',
+                    'title' => 'New Booking Request',
+                    'message' => $student->name . ' requested seat ' . $booking->seat_number . ' on ' . $tripDate . ' (' . $busLabel . ').',
+                    'data' => [
+                        'booking_id' => $booking->id,
+                        'booking_reference' => $booking->booking_reference,
+                        'student_id' => $student->id,
+                        'action_url' => '/bookings/' . $booking->id,
+                    ],
+                    'audience_type' => 'custom',
+                    'audience_ids' => [$adminId],
+                    'status' => 'sent',
+                    'sent_at' => now(),
+                    'read' => false,
+                ]);
+            }
+        }
 
         return $this->successResponse($booking, 'Booking request submitted successfully. Waiting for admin approval.', 201);
     }
@@ -295,4 +324,3 @@ class BookingController extends Controller
         return $this->successResponse($statistics);
     }
 }
-

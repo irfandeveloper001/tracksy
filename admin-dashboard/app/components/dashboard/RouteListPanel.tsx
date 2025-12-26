@@ -134,63 +134,66 @@ export default function RouteListPanel({ defaultFilter = 'all' }: RouteListPanel
 
   const getStatusColor = (status: string) => {
     if (status === 'active') {
-      return 'border-l-green-500 bg-green-50/50';
+      return 'border-l-green-500 bg-gradient-to-r from-green-50/80 to-white/60';
     }
-    return 'border-l-gray-500 bg-gray-50/50';
+    return 'border-l-gray-500 bg-gradient-to-r from-gray-50/80 to-white/60';
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/60 overflow-hidden hover:shadow-2xl transition-all duration-500">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 flex items-center">
-              <MapIcon className="h-6 w-6 mr-2 text-purple-600" />
-              Route List
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              {total} {total === 1 ? 'route' : 'routes'} found
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-xs text-gray-500 font-medium">Live</span>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Search */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by route name, start, end..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            />
+      <div className="relative p-6 border-b border-gray-200/70 bg-gradient-to-r from-purple-50 via-white/70 to-indigo-50">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.18),transparent_60%)] pointer-events-none"></div>
+        <div className="relative">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                <MapIcon className="h-6 w-6 mr-2 text-purple-600" />
+                Route List
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {total} {total === 1 ? 'route' : 'routes'} found
+              </p>
+            </div>
+            <div className="flex items-center space-x-2 rounded-full bg-white/80 px-3 py-1 border border-purple-100 shadow-sm">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-xs text-gray-500 font-medium">Live</span>
+            </div>
           </div>
 
-          {/* Status Filter */}
-          <div className="relative">
-            <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by route name, start, end..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300/80 rounded-lg bg-white/80 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="relative">
+              <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300/80 rounded-lg bg-white/80 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Route List */}
-      <div className="max-h-[600px] overflow-y-auto">
+      <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -219,101 +222,106 @@ export default function RouteListPanel({ defaultFilter = 'all' }: RouteListPanel
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
-            {routes.map((route, index) => (
-              <div
-                key={route.id}
-                className={`p-4 border-l-4 hover:bg-gray-50 transition-colors cursor-pointer ${getStatusColor(route.status || 'inactive')}`}
-                onClick={() => {
-                  setSelectedRoute(route);
-                  setIsEditMode(false);
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 flex-1 min-w-0">
-                    {/* Status Icon */}
-                    <div className="flex-shrink-0">
-                      {getStatusIcon(route.status || 'inactive')}
-                    </div>
-
-                    {/* Route Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <h4 className="text-lg font-bold text-gray-900 truncate">
-                          {route.name}
-                        </h4>
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          route.status === 'active' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {route.status || 'inactive'}
-                        </span>
+          <div className="space-y-3 px-4 py-4">
+            {routes.map((route) => {
+              const routeStatus = route.status || (route.is_active ? 'active' : 'inactive');
+              return (
+                <div
+                  key={route.id}
+                  className={`group relative overflow-hidden p-4 rounded-xl border border-gray-200/60 border-l-4 hover:border-gray-300 hover:shadow-lg transition-all duration-300 cursor-pointer ${getStatusColor(routeStatus)}`}
+                  onClick={() => {
+                    setSelectedRoute(route);
+                    setIsEditMode(false);
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 flex-1 min-w-0">
+                      {/* Status Icon */}
+                      <div className="flex-shrink-0">
+                        {getStatusIcon(routeStatus)}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
-                        <div className="flex items-center space-x-1">
-                          <MapPinIcon className="h-4 w-4 text-gray-400" />
-                          <span className="truncate">
-                            {route.start_point || route.origin || 'N/A'}
+
+                      {/* Route Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <h4 className="text-lg font-bold text-gray-900 truncate">
+                            {route.name}
+                          </h4>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                              routeStatus === 'active'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}
+                          >
+                            {routeStatus}
                           </span>
                         </div>
-                        <div className="flex items-center space-x-1">
-                          <MapPinIcon className="h-4 w-4 text-gray-400" />
-                          <span className="truncate">
-                            {route.end_point || route.destination || 'N/A'}
-                          </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                          <div className="flex items-center space-x-1">
+                            <MapPinIcon className="h-4 w-4 text-gray-400" />
+                            <span className="truncate">
+                              {route.start_point || route.origin || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <MapPinIcon className="h-4 w-4 text-gray-400" />
+                            <span className="truncate">
+                              {route.end_point || route.destination || 'N/A'}
+                            </span>
+                          </div>
+                          {route.distance && (
+                            <div className="flex items-center space-x-1">
+                              <ClockIcon className="h-4 w-4 text-gray-400" />
+                              <span>{route.distance} km</span>
+                            </div>
+                          )}
+                          {route.estimated_duration && (
+                            <div className="flex items-center space-x-1">
+                              <ClockIcon className="h-4 w-4 text-gray-400" />
+                              <span>{route.estimated_duration} min</span>
+                            </div>
+                          )}
                         </div>
-                        {route.distance && (
-                          <div className="flex items-center space-x-1">
-                            <ClockIcon className="h-4 w-4 text-gray-400" />
-                            <span>{route.distance} km</span>
-                          </div>
-                        )}
-                        {route.estimated_duration && (
-                          <div className="flex items-center space-x-1">
-                            <ClockIcon className="h-4 w-4 text-gray-400" />
-                            <span>{route.estimated_duration} min</span>
-                          </div>
-                        )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center space-x-2 ml-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedRoute(route);
-                        setIsEditMode(false);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                      title="View Details"
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedRoute(route);
-                        setIsEditMode(true);
-                      }}
-                      className="p-2 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
-                      title="Edit Route"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
+                    {/* Actions */}
+                    <div className="flex items-center space-x-2 ml-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedRoute(route);
+                          setIsEditMode(false);
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                        title="View Details"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedRoute(route);
+                          setIsEditMode(true);
+                        }}
+                        className="p-2 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
+                        title="Edit Route"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* Footer */}
       {routes.length > 0 && (
-        <div className="p-4 bg-gray-50 border-t border-gray-200">
+        <div className="p-4 bg-white/70 border-t border-gray-200/70 backdrop-blur-sm">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
               Showing {routes.length} of {total} routes

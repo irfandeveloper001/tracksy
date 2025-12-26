@@ -325,9 +325,18 @@ class DriverController extends Controller
                 return $query->where('status', $status);
             })
             ->with(['assignedBus', 'assignedRoute'])
-            ->paginate($request->limit ?? 10);
+            ->paginate($request->per_page ?? $request->limit ?? 10);
 
         return $this->successResponse($drivers);
+    }
+
+    public function show($id)
+    {
+        $driver = User::drivers()
+            ->with(['assignedBus', 'assignedRoute'])
+            ->findOrFail($id);
+
+        return $this->successResponse($driver);
     }
 
     public function signup(Request $request)
@@ -413,6 +422,30 @@ class DriverController extends Controller
         return $this->successResponse($driver->fresh()->load(['assignedBus', 'assignedRoute']), 'Driver updated successfully');
     }
 
+    public function updateStatus(Request $request, $id)
+    {
+        $this->validate($request, [
+            'status' => 'required|in:active,inactive,on_leave',
+        ]);
+
+        $driver = User::drivers()->findOrFail($id);
+        $driver->update(['status' => $request->status]);
+
+        return $this->successResponse($driver->fresh()->load(['assignedBus', 'assignedRoute']), 'Driver status updated successfully');
+    }
+
+    public function getTrips($id, Request $request)
+    {
+        $driver = User::drivers()->findOrFail($id);
+
+        $trips = Trip::where('driver_id', $driver->id)
+            ->with(['route', 'bus'])
+            ->orderBy('start_time', 'desc')
+            ->paginate($request->per_page ?? $request->limit ?? 20);
+
+        return $this->successResponse($trips);
+    }
+
     public function destroy($id)
     {
         $driver = User::drivers()->findOrFail($id);
@@ -421,4 +454,3 @@ class DriverController extends Controller
         return $this->successResponse(null, 'Driver deleted successfully');
     }
 }
-

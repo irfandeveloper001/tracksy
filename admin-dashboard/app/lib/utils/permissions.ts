@@ -94,8 +94,13 @@ export function hasPermission(user: AdminUser | null, permission: string): boole
   // Super admin has all permissions
   if (user.role === AdminRole.SUPER_ADMIN) return true;
   
-  // Check if user has specific permission
-  return user.permissions?.includes(permission) || false;
+  if (user.permissions && user.permissions.length > 0) {
+    return user.permissions.includes(permission);
+  }
+
+  // Fall back to role defaults when backend does not supply permissions.
+  const rolePermissions = ROLE_PERMISSIONS[user.role] || [];
+  return rolePermissions.includes(permission);
 }
 
 // Check if user has any of the permissions

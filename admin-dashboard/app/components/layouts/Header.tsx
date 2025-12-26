@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '../../lib/store/authStore';
 import {
   BellIcon,
@@ -9,6 +11,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import notificationService from '../../lib/api/notificationService';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -21,6 +24,20 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  const { data: notificationData, refetch: refetchNotifications } = useQuery({
+    queryKey: ['admin-notifications', user?.id],
+    queryFn: () =>
+      notificationService.getNotifications({
+        user_id: user?.id,
+        per_page: 6,
+      }),
+    enabled: Boolean(user?.id),
+    refetchInterval: 30000,
+  });
+
+  const notifications = notificationData?.notifications || [];
+  const unreadCount = notifications.filter((notification) => !notification.read).length;
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -32,7 +49,7 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white/80 backdrop-blur-xl shadow-sm border-b border-gray-200/70 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Left: Menu Toggle & Logo */}
@@ -48,20 +65,24 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
                 <Bars3Icon className="h-6 w-6" />
               )}
             </button>
-
             {/* Logo */}
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className="flex items-center space-x-3">
+              <div className="h-9 w-9 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">T</span>
               </div>
-              <h1 className="ml-2 text-xl font-bold text-gray-900 hidden sm:block">
-                Tracksy Admin
-              </h1>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold text-gray-900">Tracksy Admin</h1>
+                <p className="text-xs text-gray-500 font-medium">Command Center</p>
+              </div>
             </div>
           </div>
 
           {/* Right: Notifications & User Menu */}
           <div className="flex items-center space-x-4">
+            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live
+            </div>
             {/* Notifications */}
             <div className="relative">
               <button
@@ -70,23 +91,86 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
               >
                 <BellIcon className="h-6 w-6" />
                 {/* Notification badge */}
-                <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 bg-rose-500 rounded-full flex items-center justify-center text-[10px] text-white font-semibold">
+                    {unreadCount}
+                  </span>
+                )}
               </button>
 
               {/* Notifications dropdown */}
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                   <div className="px-4 py-2 border-b border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                      No new notifications
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                      <button
+                        className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+                        onClick={async () => {
+                          if (user?.id) {
+                            await notificationService.markAllAsRead(user.id);
+                            refetchNotifications();
+                          }
+                        }}
+                      >
+                        Mark all read
+                      </button>
                     </div>
                   </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                        No new notifications
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <button
+                          key={notification.id}
+                          onClick={async () => {
+                            if (!notification.read) {
+                              await notificationService.markAsRead(notification.id);
+                              refetchNotifications();
+                            }
+                            const actionUrl = notification.data?.action_url;
+                            if (actionUrl) {
+                              navigate(actionUrl);
+                              setShowNotifications(false);
+                            }
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {notification.title}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {notification.message}
+                              </p>
+                            </div>
+                            {!notification.read && (
+                              <span className="mt-1 h-2 w-2 rounded-full bg-rose-500"></span>
+                            )}
+                          </div>
+                          {notification.created_at && (
+                            <p className="text-[11px] text-gray-400 mt-2">
+                              {formatDistanceToNow(new Date(notification.created_at), {
+                                addSuffix: true,
+                              })}
+                            </p>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
                   <div className="px-4 py-2 border-t border-gray-200">
-                    <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                      View all notifications
+                    <button
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      onClick={() => {
+                        setShowNotifications(false);
+                      }}
+                    >
+                      Close notifications
                     </button>
                   </div>
                 </div>
@@ -151,6 +235,8 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
           </div>
         </div>
       </div>
+
+      <div className="h-px bg-gradient-to-r from-indigo-500/40 via-fuchsia-500/40 to-transparent"></div>
 
       {/* Click outside to close dropdowns */}
       {(showUserMenu || showNotifications) && (

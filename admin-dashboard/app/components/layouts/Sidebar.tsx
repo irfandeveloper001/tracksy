@@ -16,6 +16,7 @@ import {
   ReceiptPercentIcon,
   TicketIcon,
   SparklesIcon,
+  MegaphoneIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ArrowRightOnRectangleIcon,
@@ -34,6 +35,8 @@ import {
   BanknotesIcon as BanknotesIconSolid,
   ReceiptPercentIcon as ReceiptPercentIconSolid,
   TicketIcon as TicketIconSolid,
+  SparklesIcon as SparklesIconSolid,
+  MegaphoneIcon as MegaphoneIconSolid,
 } from '@heroicons/react/24/solid';
 import { useAuthStore } from '../../lib/store/authStore';
 import { hasPermission, PERMISSIONS } from '../../lib/utils/permissions';
@@ -185,6 +188,15 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'system',
     },
     {
+      name: 'Announcements',
+      href: '/notifications/new',
+      icon: MegaphoneIcon,
+      iconSolid: MegaphoneIconSolid,
+      permission: PERMISSIONS.ALERTS_MANAGE,
+      badge: null,
+      section: 'system',
+    },
+    {
       name: 'Maintenance',
       href: '/maintenance',
       icon: WrenchScrewdriverIcon,
@@ -207,6 +219,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const filteredNavigation = navigation.filter((item) =>
     hasPermission(user, item.permission)
   );
+  const navigationItems = filteredNavigation.length > 0 ? filteredNavigation : navigation;
 
   const sections = {
     main: 'Main',
@@ -246,33 +259,33 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
         className={`
           fixed lg:static inset-y-0 left-0 z-50
           ${isCollapsed ? 'w-20' : 'w-72'}
-          bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900
+          flex-shrink-0 bg-gradient-to-b from-indigo-950 via-slate-900 to-purple-950
           transform transition-all duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0
-          shadow-2xl border-r border-white/10
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          shadow-2xl border-r border-white/10 ring-1 ring-white/10
         `}
       >
         <div className="flex flex-col h-full relative">
           {/* Animated background effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 opacity-50 pointer-events-none"></div>
-          <div className="absolute inset-0 backdrop-blur-3xl opacity-20 pointer-events-none"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-fuchsia-500/20 opacity-70 pointer-events-none"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_60%)] pointer-events-none"></div>
+          <div className="absolute inset-0 backdrop-blur-3xl opacity-30 pointer-events-none"></div>
 
           {/* Logo Section */}
-          <div className="relative flex items-center justify-between h-20 px-4 border-b border-white/10 bg-gradient-to-r from-blue-900/50 to-indigo-900/50 backdrop-blur-xl">
+          <div className="relative flex items-center justify-between h-20 px-4 border-b border-white/10 bg-gradient-to-r from-indigo-900/60 to-purple-900/60 backdrop-blur-xl">
             <div className="flex items-center space-x-3">
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-600 rounded-xl blur-md opacity-75 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative w-12 h-12 bg-gradient-to-br from-white via-blue-50 to-indigo-100 rounded-xl flex items-center justify-center shadow-xl transform hover:rotate-12 hover:scale-110 transition-all duration-300 cursor-pointer">
-                  <span className="text-3xl font-black bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">T</span>
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-400 to-fuchsia-500 rounded-xl blur-md opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative w-12 h-12 bg-gradient-to-br from-white via-indigo-50 to-purple-100 rounded-xl flex items-center justify-center shadow-xl transform hover:rotate-6 hover:scale-110 transition-all duration-300 cursor-pointer">
+                  <span className="text-3xl font-black bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">T</span>
                 </div>
               </div>
               {!isCollapsed && (
                 <div className="animate-in fade-in slide-in-from-left duration-300">
-                  <h1 className="text-xl font-bold text-white tracking-tight">Tracksy</h1>
-                  <p className="text-xs text-blue-300 flex items-center font-semibold">
+                  <h1 className="text-xl font-bold text-white tracking-tight">Tracksy Admin</h1>
+                  <p className="text-xs text-indigo-200 flex items-center font-semibold">
                     <SparklesIcon className="w-3 h-3 mr-1 animate-pulse" />
-                    Admin Portal
+                    Command Center
                   </p>
                 </div>
               )}
@@ -296,14 +309,14 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             <div className="relative p-4 border-b border-white/10 bg-white/5 backdrop-blur-sm">
               <div className="flex items-center space-x-3">
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
                     {user.name?.charAt(0)?.toUpperCase() || 'A'}
                   </div>
                   <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></div>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{user.name || 'Admin User'}</p>
-                  <p className="text-xs text-blue-300 truncate">{user.email}</p>
+                  <p className="text-xs text-indigo-200 truncate">{user.email}</p>
                 </div>
               </div>
             </div>
@@ -312,14 +325,14 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           {/* Navigation */}
           <nav className="relative flex-1 px-3 py-4 overflow-y-auto custom-scrollbar space-y-6">
             {Object.entries(sections).map(([sectionKey, sectionName]) => {
-              const sectionItems = filteredNavigation.filter(item => item.section === sectionKey);
+              const sectionItems = navigationItems.filter(item => item.section === sectionKey);
               if (sectionItems.length === 0) return null;
 
               return (
                 <div key={sectionKey} className="space-y-1">
                   {!isCollapsed && (
-                    <h3 className="px-3 text-xs font-bold text-blue-300 uppercase tracking-wider mb-2 flex items-center">
-                      <div className="w-4 h-0.5 bg-gradient-to-r from-blue-400 to-transparent mr-2"></div>
+                    <h3 className="px-3 text-xs font-bold text-indigo-200 uppercase tracking-wider mb-2 flex items-center">
+                      <div className="w-4 h-0.5 bg-gradient-to-r from-indigo-300 to-transparent mr-2"></div>
                       {sectionName}
                     </h3>
                   )}
@@ -339,15 +352,15 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                           transition-all duration-200 transform hover:scale-[1.02]
                           ${
                             active
-                              ? 'bg-gradient-to-r from-blue-500/30 via-indigo-500/30 to-purple-500/30 text-white shadow-lg shadow-blue-500/20 border border-white/20'
-                              : 'text-blue-100 hover:bg-white/10 hover:text-white border border-transparent'
+                              ? 'bg-white text-indigo-900 shadow-xl shadow-indigo-500/20 border border-white/60'
+                              : 'text-indigo-100 hover:bg-white/10 hover:text-white border border-transparent'
                           }
                         `}
                         title={isCollapsed ? item.name : undefined}
                       >
                         {/* Active indicator */}
                         {active && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-blue-400 via-purple-500 to-pink-500 rounded-r-full"></div>
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-indigo-500 via-purple-500 to-fuchsia-500 rounded-r-full"></div>
                         )}
                         
                         {/* Icon with glow effect */}
@@ -359,13 +372,13 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                             relative w-8 h-8 flex items-center justify-center rounded-lg
                             transition-all duration-200
                             ${active 
-                              ? 'bg-white/20 shadow-lg' 
+                              ? 'bg-indigo-100 shadow-lg' 
                               : 'group-hover:bg-white/10'
                             }
                           `}>
                             <Icon className={`
                               w-5 h-5 transition-all duration-200
-                              ${active ? 'text-white scale-110' : 'text-blue-300 group-hover:text-white group-hover:scale-110'}
+                              ${active ? 'text-indigo-700 scale-110' : 'text-indigo-200 group-hover:text-white group-hover:scale-110'}
                             `} />
                           </div>
                         </div>
@@ -376,7 +389,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                             
                             {/* Badge */}
                             {item.badge && item.badge > 0 && (
-                              <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-2 text-xs font-bold text-white bg-gradient-to-r from-red-500 to-pink-500 rounded-full shadow-lg animate-pulse">
+                              <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-2 text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-fuchsia-500 rounded-full shadow-lg animate-pulse">
                                 {item.badge}
                               </span>
                             )}
@@ -394,7 +407,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                         )}
 
                         {/* Hover shine effect */}
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-shimmer transition-opacity"></div>
+                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-shimmer transition-opacity"></div>
                       </Link>
                     );
                   })}
@@ -404,13 +417,44 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           </nav>
 
           {/* Logout Button */}
-          <div className="relative p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
+          <div className="relative p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm space-y-4">
+            {!isCollapsed && (
+              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-3">
+                <p className="text-xs font-semibold text-indigo-100 uppercase tracking-wide mb-2">Quick Actions</p>
+                <div className="grid grid-cols-1 gap-2">
+                  <Link
+                    to="/buses/new"
+                    onClick={onClose}
+                    className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-white/20 transition-all"
+                  >
+                    <TruckIcon className="h-4 w-4 text-indigo-100" />
+                    Add New Bus
+                  </Link>
+                  <Link
+                    to="/routes/new"
+                    onClick={onClose}
+                    className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-white/20 transition-all"
+                  >
+                    <MapIcon className="h-4 w-4 text-indigo-100" />
+                    Create Route
+                  </Link>
+                  <Link
+                    to="/bookings?status=pending"
+                    onClick={onClose}
+                    className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-indigo-100 hover:bg-white/20 transition-all"
+                  >
+                    <TicketIcon className="h-4 w-4 text-indigo-100" />
+                    Review Bookings
+                  </Link>
+                </div>
+              </div>
+            )}
             <button
               onClick={handleLogout}
               className={`
                 w-full group flex items-center px-4 py-3 text-sm font-medium rounded-xl
-                bg-gradient-to-r from-red-500/20 to-pink-500/20 hover:from-red-500/30 hover:to-pink-500/30
-                text-red-300 hover:text-white border border-red-500/30 hover:border-red-400/50
+                bg-gradient-to-r from-rose-500/20 to-fuchsia-500/20 hover:from-rose-500/30 hover:to-fuchsia-500/30
+                text-rose-200 hover:text-white border border-rose-500/30 hover:border-rose-400/50
                 transition-all duration-200 transform hover:scale-[1.02]
                 ${isCollapsed ? 'justify-center' : ''}
               `}
@@ -424,13 +468,13 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           {/* Footer */}
           {!isCollapsed && (
             <div className="relative px-4 py-3 border-t border-white/10 bg-white/5 backdrop-blur-sm">
-              <div className="text-xs text-blue-300 space-y-1">
+              <div className="text-xs text-indigo-200 space-y-1">
                 <p className="font-semibold text-white flex items-center">
                   <SparklesIcon className="w-3 h-3 mr-1" />
                   Tracksy Admin
                 </p>
-                <p className="text-blue-400">Version 2.0.0</p>
-                <p className="text-blue-500">© 2025 All rights reserved</p>
+                <p className="text-indigo-300">Version 2.0.0</p>
+                <p className="text-indigo-400">© 2025 All rights reserved</p>
               </div>
             </div>
           )}

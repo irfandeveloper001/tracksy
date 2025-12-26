@@ -6,8 +6,10 @@ export interface Booking {
   bus_id: number;
   route_id: number;
   booking_date: string;
+  trip_date?: string;
   seat_number?: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'rejected';
+  rejection_reason?: string;
   created_at?: string;
   updated_at?: string;
   bus?: any;
@@ -26,8 +28,14 @@ class BookingService {
   async getBookings(): Promise<Booking[]> {
     try {
       const response = await api.get('/bookings');
-      const bookings = response.data.data || response.data;
-      return Array.isArray(bookings) ? bookings : [];
+      const payload = response.data.data || response.data;
+      if (Array.isArray(payload)) {
+        return payload;
+      }
+      if (payload && Array.isArray(payload.data)) {
+        return payload.data;
+      }
+      return [];
     } catch (error: any) {
       console.error('Error getting bookings:', error);
       const errorMessage =
@@ -107,4 +115,3 @@ class BookingService {
 }
 
 export default new BookingService();
-

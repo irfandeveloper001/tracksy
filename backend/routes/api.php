@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Student\StudentController;
+use App\Http\Controllers\Student\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Driver\DriverController;
 use App\Http\Controllers\Driver\TripController;
 use App\Http\Controllers\Driver\LocationController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Admin\TripController as AdminTripController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\BusController as ApiBusController;
 use App\Http\Controllers\Api\RouteController as ApiRouteController;
@@ -172,16 +174,25 @@ Route::prefix('admin')->group(function () {
         
         // User management
         Route::get('/students', [StudentController::class, 'index']);
+        Route::get('/students/{id}/bookings', [StudentController::class, 'bookings']);
         Route::get('/students/{id}', [StudentController::class, 'show']);
         Route::post('/students', [StudentController::class, 'store']);
         Route::put('/students/{id}', [StudentController::class, 'update']);
+        Route::patch('/students/{id}/status', [StudentController::class, 'updateStatus']);
         Route::delete('/students/{id}', [StudentController::class, 'destroy']);
         
         Route::get('/drivers', [DriverController::class, 'index']);
+        Route::get('/drivers/{id}/trips', [DriverController::class, 'getTrips']);
         Route::get('/drivers/{id}', [DriverController::class, 'show']);
         Route::post('/drivers', [DriverController::class, 'store']);
         Route::put('/drivers/{id}', [DriverController::class, 'update']);
+        Route::patch('/drivers/{id}/status', [DriverController::class, 'updateStatus']);
         Route::delete('/drivers/{id}', [DriverController::class, 'destroy']);
+
+        // Trip management (Admin)
+        Route::get('/trips', [AdminTripController::class, 'index']);
+        Route::get('/trips/{id}', [AdminTripController::class, 'show']);
+        Route::post('/trips/{id}/cancel', [AdminTripController::class, 'cancel']);
         
         Route::get('/admins', [AdminController::class, 'index']);
         Route::post('/users', [AdminController::class, 'createUser']);
@@ -207,6 +218,8 @@ Route::prefix('admin')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::post('/notifications', [NotificationController::class, 'store']);
         Route::get('/notifications/{id}', [NotificationController::class, 'show']);
+        Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::post('/notifications/{id}/send', [NotificationController::class, 'send']);
         Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
         
@@ -261,4 +274,10 @@ Route::middleware([\App\Http\Middleware\ApiAuth::class])->prefix('student')->gro
     Route::post('/fees/{id}/pay', [App\Http\Controllers\Student\FeeController::class, 'makePayment']);
     Route::get('/fees/{id}/invoice', [App\Http\Controllers\Student\FeeController::class, 'downloadInvoice']);
     Route::get('/payments/{id}/receipt', [App\Http\Controllers\Student\FeeController::class, 'downloadReceipt']);
+    Route::get('/notifications', [StudentNotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [StudentNotificationController::class, 'getUnreadCount']);
+    Route::get('/notifications/{id}', [StudentNotificationController::class, 'show']);
+    Route::put('/notifications/{id}/read', [StudentNotificationController::class, 'markAsRead']);
+    Route::put('/notifications/read-all', [StudentNotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [StudentNotificationController::class, 'destroy']);
 });

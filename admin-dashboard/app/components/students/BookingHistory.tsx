@@ -7,6 +7,8 @@ interface Booking {
   bus_number?: string;
   start_time?: string;
   end_time?: string;
+  trip_date?: string;
+  created_at?: string;
   status?: string;
   pickup_location?: string;
   dropoff_location?: string;
@@ -45,13 +47,15 @@ export default function BookingHistory({ bookings }: BookingHistoryProps) {
               </p>
               <span
                 className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                  booking.status === 'completed'
-                    ? 'bg-green-100 text-green-800'
-                    : booking.status === 'active'
-                    ? 'bg-blue-100 text-blue-800'
-                    : booking.status === 'cancelled'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-gray-100 text-gray-800'
+                  booking.status === 'pending'
+                    ? 'bg-slate-100 text-slate-700'
+                    : booking.status === 'confirmed'
+                    ? 'bg-slate-200 text-slate-700'
+                    : booking.status === 'rejected'
+                    ? 'bg-slate-300 text-slate-700'
+                    : booking.status === 'completed'
+                    ? 'bg-slate-200 text-slate-700'
+                    : 'bg-slate-100 text-slate-700'
                 }`}
               >
                 {booking.status || 'unknown'}
@@ -70,6 +74,17 @@ export default function BookingHistory({ bookings }: BookingHistoryProps) {
                 Dropoff: {booking.dropoff_location}
               </p>
             )}
+            {(booking.trip_date || booking.created_at) && (() => {
+              const rawDate = booking.trip_date || booking.created_at;
+              if (!rawDate) return null;
+              const parsedDate = new Date(rawDate);
+              if (Number.isNaN(parsedDate.getTime())) return null;
+              return (
+                <p className="text-sm text-gray-500 mt-1">
+                  Trip Date: {parsedDate.toLocaleDateString()}
+                </p>
+              );
+            })()}
             <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
               {booking.start_time && (
                 <span>
@@ -89,4 +104,3 @@ export default function BookingHistory({ bookings }: BookingHistoryProps) {
     </div>
   );
 }
-

@@ -67,31 +67,38 @@ const bookingService = {
     page?: number;
   }): Promise<{ data: Booking[]; meta?: any }> {
     const response = await api.get('/admin/bookings', { params });
-    return response.data;
+    const payload = response.data?.data ?? response.data;
+    if (Array.isArray(payload)) {
+      return { data: payload };
+    }
+    if (payload && Array.isArray(payload.data)) {
+      const { data, ...meta } = payload;
+      return { data, meta };
+    }
+    return { data: [] };
   },
 
   async getBooking(id: number): Promise<Booking> {
     const response = await api.get(`/admin/bookings/${id}`);
-    return response.data.data;
+    return response.data?.data ?? response.data;
   },
 
   async approveBooking(id: number): Promise<Booking> {
     const response = await api.post(`/admin/bookings/${id}/approve`);
-    return response.data.data;
+    return response.data?.data ?? response.data;
   },
 
   async rejectBooking(id: number, rejectionReason: string): Promise<Booking> {
     const response = await api.post(`/admin/bookings/${id}/reject`, {
       rejection_reason: rejectionReason,
     });
-    return response.data.data;
+    return response.data?.data ?? response.data;
   },
 
   async getStatistics(): Promise<BookingStatistics> {
     const response = await api.get('/admin/bookings/statistics');
-    return response.data.data;
+    return response.data?.data ?? response.data;
   },
 };
 
 export default bookingService;
-

@@ -21,6 +21,18 @@ class NotificationController extends Controller
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
+
+        if ($request->has('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->has('read')) {
+            $query->where('read', filter_var($request->read, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        if ($request->has('audience_type')) {
+            $query->where('audience_type', $request->audience_type);
+        }
         
         $notifications = $query->orderBy('created_at', 'desc')
             ->paginate($request->per_page ?? 20);
@@ -208,5 +220,33 @@ class NotificationController extends Controller
         $notification->delete();
 
         return $this->successResponse(null, 'Notification deleted successfully');
+    }
+
+    public function markAsRead(string $id)
+    {
+        $notification = Notification::findOrFail($id);
+        $notification->update([
+            'read' => true,
+            'read_at' => now(),
+        ]);
+
+        return $this->successResponse($notification, 'Notification marked as read');
+    }
+
+    public function markAllAsRead(Request $request)
+    {
+        $query = Notification::query();
+
+        if ($request->has('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        $updated = $query->where('read', false)
+            ->update([
+                'read' => true,
+                'read_at' => now(),
+            ]);
+
+        return $this->successResponse(['updated_count' => $updated], 'All notifications marked as read');
     }
 }

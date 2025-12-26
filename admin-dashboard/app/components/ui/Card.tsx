@@ -23,9 +23,9 @@ export default function Card({
   return (
     <div
       className={`
-        bg-white rounded-lg shadow-sm border border-gray-200
+        bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-200/60
         ${paddingClasses[padding]}
-        ${hover ? 'hover:shadow-md transition-shadow' : ''}
+        ${hover ? 'hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300' : ''}
         ${className}
       `}
     >

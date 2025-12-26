@@ -170,70 +170,73 @@ export default function BusListPanel({ defaultFilter = 'all' }: BusListPanelProp
   const getStatusColor = (status: Bus['status']) => {
     switch (status) {
       case 'active':
-        return 'border-l-green-500 bg-green-50/50';
+        return 'border-l-green-500 bg-gradient-to-r from-green-50/80 to-white/60';
       case 'maintenance':
-        return 'border-l-yellow-500 bg-yellow-50/50';
+        return 'border-l-yellow-500 bg-gradient-to-r from-yellow-50/80 to-white/60';
       case 'emergency':
-        return 'border-l-red-500 bg-red-50/50';
+        return 'border-l-red-500 bg-gradient-to-r from-red-50/80 to-white/60';
       default:
-        return 'border-l-gray-500 bg-gray-50/50';
+        return 'border-l-gray-500 bg-gradient-to-r from-gray-50/80 to-white/60';
     }
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/60 overflow-hidden hover:shadow-2xl transition-all duration-500">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900 flex items-center">
-              <TruckIcon className="h-6 w-6 mr-2 text-blue-600" />
-              Bus List
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              {total} {total === 1 ? 'bus' : 'buses'} found
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-xs text-gray-500 font-medium">Live</span>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Search */}
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by bus number, license..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
+      <div className="relative p-6 border-b border-gray-200/70 bg-gradient-to-r from-blue-50 via-white/70 to-indigo-50">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.18),transparent_60%)] pointer-events-none"></div>
+        <div className="relative">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                <TruckIcon className="h-6 w-6 mr-2 text-blue-600" />
+                Bus List
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {total} {total === 1 ? 'bus' : 'buses'} found
+              </p>
+            </div>
+            <div className="flex items-center space-x-2 rounded-full bg-white/80 px-3 py-1 border border-blue-100 shadow-sm">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-xs text-gray-500 font-medium">Live</span>
+            </div>
           </div>
 
-          {/* Status Filter */}
-          <div className="relative">
-            <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="emergency">Emergency</option>
-            </select>
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by bus number, license..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300/80 rounded-lg bg-white/80 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="relative">
+              <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300/80 rounded-lg bg-white/80 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Bus List */}
-      <div className="max-h-[600px] overflow-y-auto">
+      <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -262,11 +265,11 @@ export default function BusListPanel({ defaultFilter = 'all' }: BusListPanelProp
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
-            {buses.map((bus, index) => (
+          <div className="space-y-3 px-4 py-4">
+            {buses.map((bus) => (
               <div
                 key={bus.id}
-                className={`p-4 border-l-4 hover:bg-gray-50 transition-colors cursor-pointer ${getStatusColor(bus.status)}`}
+                className={`group relative overflow-hidden p-4 rounded-xl border border-gray-200/60 border-l-4 hover:border-gray-300 hover:shadow-lg transition-all duration-300 cursor-pointer ${getStatusColor(bus.status)}`}
                 onClick={() => {
                   setSelectedBus(bus);
                   setIsEditMode(false);
@@ -349,7 +352,7 @@ export default function BusListPanel({ defaultFilter = 'all' }: BusListPanelProp
 
       {/* Footer with quick stats */}
       {buses.length > 0 && (
-        <div className="p-4 bg-gray-50 border-t border-gray-200">
+        <div className="p-4 bg-white/70 border-t border-gray-200/70 backdrop-blur-sm">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
               Showing {buses.length} of {total} buses

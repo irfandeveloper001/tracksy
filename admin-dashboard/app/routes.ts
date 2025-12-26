@@ -1,6 +1,4 @@
-import { type RouteConfig, index, route } from "@react-router/dev/routes";
-import DashboardLayout from "./components/layouts/DashboardLayout";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { type RouteConfig, index, route, layout } from "@react-router/dev/routes";
 
 export default [
   index("routes/home.tsx"),
@@ -8,99 +6,39 @@ export default [
   route("signup", "routes/signup/route.tsx"),
   route("forgot-password", "routes/forgot-password/route.tsx"),
   route("reset-password", "routes/reset-password/route.tsx"),
-  route("dashboard", "routes/dashboard/route.tsx", {
-    layout: DashboardLayout,
-    beforeLoad: async ({ request }) => {
-      // Protected route - will be handled by ProtectedRoute component
-      return {};
-    },
-  }),
-  route("buses", "routes/buses/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("buses/new", "routes/buses.new/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  // More specific route (edit) must come before less specific route (view)
-  route("buses.$id.edit", "routes/buses.$id.edit/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("buses.$id", "routes/buses.$id/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("routes", "routes/routes/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("routes/new", "routes/routes.new/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("routes.$id", "routes/routes.$id/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("routes.$id.edit", "routes/routes.$id.edit/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("students", "routes/students/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("students.$id", "routes/students.$id/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("drivers", "routes/drivers/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("drivers.$id", "routes/drivers.$id/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("admins", "routes/admins/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("trips", "routes/trips/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("trips.$id", "routes/trips.$id/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("stops", "routes/stops/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("live-map", "routes/live-map/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("analytics", "routes/analytics/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("reports", "routes/reports/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("alerts", "routes/alerts/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("alerts.$id", "routes/alerts.$id/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("notifications/new", "routes/notifications.new/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("maintenance", "routes/maintenance/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("settings", "routes/settings/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("fees", "routes/fees/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("fees/new", "routes/fees.new/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("fees/reports", "routes/fees.reports/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("fees.$id", "routes/fees.$id/route.tsx", {
-    layout: DashboardLayout,
-  }),
-  route("fees/invoices", "routes/fees.invoices/route.tsx", {
-    layout: DashboardLayout,
-  }),
+  layout("routes/_layout.tsx", [
+    route("dashboard", "routes/dashboard/route.tsx"),
+    route("buses", "routes/buses/route.tsx"),
+    route("buses/new", "routes/buses.new/route.tsx"),
+    // More specific route (edit) must come before less specific route (view)
+    route("buses/:id/edit", "routes/buses.$id.edit/route.tsx"),
+    route("buses/:id", "routes/buses.$id/route.tsx"),
+    route("routes", "routes/routes/route.tsx"),
+    route("routes/new", "routes/routes.new/route.tsx"),
+    route("routes/:id/edit", "routes/routes.$id.edit/route.tsx"),
+    route("routes/:id", "routes/routes.$id/route.tsx"),
+    route("students", "routes/students/route.tsx"),
+    route("students/:id", "routes/students.$id/route.tsx"),
+    route("drivers", "routes/drivers/route.tsx"),
+    route("drivers/:id", "routes/drivers.$id/route.tsx"),
+    route("admins", "routes/admins/route.tsx"),
+    route("trips", "routes/trips/route.tsx"),
+    route("trips/:id", "routes/trips.$id/route.tsx"),
+    route("bookings", "routes/bookings/route.tsx"),
+    route("bookings/:id", "routes/bookings.$id/route.tsx"),
+    route("stops", "routes/stops/route.tsx"),
+    route("live-map", "routes/live-map/route.tsx"),
+    route("analytics", "routes/analytics/route.tsx"),
+    route("reports", "routes/reports/route.tsx"),
+    route("alerts", "routes/alerts/route.tsx"),
+    route("alerts/:id", "routes/alerts.$id/route.tsx"),
+    route("notifications/new", "routes/notifications.new/route.tsx"),
+    route("maintenance", "routes/maintenance/route.tsx"),
+    route("settings", "routes/settings/route.tsx"),
+    route("fees", "routes/fees/route.tsx"),
+    route("fees/new", "routes/fees.new/route.tsx"),
+    route("fees/reports", "routes/fees.reports/route.tsx"),
+    route("fees/:id", "routes/fees.$id/route.tsx"),
+    route("fees/invoices", "routes/fees.invoices/route.tsx"),
+  ]),
 ] satisfies RouteConfig;

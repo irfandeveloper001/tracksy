@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Notification;
 use App\Models\SeatAssignment;
 use App\Notifications\BookingApproved;
 use App\Notifications\BookingRejected;
@@ -137,7 +138,29 @@ class BookingController extends Controller
         );
 
         // Send notification to student
-        $booking->student->notify(new BookingApproved($booking));
+        Notification::create([
+            'user_id' => $booking->student_id,
+            'type' => 'general',
+            'notification_type' => 'success',
+            'title' => 'Booking Approved',
+            'message' => 'Your booking request for seat ' . $booking->seat_number . ' has been approved.',
+            'data' => [
+                'booking_id' => $booking->id,
+                'booking_reference' => $booking->booking_reference,
+                'action_url' => '/bookings',
+            ],
+            'audience_type' => 'custom',
+            'audience_ids' => [$booking->student_id],
+            'status' => 'sent',
+            'sent_at' => now(),
+            'read' => false,
+        ]);
+
+        try {
+            $booking->student->notify(new BookingApproved($booking));
+        } catch (\Throwable $e) {
+            \Log::warning('Booking approved notification failed', ['error' => $e->getMessage()]);
+        }
 
         return $this->successResponse(
             $booking->fresh(['student', 'bus', 'adminApprovedBy']),
@@ -178,7 +201,30 @@ class BookingController extends Controller
         SeatAssignment::where('booking_id', $booking->id)->delete();
 
         // Send notification to student
-        $booking->student->notify(new BookingRejected($booking, $request->rejection_reason));
+        Notification::create([
+            'user_id' => $booking->student_id,
+            'type' => 'general',
+            'notification_type' => 'error',
+            'title' => 'Booking Rejected',
+            'message' => 'Your booking request was rejected. Reason: ' . $request->rejection_reason,
+            'data' => [
+                'booking_id' => $booking->id,
+                'booking_reference' => $booking->booking_reference,
+                'rejection_reason' => $request->rejection_reason,
+                'action_url' => '/bookings',
+            ],
+            'audience_type' => 'custom',
+            'audience_ids' => [$booking->student_id],
+            'status' => 'sent',
+            'sent_at' => now(),
+            'read' => false,
+        ]);
+
+        try {
+            $booking->student->notify(new BookingRejected($booking, $request->rejection_reason));
+        } catch (\Throwable $e) {
+            \Log::warning('Booking rejected notification failed', ['error' => $e->getMessage()]);
+        }
 
         return $this->successResponse(
             $booking->fresh(['student', 'bus']),

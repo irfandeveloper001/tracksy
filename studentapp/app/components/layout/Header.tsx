@@ -10,6 +10,7 @@ import {
 } from '@heroicons/react/24/outline';
 import authService from '../../lib/api/authService';
 import toast from 'react-hot-toast';
+import notificationService, { type StudentNotification } from '../../lib/api/notificationService';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -21,6 +22,8 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<StudentNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = async () => {
     try {
@@ -45,6 +48,36 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showUserMenu, showNotifications]);
+
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      try {
+        const count = await notificationService.getUnreadCount();
+        setUnreadCount(count);
+      } catch (error) {
+        setUnreadCount(0);
+      }
+    };
+
+    loadUnreadCount();
+  }, []);
+
+  useEffect(() => {
+    if (!showNotifications) return;
+
+    const loadNotifications = async () => {
+      try {
+        const data = await notificationService.getNotifications();
+        setNotifications(data.slice(0, 5));
+        const count = data.filter((notification) => !notification.read).length;
+        setUnreadCount(count);
+      } catch (error) {
+        setNotifications([]);
+      }
+    };
+
+    loadNotifications();
+  }, [showNotifications]);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50 backdrop-blur-lg bg-white/90">
@@ -90,9 +123,11 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
               >
                 <BellIcon className="h-6 w-6" />
                 {/* Notification badge */}
-                <span className="absolute top-1 right-1 h-4 w-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                  <span className="text-xs text-white font-bold">3</span>
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 h-4 min-w-[16px] bg-red-500 rounded-full flex items-center justify-center animate-pulse px-1">
+                    <span className="text-xs text-white font-bold">{unreadCount}</span>
+                  </span>
+                )}
               </button>
 
               {/* Notifications dropdown */}
@@ -105,30 +140,31 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
                     <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
-                    <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <BellIcon className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm text-gray-900 font-medium">Bus Arrival Update</p>
-                          <p className="text-xs text-gray-500 mt-1">Your bus will arrive in 5 minutes</p>
-                          <p className="text-xs text-gray-400 mt-1">2 mins ago</p>
-                        </div>
+                    {notifications.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                        No new notifications
                       </div>
-                    </div>
-                    <div className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors">
-                      <div className="flex items-start space-x-3">
-                        <div className="flex-shrink-0 h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                          <BellIcon className="h-4 w-4 text-green-600" />
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className="px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <BellIcon className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-900 font-medium">{notification.title}</p>
+                              <p className="text-xs text-gray-500 mt-1">{notification.message}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {new Date(notification.created_at).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm text-gray-900 font-medium">Booking Confirmed</p>
-                          <p className="text-xs text-gray-500 mt-1">Your booking has been confirmed</p>
-                          <p className="text-xs text-gray-400 mt-1">1 hour ago</p>
-                        </div>
-                      </div>
-                    </div>
+                      ))
+                    )}
                   </div>
                   <div className="px-4 py-2 border-t border-gray-200">
                     <button 
@@ -218,4 +254,3 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
     </header>
   );
 }
-

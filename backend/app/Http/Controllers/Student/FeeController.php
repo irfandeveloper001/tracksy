@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\Fee;
+use App\Models\Notification;
 use App\Models\Payment;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
@@ -111,6 +113,31 @@ class FeeController extends Controller
         }
 
         $fee->refresh();
+
+        $adminIds = User::whereIn('role', ['admin', 'manager', 'super_admin'])->pluck('id');
+        if ($adminIds->isNotEmpty()) {
+            $student = Auth::user();
+            foreach ($adminIds as $adminId) {
+                Notification::create([
+                    'user_id' => $adminId,
+                    'type' => 'general',
+                    'notification_type' => 'success',
+                    'title' => 'Fee Payment Received',
+                    'message' => $student->name . ' paid ' . $request->amount . ' for ' . $fee->fee_type . '.',
+                    'data' => [
+                        'fee_id' => $fee->id,
+                        'payment_id' => $payment->id,
+                        'student_id' => $student->id,
+                        'action_url' => '/fees/' . $fee->id,
+                    ],
+                    'audience_type' => 'custom',
+                    'audience_ids' => [$adminId],
+                    'status' => 'sent',
+                    'sent_at' => now(),
+                    'read' => false,
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,

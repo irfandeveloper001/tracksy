@@ -9,7 +9,6 @@ import {
   ShieldCheckIcon,
   ChartBarIcon,
   ArrowUpIcon,
-  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import MetricCard from '../../components/dashboard/MetricCard';
 import StatusPanel from '../../components/dashboard/StatusPanel';
@@ -167,84 +166,46 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 space-y-8 pb-8">
-      {/* Premium Header with Glassmorphism */}
-      <div className="relative overflow-hidden">
-        {/* Animated background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 opacity-90"></div>
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-20"></div>
-        
-        {/* Floating orbs */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-400/30 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-400/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        
-        <div className="relative z-10 backdrop-blur-xl bg-white/10 border-b border-white/20">
-          <div className="max-w-7xl mx-auto px-6 py-12 lg:py-16">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-              {/* Left side - Title and description */}
-              <div className="space-y-4 animate-in fade-in slide-in-from-left duration-700">
-                <div className="flex items-center space-x-3">
-                  <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg">
-                    <SparklesIcon className="h-8 w-8 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-4xl lg:text-5xl font-extrabold text-white mb-2 tracking-tight">
-                      Command Center
-                    </h1>
-                    <p className="text-blue-100 text-lg font-medium">
-                      Real-time transport management dashboard
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right side - Live stats and time */}
-              <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-6 animate-in fade-in slide-in-from-right duration-700">
-                {/* Live indicator */}
-                <div className="flex items-center space-x-3 bg-white/20 backdrop-blur-md rounded-xl px-5 py-3 border border-white/30 shadow-lg">
-                  <div className="relative">
-                    <div className="w-3 h-3 bg-green-400 rounded-full animate-ping absolute"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full relative"></div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-blue-100 font-medium uppercase tracking-wider">System Status</p>
-                    <p className="text-sm text-white font-bold">Live & Operational</p>
-                  </div>
-                </div>
-
-                {/* Current time */}
-                <div className="bg-white/20 backdrop-blur-md rounded-xl px-5 py-3 border border-white/30 shadow-lg">
-                  <p className="text-xs text-blue-100 font-medium uppercase tracking-wider mb-1">Current Time</p>
-                  <p className="text-lg text-white font-mono font-bold">
-                    {currentTime.toLocaleTimeString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit', 
-                      second: '2-digit',
-                      hour12: true 
-                    })}
-                  </p>
-                </div>
-              </div>
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Command Center</h1>
+            <p className="text-sm text-gray-500">
+              Real-time transport management dashboard.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+              <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+              Live
             </div>
-
-            {/* Quick stats bar */}
-            <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom duration-1000" style={{ animationDelay: '200ms' }}>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/20">
-                <p className="text-xs text-blue-100 font-medium mb-1">Total Fleet</p>
-                <p className="text-2xl font-bold text-white">{formattedMetrics.totalActiveBuses}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/20">
-                <p className="text-xs text-blue-100 font-medium mb-1">Active Routes</p>
-                <p className="text-2xl font-bold text-white">{formattedMetrics.totalRoutes}</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/20">
-                <p className="text-xs text-blue-100 font-medium mb-1">On-Time Rate</p>
-                <p className="text-2xl font-bold text-white">{formattedMetrics.onTimePercentage}%</p>
-              </div>
-              <div className="bg-white/10 backdrop-blur-md rounded-xl px-4 py-3 border border-white/20">
-                <p className="text-xs text-blue-100 font-medium mb-1">Efficiency</p>
-                <p className="text-2xl font-bold text-white">{efficiency}%</p>
-              </div>
+            <div className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+              {currentTime.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+              })}
             </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white/90 rounded-xl px-4 py-3 border border-gray-200/60 shadow-sm">
+            <p className="text-xs text-gray-500 font-medium mb-1">Total Fleet</p>
+            <p className="text-2xl font-bold text-gray-900">{formattedMetrics.totalActiveBuses}</p>
+          </div>
+          <div className="bg-white/90 rounded-xl px-4 py-3 border border-gray-200/60 shadow-sm">
+            <p className="text-xs text-gray-500 font-medium mb-1">Active Routes</p>
+            <p className="text-2xl font-bold text-gray-900">{formattedMetrics.totalRoutes}</p>
+          </div>
+          <div className="bg-white/90 rounded-xl px-4 py-3 border border-gray-200/60 shadow-sm">
+            <p className="text-xs text-gray-500 font-medium mb-1">On-Time Rate</p>
+            <p className="text-2xl font-bold text-gray-900">{formattedMetrics.onTimePercentage}%</p>
+          </div>
+          <div className="bg-white/90 rounded-xl px-4 py-3 border border-gray-200/60 shadow-sm">
+            <p className="text-xs text-gray-500 font-medium mb-1">Efficiency</p>
+            <p className="text-2xl font-bold text-gray-900">{efficiency}%</p>
           </div>
         </div>
       </div>

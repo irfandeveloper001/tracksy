@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import bookingService, { type Booking } from '../../lib/api/bookingService';
+import Modal from '~/components/ui/Modal';
+import Button from '~/components/ui/Button';
 import {
   TicketIcon,
   ClockIcon,
@@ -17,6 +19,7 @@ export default function BookingDetailPage() {
   const navigate = useNavigate();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -39,14 +42,11 @@ export default function BookingDetailPage() {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Are you sure you want to approve this booking? The seat will be reserved for this student.')) {
-      return;
-    }
-
     setProcessing(true);
     try {
       await bookingService.approveBooking(parseInt(id!));
       toast.success('Booking approved successfully! Student will be notified.');
+      setShowApproveModal(false);
       loadBooking();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to approve booking');
@@ -65,7 +65,7 @@ export default function BookingDetailPage() {
 
     setProcessing(true);
     try {
-      await bookingService.rejectBooking(parseInt(id!), rejectionReason);
+      await bookingService.rejectBooking(parseInt(id!), rejectionReason.trim());
       toast.success('Booking rejected successfully! Student will be notified.');
       setShowRejectModal(false);
       setRejectionReason('');
@@ -156,22 +156,22 @@ export default function BookingDetailPage() {
           </div>
           {booking.status === 'pending' && (
             <div className="flex items-center space-x-3">
-              <button
-                onClick={handleApprove}
+              <Button
+                onClick={() => setShowApproveModal(true)}
                 disabled={processing}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="bg-slate-900 text-white hover:bg-slate-800"
               >
-                <CheckCircleIcon className="w-5 h-5" />
-                <span>Approve</span>
-              </button>
-              <button
+                <CheckCircleIcon className="w-5 h-5 mr-2" />
+                Approve
+              </Button>
+              <Button
                 onClick={() => setShowRejectModal(true)}
                 disabled={processing}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="bg-slate-600 text-white hover:bg-slate-500"
               >
-                <XCircleIcon className="w-5 h-5" />
-                <span>Reject</span>
-              </button>
+                <XCircleIcon className="w-5 h-5 mr-2" />
+                Reject
+              </Button>
             </div>
           )}
         </div>
@@ -323,52 +323,83 @@ export default function BookingDetailPage() {
       </div>
 
       {/* Reject Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Reject Booking</h2>
-            <p className="text-gray-600 mb-4">
-              Please provide a reason for rejecting this booking. The student will be notified with this reason.
-            </p>
-            <form onSubmit={handleReject}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rejection Reason <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="Enter the reason for rejection..."
-                  required
-                />
-              </div>
-              <div className="flex items-center justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowRejectModal(false);
-                    setRejectionReason('');
-                  }}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                  disabled={processing}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={processing || !rejectionReason.trim()}
-                >
-                  {processing ? 'Rejecting...' : 'Reject Booking'}
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showApproveModal}
+        onClose={() => setShowApproveModal(false)}
+        title="Approve Booking"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+            Approve this booking and reserve the seat for the student. A confirmation
+            notice will be sent automatically.
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowApproveModal(false)}
+              disabled={processing}
+            >
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleApprove} isLoading={processing}>
+              Confirm Approval
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
+
+      <Modal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false);
+          setRejectionReason('');
+        }}
+        title="Reject Booking"
+        size="md"
+      >
+        <form onSubmit={handleReject} className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+            Provide a reason so the student understands the rejection. This message
+            is shared in their booking history.
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Rejection Reason <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-200 focus:border-slate-400"
+              placeholder="Enter the reason for rejection..."
+              required
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setShowRejectModal(false);
+                setRejectionReason('');
+              }}
+              disabled={processing}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="bg-slate-800 text-white hover:bg-slate-700"
+              disabled={processing || !rejectionReason.trim()}
+            >
+              {processing ? 'Rejecting...' : 'Reject Booking'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
-

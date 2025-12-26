@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, Outlet } from 'react-router';
 import { useAuthStore } from '../../lib/store/authStore';
 import { AdminRole } from '../../lib/api/authService';
@@ -7,12 +7,14 @@ interface ProtectedRouteProps {
   requiredRole?: AdminRole;
   requiredPermission?: string;
   redirectTo?: string;
+  children?: ReactNode;
 }
 
 export default function ProtectedRoute({
   requiredRole,
   requiredPermission,
   redirectTo = '/login',
+  children,
 }: ProtectedRouteProps) {
   const { isAuthenticated, user, isLoading, getCurrentUser } = useAuthStore();
   const navigate = useNavigate();
@@ -135,6 +137,9 @@ export default function ProtectedRoute({
     return null;
   }
 
+  if (children) {
+    return <>{children}</>;
+  }
+
   return <Outlet />;
 }
-

@@ -8,7 +8,7 @@ import {
   XCircleIcon,
   CalendarIcon,
 } from '@heroicons/react/24/outline';
-import tripService, { Trip, TripFilters } from '../../lib/api/tripService';
+import tripService, { type Trip, type TripFilters } from '../../lib/api/tripService';
 import toast from 'react-hot-toast';
 
 export default function TripsPage() {
@@ -35,7 +35,8 @@ export default function TripsPage() {
 
   // Cancel trip mutation
   const cancelMutation = useMutation({
-    mutationFn: tripService.cancelTrip,
+    mutationFn: (payload: { tripId: string; reason?: string }) =>
+      tripService.cancelTrip(payload.tripId, payload.reason),
     onSuccess: () => {
       toast.success('Trip cancelled successfully');
       queryClient.invalidateQueries({ queryKey: ['trips'] });
@@ -226,7 +227,7 @@ export default function TripsPage() {
                         <div className="flex items-center">
                           <MapPinIcon className="h-5 w-5 text-blue-600 mr-2" />
                           <span className="text-sm font-medium text-gray-900">
-                            #{trip.id.substring(0, 8)}
+                            #{String(trip.id).substring(0, 8)}
                           </span>
                         </div>
                       </td>
@@ -243,7 +244,7 @@ export default function TripsPage() {
                         {trip.student_count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(trip.start_time).toLocaleString()}
+                        {trip.start_time ? new Date(trip.start_time).toLocaleString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {trip.duration ? `${trip.duration} min` : 'N/A'}

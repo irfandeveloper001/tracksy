@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import authService from "../lib/api/authService";
+import notificationService, { type StudentNotification } from "../lib/api/notificationService";
+import toast from "react-hot-toast";
 import {
   BellIcon,
   CheckCircleIcon,
@@ -10,47 +12,15 @@ import {
   CheckIcon,
 } from "@heroicons/react/24/outline";
 
-interface Notification {
-  id: number;
-  type: string;
-  title: string;
-  message: string;
-  read: boolean;
-  created_at: string;
-}
-
 export default function Notifications() {
   const [user, setUser] = useState<any>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: 1,
-      type: "fee_invoice",
-      title: "New Fee Invoice",
-      message: "Transportation fee for Spring 2025 - $500.00 due on Feb 1, 2025",
-      read: false,
-      created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-    },
-    {
-      id: 2,
-      type: "booking_confirmed",
-      title: "Booking Confirmed",
-      message: "Your bus booking for Route A has been confirmed",
-      read: false,
-      created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    },
-    {
-      id: 3,
-      type: "payment_success",
-      title: "Payment Successful",
-      message: "Your payment of $100.00 has been processed successfully",
-      read: true,
-      created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    },
-  ]);
+  const [notifications, setNotifications] = useState<StudentNotification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread">("all");
 
   useEffect(() => {
     loadUser();
+    loadNotifications();
   }, []);
 
   const loadUser = async () => {
@@ -62,6 +32,18 @@ export default function Notifications() {
     }
   };
 
+  const loadNotifications = async () => {
+    try {
+      setLoading(true);
+      const data = await notificationService.getNotifications();
+      setNotifications(data);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load notifications");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case "fee_invoice":
@@ -69,7 +51,12 @@ export default function Notifications() {
         return <ExclamationTriangleIcon className="w-6 h-6 text-yellow-600" />;
       case "payment_success":
       case "booking_confirmed":
+      case "success":
         return <CheckCircleIcon className="w-6 h-6 text-green-600" />;
+      case "error":
+        return <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />;
+      case "warning":
+        return <ExclamationTriangleIcon className="w-6 h-6 text-yellow-600" />;
       default:
         return <InformationCircleIcon className="w-6 h-6 text-blue-600" />;
     }
@@ -87,22 +74,37 @@ export default function Notifications() {
     return date.toLocaleDateString();
   };
 
-  const markAsRead = (id: number) => {
-    setNotifications(
-      notifications.map((notif) =>
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
+  const markAsRead = async (id: number) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(
+        notifications.map((notif) =>
+          notif.id === id ? { ...notif, read: true } : notif
+        )
+      );
+    } catch (error: any) {
+      toast.error(error.message || "Failed to mark notification as read");
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(
-      notifications.map((notif) => ({ ...notif, read: true }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(
+        notifications.map((notif) => ({ ...notif, read: true }))
+      );
+    } catch (error: any) {
+      toast.error(error.message || "Failed to mark all as read");
+    }
   };
 
-  const deleteNotification = (id: number) => {
-    setNotifications(notifications.filter((notif) => notif.id !== id));
+  const deleteNotification = async (id: number) => {
+    try {
+      await notificationService.deleteNotification(id);
+      setNotifications(notifications.filter((notif) => notif.id !== id));
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete notification");
+    }
   };
 
   const filteredNotifications =
@@ -111,6 +113,7 @@ export default function Notifications() {
       : notifications;
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const isEmpty = !loading && notifications.length === 0;
 
   return (
     <DashboardLayout user={user}>
@@ -167,7 +170,12 @@ export default function Notifications() {
 
         {/* Notifications List */}
         <div className="space-y-3">
-          {filteredNotifications.length === 0 ? (
+          {loading ? (
+            <div className="bg-white rounded-xl shadow-md p-12 text-center">
+              <BellIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg">Loading notifications...</p>
+            </div>
+          ) : isEmpty || filteredNotifications.length === 0 ? (
             <div className="bg-white rounded-xl shadow-md p-12 text-center">
               <BellIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-600 text-lg">No notifications</p>
@@ -185,7 +193,7 @@ export default function Notifications() {
               >
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0">
-                    {getIcon(notification.type)}
+                    {getIcon(notification.notification_type || notification.type || "info")}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
@@ -228,4 +236,3 @@ export default function Notifications() {
     </DashboardLayout>
   );
 }
-
