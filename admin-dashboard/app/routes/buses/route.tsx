@@ -394,72 +394,43 @@ export default function BusesPage() {
     return 'All Buses';
   };
 
-  const getFilterGradient = () => {
-    if (statusFilter === 'active') return 'from-green-600 via-green-700 to-emerald-700';
-    if (statusFilter === 'maintenance') return 'from-yellow-600 via-yellow-700 to-amber-700';
-    if (statusFilter === 'emergency') return 'from-red-600 via-red-700 to-rose-700';
-    if (statusFilter === 'inactive') return 'from-gray-600 via-gray-700 to-slate-700';
-    return 'from-blue-600 via-blue-700 to-indigo-700';
-  };
+  const onlineCount = buses.filter((bus) => bus.current_latitude && bus.current_longitude).length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Gradient Header */}
-      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${getFilterGradient()} p-8 text-white shadow-xl`}>
-        <div className="relative z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
-                  <TruckIcon className="h-8 w-8" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold">{getFilterTitle()}</h1>
-                  <div className="flex items-center space-x-4 mt-2">
-                    <p className="text-white/90 text-lg">
-                      {total} {total === 1 ? 'bus' : 'buses'} in your fleet
-                    </p>
-                    {statusFilter === 'active' && buses.filter(b => b.current_latitude && b.current_longitude).length > 0 && (
-                      <div className="flex items-center space-x-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full">
-                        <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></span>
-                        <span className="text-white font-semibold text-sm">
-                          {buses.filter(b => b.current_latitude && b.current_longitude).length} Online
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/buses/new')}
-              className="hidden md:flex items-center px-6 py-3 bg-white text-blue-700 rounded-xl hover:bg-white/90 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold transform hover:scale-105 active:scale-95"
-            >
-              <PlusIcon className="h-5 w-5 mr-2" />
-              Add New Bus
-            </button>
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 text-slate-600 shadow-sm ring-1 ring-slate-200">
+            <TruckIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">{getFilterTitle()}</h1>
+            <p className="text-sm text-slate-500">
+              {total} {total === 1 ? 'bus' : 'buses'} in your fleet
+            </p>
           </div>
         </div>
-        {/* Decorative background elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24 blur-2xl"></div>
+        <div className="flex flex-wrap items-center gap-3">
+          {statusFilter === 'active' && onlineCount > 0 && (
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200">
+              <span className="h-2 w-2 rounded-full bg-slate-400 animate-pulse"></span>
+              {onlineCount} Online
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => navigate('/buses/new')}
+            className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+          >
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Add New Bus
+          </button>
+        </div>
       </div>
 
-      {/* Mobile Add Button */}
-      <div className="md:hidden">
-        <button
-          type="button"
-          onClick={() => navigate('/buses/new')}
-          className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg font-semibold"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add New Bus
-        </button>
-      </div>
-
-      {/* Filters - Enhanced Design */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      {/* Filters */}
+      <div className="rounded-2xl bg-white/80 p-5 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
         <div className="flex items-center space-x-2 mb-4">
           <FunnelIcon className="h-5 w-5 text-gray-500" />
           <h3 className="text-lg font-semibold text-gray-900">Filters & Search</h3>

@@ -205,52 +205,26 @@ export default function RoutesPage() {
     return 'All Routes';
   };
 
-  const getFilterGradient = () => {
-    if (statusFilter === 'active') return 'from-purple-600 via-purple-700 to-indigo-700';
-    if (statusFilter === 'inactive') return 'from-gray-600 via-gray-700 to-slate-700';
-    return 'from-blue-600 via-blue-700 to-indigo-700';
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Gradient Header */}
-      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${getFilterGradient()} p-8 text-white shadow-xl`}>
-        <div className="relative z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-3 mb-2">
-                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
-                  <MapIcon className="h-8 w-8" />
-                </div>
-                <div>
-                  <h1 className="text-4xl font-bold">{getFilterTitle()}</h1>
-                  <p className="text-white/90 text-lg mt-1">
-                    {total} {total === 1 ? 'route' : 'routes'} configured
-                  </p>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate('/routes/new')}
-              className="hidden md:flex items-center px-6 py-3 bg-white text-blue-700 rounded-xl hover:bg-white/90 transition-all duration-200 shadow-lg hover:shadow-xl font-semibold transform hover:scale-105 active:scale-95"
-            >
-              <PlusIcon className="h-5 w-5 mr-2" />
-              Create Route
-            </button>
+      {/* Page Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 text-slate-600 shadow-sm ring-1 ring-slate-200">
+            <MapIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">{getFilterTitle()}</h1>
+            <p className="text-sm text-slate-500">
+              {total} {total === 1 ? 'route' : 'routes'} configured
+            </p>
           </div>
         </div>
-        {/* Decorative background elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -ml-24 -mb-24 blur-2xl"></div>
-      </div>
-
-      {/* Mobile Add Button */}
-      <div className="md:hidden">
         <button
           onClick={() => navigate('/routes/new')}
-          className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg font-semibold"
+          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
         >
-          <PlusIcon className="h-5 w-5 mr-2" />
+          <PlusIcon className="mr-2 h-4 w-4" />
           Create Route
         </button>
       </div>
@@ -309,8 +283,8 @@ export default function RoutesPage() {
         </div>
       </div>
 
-      {/* Filters - Enhanced Design */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      {/* Filters */}
+      <div className="rounded-2xl bg-white/80 p-5 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
         <div className="flex items-center space-x-2 mb-4">
           <FunnelIcon className="h-5 w-5 text-gray-500" />
           <h3 className="text-lg font-semibold text-gray-900">Filters & Search</h3>

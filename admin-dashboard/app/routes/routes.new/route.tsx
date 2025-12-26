@@ -493,54 +493,40 @@ export default function NewRoutePage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-      {/* Enhanced Header with gradient */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-8 text-white shadow-2xl transform transition-all hover:scale-[1.01]">
-        <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white/5 to-transparent"></div>
-        <div className="relative z-10 flex items-center space-x-6">
+      {/* Page Header */}
+      <div className="rounded-3xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-4">
           <button
             onClick={() => navigate('/routes')}
-            className="p-3 hover:bg-white/20 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-sm"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm hover:text-slate-900"
+            aria-label="Back to routes"
           >
-            <ArrowLeftIcon className="h-6 w-6" />
+            <ArrowLeftIcon className="h-5 w-5" />
           </button>
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl shadow-lg">
-                <MapPinIcon className="w-8 h-8" />
-              </div>
-              <div>
-                <h1 className="text-4xl font-extrabold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-                  Create New Route
-                </h1>
-                <p className="text-blue-100 text-lg font-medium">Define a new bus route for your fleet</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
+              <MapPinIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">Create New Route</h1>
+              <p className="text-sm text-slate-500">Set up a new path for your fleet.</p>
             </div>
           </div>
         </div>
-        {/* Enhanced decorative background elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-48 -mt-48 blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-purple-400/20 rounded-full -ml-36 -mb-36 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-blue-400/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
       </div>
 
       {/* Enhanced Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all hover:shadow-3xl">
-        {/* Form Header with gradient */}
-        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 px-8 py-6">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Route Information</h2>
-              <p className="text-sm text-gray-600 mt-1">Fill in the details to create a new route</p>
-            </div>
-          </div>
-        </div>
-        
+      <form onSubmit={handleSubmit(onSubmit)} className="rounded-3xl bg-white/90 shadow-xl ring-1 ring-slate-200/70 backdrop-blur">
         <div className="p-8 space-y-8">
+          <div className="flex items-center justify-between border-b border-slate-200/70 pb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Route Information</h2>
+              <p className="text-sm text-slate-500">Define the route details and stops.</p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              Step 1 of 3
+            </span>
+          </div>
           {/* Route Name */}
           <div className="group">
             <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center">
@@ -573,7 +559,7 @@ export default function NewRoutePage() {
           </div>
 
           {/* Source Location - Cascading Dropdowns */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border-2 border-blue-200">
+          <div className="rounded-2xl bg-slate-50/80 p-6 ring-1 ring-slate-200/70">
             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
               <MapPinIcon className="w-5 h-5 mr-2 text-blue-600" />
               Source Location
@@ -670,9 +656,9 @@ export default function NewRoutePage() {
           </div>
 
           {/* Destination Location - Cascading Dropdowns */}
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6 border-2 border-indigo-200">
+          <div className="rounded-2xl bg-slate-50/80 p-6 ring-1 ring-slate-200/70">
             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-              <MapPinIcon className="w-5 h-5 mr-2 text-indigo-600" />
+              <MapPinIcon className="w-5 h-5 mr-2 text-slate-700" />
               Destination Location (University)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1070,10 +1056,6 @@ export default function NewRoutePage() {
     </div>
   );
 }
-
-
-
-
 
 
 

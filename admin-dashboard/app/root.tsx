@@ -33,6 +33,8 @@ export const links: Route.LinksFunction = () => [
     href: "https://fonts.gstatic.com",
     crossOrigin: "anonymous",
   },
+  // Leaflet assets are vendored in /public for offline/demo use.
+  { rel: "stylesheet", href: "/vendor/leaflet/leaflet.css" },
   {
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",

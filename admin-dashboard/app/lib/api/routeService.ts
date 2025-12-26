@@ -359,7 +359,14 @@ class RouteService {
       const response = await api.get('/admin/stops', {
         params: { page, per_page: perPage },
       });
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data;
+      if (Array.isArray(payload)) {
+        return { stops: payload, total: payload.length };
+      }
+      if (payload && Array.isArray(payload.data)) {
+        return { stops: payload.data, total: payload.total || payload.data.length };
+      }
+      return { stops: [], total: 0 };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         return { stops: [], total: 0 };

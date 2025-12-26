@@ -463,37 +463,29 @@ export default function NewBusPage() {
   // Form is ready to use immediately - dropdowns load in background
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-      {/* Enhanced Header with gradient and animations */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-8 text-white shadow-2xl transform transition-all hover:scale-[1.01]">
-        <div className="absolute inset-0 opacity-10 bg-gradient-to-br from-white/5 to-transparent"></div>
-        <div className="relative z-10 flex items-center space-x-6">
-        <button
-          onClick={() => navigate('/buses')}
-            className="p-3 hover:bg-white/20 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 backdrop-blur-sm"
-        >
-            <ArrowLeftIcon className="h-6 w-6" />
-        </button>
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="bg-white/20 backdrop-blur-md p-3 rounded-2xl shadow-lg">
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
-                  <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z"/>
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-4xl font-extrabold mb-2 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-                  Add New Bus
-                </h1>
-                <p className="text-blue-100 text-lg font-medium">Fill in the bus details to add it to your fleet</p>
-              </div>
+      {/* Page Header */}
+      <div className="rounded-3xl bg-white/80 p-6 shadow-sm ring-1 ring-slate-200/70 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            onClick={() => navigate('/buses')}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm hover:text-slate-900"
+            aria-label="Back to buses"
+          >
+            <ArrowLeftIcon className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
+                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z"/>
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">Add New Bus</h1>
+              <p className="text-sm text-slate-500">Add a new bus to your fleet roster.</p>
             </div>
           </div>
         </div>
-        {/* Enhanced decorative background elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-48 -mt-48 blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-purple-400/20 rounded-full -ml-36 -mb-36 blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-blue-400/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
       </div>
 
       {/* Success/Error Info - Only show if routes are loaded and empty */}
@@ -529,24 +521,18 @@ export default function NewBusPage() {
             });
           }
         )}
-        className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden transform transition-all hover:shadow-3xl"
+        className="rounded-3xl bg-white/90 shadow-xl ring-1 ring-slate-200/70 backdrop-blur"
       >
-        {/* Form Header with gradient */}
-        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-gray-200 px-8 py-6">
-          <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Bus Information</h2>
-              <p className="text-sm text-gray-600 mt-1">Fill in the details to add a new bus to your fleet</p>
-            </div>
-          </div>
-        </div>
-        
         <div className="p-8 space-y-8">
+          <div className="flex items-center justify-between border-b border-slate-200/70 pb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Bus Information</h2>
+              <p className="text-sm text-slate-500">Provide the core details and assignments.</p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              Step 1 of 2
+            </span>
+          </div>
         {/* Bus Number & License Plate - Enhanced */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="group">
