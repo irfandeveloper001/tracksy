@@ -8,8 +8,7 @@ import {
   BellIcon,
   UserCircleIcon,
   Cog6ToothIcon,
-  ArrowRightOnRectangleIcon,
-  SparklesIcon
+  ArrowRightOnRectangleIcon
 } from "@heroicons/react/24/outline";
 import {
   HomeIcon as HomeIconSolid,
@@ -34,9 +33,10 @@ interface SidebarProps {
   onLogout: () => void;
   isOpen?: boolean;
   onClose?: () => void;
+  user?: any;
 }
 
-export default function Sidebar({ onLogout, isOpen = false, onClose }: SidebarProps) {
+export default function Sidebar({ onLogout, isOpen = false, onClose, user }: SidebarProps) {
   const location = useLocation();
   const { t } = useLanguage();
 
@@ -49,6 +49,21 @@ export default function Sidebar({ onLogout, isOpen = false, onClose }: SidebarPr
     { name: t('notifications'), path: '/notifications', icon: BellIcon, iconSolid: BellIconSolid, badge: 3 },
     { name: t('profile'), path: '/profile', icon: UserCircleIcon, iconSolid: UserCircleIconSolid },
     { name: t('settings'), path: '/settings', icon: Cog6ToothIcon, iconSolid: Cog6ToothIcon },
+  ];
+
+  const sections = [
+    {
+      title: 'Main',
+      items: navigation.slice(0, 2),
+    },
+    {
+      title: 'Bookings',
+      items: navigation.slice(2, 5),
+    },
+    {
+      title: 'Account',
+      items: navigation.slice(5),
+    },
   ];
 
   const isActive = (path: string) => {
@@ -69,84 +84,92 @@ export default function Sidebar({ onLogout, isOpen = false, onClose }: SidebarPr
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-64 bg-gradient-to-b from-indigo-900 via-indigo-800 to-purple-900
+          w-72 bg-gradient-to-b from-indigo-950 via-slate-900 to-purple-950
           transform transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          shadow-2xl
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          shadow-2xl border-r border-white/10 ring-1 ring-white/10
           flex-shrink-0
         `}
       >
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-center h-20 border-b border-indigo-700/50 bg-gradient-to-r from-indigo-900 to-purple-900">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-white to-indigo-100 rounded-xl flex items-center justify-center shadow-lg transform hover:rotate-12 transition-transform duration-300">
-                <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">T</span>
+          {/* Brand + User */}
+          <div className="relative border-b border-white/10 bg-white/5 px-4 py-4 backdrop-blur-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                  {(user?.name || 'S').charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">
+                    {user?.name || 'Student'}
+                  </p>
+                  <p className="text-xs text-indigo-200 truncate">
+                    ID: {user?.student_id || '—'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-white">Tracksy</h1>
-                <p className="text-xs text-indigo-300 flex items-center">
-                  <SparklesIcon className="w-3 h-3 mr-1" />
-                  {t('studentPortal')}
-                </p>
+              <div className="hidden lg:flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-indigo-100">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                Live
               </div>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-            {navigation.map((item) => {
-              const Icon = isActive(item.path) ? item.iconSolid : item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  onClick={onClose}
-                  className={`group flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
-                    isActive(item.path)
-                      ? 'bg-white text-indigo-900 shadow-xl shadow-indigo-900/20 transform scale-105'
-                      : 'text-indigo-100 hover:bg-indigo-700/50 hover:text-white hover:translate-x-1'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <Icon className={`w-6 h-6 mr-3 ${isActive(item.path) ? 'text-indigo-600' : ''}`} />
-                    <span className="font-medium">{item.name}</span>
-                  </div>
-                  {item.badge && item.badge > 0 && (
-                    <span className="px-2 py-0.5 text-xs font-bold bg-red-500 text-white rounded-full animate-pulse">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+          <nav className="flex-1 px-3 py-4 overflow-y-auto custom-scrollbar space-y-4">
+            {sections.map((section) => (
+              <div key={section.title} className="space-y-1">
+                <p className="px-3 text-[11px] font-semibold uppercase tracking-wide text-indigo-200">
+                  {section.title}
+                </p>
+                {section.items.map((item) => {
+                  const Icon = isActive(item.path) ? item.iconSolid : item.icon;
+                  const active = isActive(item.path);
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.path}
+                      onClick={onClose}
+                      className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                        active
+                          ? 'bg-white text-indigo-900 shadow-sm border border-white/60'
+                          : 'text-indigo-100 hover:bg-white/10 hover:text-white border border-transparent'
+                      }`}
+                    >
+                      {active && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-gradient-to-b from-indigo-500 via-purple-500 to-fuchsia-500 rounded-r-full"></div>
+                      )}
+                      <div className="flex items-center">
+                        <div
+                          className={`w-8 h-8 flex items-center justify-center rounded-lg ${
+                            active ? 'bg-indigo-100' : 'group-hover:bg-white/10'
+                          }`}
+                        >
+                          <Icon className={`w-5 h-5 ${active ? 'text-indigo-700' : 'text-indigo-200'}`} />
+                        </div>
+                        <span className="ml-3">{item.name}</span>
+                      </div>
+                      {item.badge && item.badge > 0 && (
+                        <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-rose-500 text-white rounded-full">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
           {/* Settings & Logout */}
-          <div className="px-3 py-4 border-t border-indigo-700/50 space-y-2 bg-gradient-to-b from-transparent to-purple-900/30">
-            <Link
-              to="/settings"
-              onClick={onClose}
-              className="flex items-center px-4 py-3 text-indigo-100 rounded-xl hover:bg-indigo-700/50 hover:text-white transition-all hover:translate-x-1"
-            >
-              <Cog6ToothIcon className="w-6 h-6 mr-3" />
-              <span className="font-medium">{t('settings')}</span>
-            </Link>
+          <div className="px-4 py-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
             <button
               onClick={onLogout}
-              className="w-full flex items-center px-4 py-3 text-indigo-100 rounded-xl hover:bg-red-600 hover:text-white transition-all hover:translate-x-1"
+              className="w-full flex items-center gap-2 rounded-xl bg-rose-500/20 px-3 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-500/30 transition-all"
             >
-              <ArrowRightOnRectangleIcon className="w-6 h-6 mr-3" />
-              <span className="font-medium">{t('logout')}</span>
+              <ArrowRightOnRectangleIcon className="w-5 h-5" />
+              {t('logout')}
             </button>
-          </div>
-
-          {/* Footer */}
-          <div className="px-4 py-3 border-t border-indigo-700/50 bg-indigo-900/50">
-            <div className="text-xs text-indigo-300">
-              <p className="font-medium">Tracksy © 2025</p>
-              <p>Version 1.0.0</p>
-            </div>
           </div>
         </div>
       </aside>

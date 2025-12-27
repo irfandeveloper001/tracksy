@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\User;
 
 class Route extends Model
 {
@@ -51,6 +52,12 @@ class Route extends Model
         return $this->hasMany(Bus::class, 'current_route_id');
     }
 
+    public function students()
+    {
+        return $this->hasMany(User::class, 'assigned_route_id')
+            ->where('role', 'student');
+    }
+
     public function trips()
     {
         return $this->hasMany(Trip::class);
@@ -67,4 +74,3 @@ class Route extends Model
         return $query->where('is_active', true);
     }
 }
-

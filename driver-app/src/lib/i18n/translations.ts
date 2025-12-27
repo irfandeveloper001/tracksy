@@ -15,7 +15,8 @@ export type TranslationKey =
   | 'settingsSubtitle'
   | 'language'
   | 'languageHint'
-  | 'saveSettings';
+  | 'saveSettings'
+  | 'driverPortal';
 
 export type TranslationMap = Record<TranslationKey, string>;
 
@@ -38,6 +39,7 @@ export const translations: Record<string, TranslationMap> = {
     language: 'Language',
     languageHint: 'Select your preferred language for this device.',
     saveSettings: 'Save Settings',
+    driverPortal: 'Driver Portal',
   },
   fr: {
     appName: 'Tracksy Chauffeur',
@@ -57,6 +59,7 @@ export const translations: Record<string, TranslationMap> = {
     language: 'Langue',
     languageHint: 'Sélectionnez la langue de l’interface pour cet appareil.',
     saveSettings: 'Enregistrer',
+    driverPortal: 'Portail chauffeur',
   },
   ur: {
     appName: 'ٹریکسی ڈرائیور',
@@ -76,6 +79,7 @@ export const translations: Record<string, TranslationMap> = {
     language: 'زبان',
     languageHint: 'اس ڈیوائس کے لیے زبان منتخب کریں۔',
     saveSettings: 'ترتیبات محفوظ کریں',
+    driverPortal: 'ڈرائیور پورٹل',
   },
   ar: {
     appName: 'تراكسي للسائق',
@@ -95,5 +99,6 @@ export const translations: Record<string, TranslationMap> = {
     language: 'اللغة',
     languageHint: 'اختر لغة الواجهة لهذا الجهاز.',
     saveSettings: 'حفظ الإعدادات',
+    driverPortal: 'بوابة السائق',
   },
 };

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Driver;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bus;
+use App\Models\Notification;
 use App\Models\User;
 use App\Models\Route;
 use App\Models\Trip;
@@ -171,8 +173,14 @@ class DriverController extends Controller
         }
         
         // If no direct assignment, check if driver's bus has a route
+        $bus = null;
         if ($driver->assigned_bus_id) {
-            $bus = \App\Models\Bus::where('id', $driver->assigned_bus_id)->first();
+            $bus = Bus::where('id', $driver->assigned_bus_id)->first();
+        }
+        if (!$bus) {
+            $bus = Bus::where('current_driver_id', $driver->id)->first();
+        }
+        if ($bus) {
             if ($bus && $bus->current_route_id) {
                 $route = Route::with('stops')->findOrFail($bus->current_route_id);
                 return $this->successResponse(new RouteResource($route));
@@ -192,9 +200,15 @@ class DriverController extends Controller
         // Check if driver has direct route assignment
         if ($driver->assigned_route_id) {
             $routeId = $driver->assigned_route_id;
-        } elseif ($driver->assigned_bus_id) {
+        } else {
             // If no direct assignment, check if driver's bus has a route
-            $bus = \App\Models\Bus::find($driver->assigned_bus_id);
+            $bus = null;
+            if ($driver->assigned_bus_id) {
+                $bus = Bus::find($driver->assigned_bus_id);
+            }
+            if (!$bus) {
+                $bus = Bus::where('current_driver_id', $driver->id)->first();
+            }
             if ($bus && $bus->current_route_id) {
                 $routeId = $bus->current_route_id;
             }
@@ -214,11 +228,18 @@ class DriverController extends Controller
         // Get assigned bus - try from assigned_bus_id first
         $driver = auth()->user();
         
-        if (!$driver->assigned_bus_id) {
+        $bus = null;
+        if ($driver->assigned_bus_id) {
+            $bus = Bus::with(['currentRoute'])->find($driver->assigned_bus_id);
+        }
+        if (!$bus) {
+            $bus = Bus::with(['currentRoute'])
+                ->where('current_driver_id', $driver->id)
+                ->first();
+        }
+        if (!$bus) {
             return $this->errorResponse('No bus assigned', null, 404);
         }
-
-        $bus = \App\Models\Bus::with(['currentRoute'])->findOrFail($driver->assigned_bus_id);
         
         return $this->successResponse($bus);
     }
@@ -411,6 +432,8 @@ class DriverController extends Controller
             'driver_id' => 'sometimes|string|unique:users,driver_id,' . $id,
         ]);
 
+        $previousBusId = $driver->assigned_bus_id;
+        $previousRouteId = $driver->assigned_route_id;
         $updateData = $request->only(['name', 'email', 'license_number', 'phone', 'status', 'assigned_bus_id', 'assigned_route_id', 'driver_id']);
         
         if ($request->has('password')) {
@@ -418,6 +441,66 @@ class DriverController extends Controller
         }
 
         $driver->update($updateData);
+
+        if ($request->has('assigned_bus_id') && $previousBusId != $driver->assigned_bus_id) {
+            if ($driver->assigned_bus_id) {
+                $bus = Bus::find($driver->assigned_bus_id);
+                Notification::create([
+                    'user_id' => $driver->id,
+                    'type' => 'bus_assignment',
+                    'notification_type' => 'info',
+                    'title' => 'Bus assigned',
+                    'message' => $bus
+                        ? "You have been assigned to bus {$bus->bus_number}."
+                        : 'You have been assigned to a bus.',
+                    'data' => [
+                        'bus_id' => $driver->assigned_bus_id,
+                        'bus_number' => $bus?->bus_number,
+                    ],
+                    'read' => false,
+                ]);
+            } else {
+                Notification::create([
+                    'user_id' => $driver->id,
+                    'type' => 'bus_assignment',
+                    'notification_type' => 'warning',
+                    'title' => 'Bus unassigned',
+                    'message' => 'Your bus assignment has been removed.',
+                    'data' => [],
+                    'read' => false,
+                ]);
+            }
+        }
+
+        if ($request->has('assigned_route_id') && $previousRouteId != $driver->assigned_route_id) {
+            if ($driver->assigned_route_id) {
+                $route = Route::find($driver->assigned_route_id);
+                Notification::create([
+                    'user_id' => $driver->id,
+                    'type' => 'route_assignment',
+                    'notification_type' => 'info',
+                    'title' => 'Route assigned',
+                    'message' => $route
+                        ? "Route {$route->name} has been assigned to you."
+                        : 'A route has been assigned to you.',
+                    'data' => [
+                        'route_id' => $driver->assigned_route_id,
+                        'route_name' => $route?->name,
+                    ],
+                    'read' => false,
+                ]);
+            } else {
+                Notification::create([
+                    'user_id' => $driver->id,
+                    'type' => 'route_assignment',
+                    'notification_type' => 'warning',
+                    'title' => 'Route unassigned',
+                    'message' => 'Your route assignment has been removed.',
+                    'data' => [],
+                    'read' => false,
+                ]);
+            }
+        }
 
         return $this->successResponse($driver->fresh()->load(['assignedBus', 'assignedRoute']), 'Driver updated successfully');
     }

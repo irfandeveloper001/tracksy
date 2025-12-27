@@ -11,7 +11,12 @@ class RouteController extends Controller
     public function index(Request $request)
     {
         // List all routes with filters and pagination
-        $query = Route::with('stops');
+        $query = Route::with('stops')
+            ->withCount([
+                'stops',
+                'buses as active_buses_count',
+                'students as student_count',
+            ]);
         
         // Apply status filter
         if ($request->has('status')) {
@@ -95,7 +100,13 @@ class RouteController extends Controller
     public function show($id)
     {
         // Get route details
-        $route = Route::with('stops')->findOrFail($id);
+        $route = Route::with('stops')
+            ->withCount([
+                'stops',
+                'buses as active_buses_count',
+                'students as student_count',
+            ])
+            ->findOrFail($id);
         
         return $this->successResponse($route);
     }
@@ -168,4 +179,3 @@ class RouteController extends Controller
         return $this->successResponse($stops);
     }
 }
-

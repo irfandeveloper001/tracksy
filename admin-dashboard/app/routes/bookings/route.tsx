@@ -16,7 +16,7 @@ import {
 import toast from 'react-hot-toast';
 
 export default function BookingsPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [statistics, setStatistics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,16 @@ export default function BookingsPage() {
     status: '',
     search: '',
   });
-  const [selectedTab, setSelectedTab] = useState<'all' | 'pending' | 'confirmed' | 'rejected' | 'cancelled' | 'completed'>('pending');
+  const resolveTab = (value: string | null) => {
+    if (!value) return 'pending';
+    if (['all', 'pending', 'confirmed', 'rejected', 'cancelled', 'completed'].includes(value)) {
+      return value;
+    }
+    return 'pending';
+  };
+  const [selectedTab, setSelectedTab] = useState<
+    'all' | 'pending' | 'confirmed' | 'rejected' | 'cancelled' | 'completed'
+  >(() => resolveTab(searchParams.get('status')) as typeof selectedTab);
 
   useEffect(() => {
     loadData();
@@ -46,6 +55,9 @@ export default function BookingsPage() {
       statusParam !== selectedTab
     ) {
       setSelectedTab(statusParam as typeof selectedTab);
+    }
+    if (!statusParam && selectedTab !== 'pending') {
+      setSelectedTab('pending');
     }
   }, [searchParams, selectedTab]);
 
@@ -278,7 +290,18 @@ export default function BookingsPage() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setSelectedTab(tab.id as any)}
+            onClick={() => {
+              setSelectedTab(tab.id as any);
+              setSearchParams((prev) => {
+                const next = new URLSearchParams(prev);
+                if (tab.id === 'all') {
+                  next.delete('status');
+                } else {
+                  next.set('status', tab.id);
+                }
+                return next;
+              }, { replace: true });
+            }}
             className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               selectedTab === tab.id
                 ? 'bg-white text-indigo-600 shadow-sm'
@@ -529,4 +552,3 @@ export default function BookingsPage() {
     </div>
   );
 }
-

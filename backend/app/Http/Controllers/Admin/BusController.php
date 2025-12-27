@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Bus;
 use App\Models\Location;
+use App\Models\Notification;
 use App\Models\Trip;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -99,7 +100,38 @@ class BusController extends Controller
             if ($request->current_driver_id) {
                 $driver = \App\Models\User::find($request->current_driver_id);
                 if ($driver) {
-                    $driver->update(['assigned_bus_id' => $bus->id]);
+                    $driver->update([
+                        'assigned_bus_id' => $bus->id,
+                        'assigned_route_id' => $request->current_route_id ?: $driver->assigned_route_id,
+                    ]);
+
+                    Notification::create([
+                        'user_id' => $driver->id,
+                        'type' => 'bus_assignment',
+                        'notification_type' => 'info',
+                        'title' => 'Bus assigned',
+                        'message' => "You have been assigned to bus {$bus->bus_number}.",
+                        'data' => [
+                            'bus_id' => $bus->id,
+                            'bus_number' => $bus->bus_number,
+                            'route_id' => $bus->current_route_id,
+                        ],
+                        'read' => false,
+                    ]);
+
+                    if ($request->current_route_id) {
+                        Notification::create([
+                            'user_id' => $driver->id,
+                            'type' => 'route_assignment',
+                            'notification_type' => 'info',
+                            'title' => 'Route assigned',
+                            'message' => 'A route has been assigned to your bus.',
+                            'data' => [
+                                'route_id' => $bus->current_route_id,
+                            ],
+                            'read' => false,
+                        ]);
+                    }
                 }
             }
 
@@ -155,9 +187,11 @@ class BusController extends Controller
             'status' => 'sometimes|in:active,inactive,maintenance,emergency',
         ]);
 
-        // Check if route is being assigned or changed
+        // Track assignment changes
         $oldRouteId = $bus->current_route_id;
         $newRouteId = $request->input('current_route_id');
+        $oldDriverId = $bus->current_driver_id;
+        $newDriverId = $request->input('current_driver_id');
         $routeChanged = $oldRouteId != $newRouteId && $newRouteId;
 
         $bus->update($request->only([
@@ -169,6 +203,52 @@ class BusController extends Controller
             'current_driver_id',
             'status',
         ]));
+
+        // Sync driver assignment with bus changes
+        if ($request->has('current_driver_id') && $oldDriverId != $newDriverId) {
+            if ($oldDriverId) {
+                \App\Models\User::where('id', $oldDriverId)
+                    ->update(['assigned_bus_id' => null]);
+            }
+            if ($newDriverId) {
+                \App\Models\User::where('id', $newDriverId)
+                    ->update([
+                        'assigned_bus_id' => $bus->id,
+                        'assigned_route_id' => $newRouteId ?: null,
+                    ]);
+
+                Notification::create([
+                    'user_id' => $newDriverId,
+                    'type' => 'bus_assignment',
+                    'notification_type' => 'info',
+                    'title' => 'Bus assignment updated',
+                    'message' => "You have been assigned to bus {$bus->bus_number}.",
+                    'data' => [
+                        'bus_id' => $bus->id,
+                        'bus_number' => $bus->bus_number,
+                        'route_id' => $bus->current_route_id,
+                    ],
+                    'read' => false,
+                ]);
+            }
+        }
+
+        if ($routeChanged && $newRouteId && $bus->current_driver_id) {
+            \App\Models\User::where('id', $bus->current_driver_id)
+                ->update(['assigned_route_id' => $newRouteId]);
+
+            Notification::create([
+                'user_id' => $bus->current_driver_id,
+                'type' => 'route_assignment',
+                'notification_type' => 'info',
+                'title' => 'Route updated',
+                'message' => 'A new route has been assigned to your bus.',
+                'data' => [
+                    'route_id' => $newRouteId,
+                ],
+                'read' => false,
+            ]);
+        }
 
         // Auto-assign students if route is newly assigned or changed
         if ($routeChanged && $newRouteId) {
@@ -268,4 +348,3 @@ class BusController extends Controller
         return $this->successResponse($trips);
     }
 }
-

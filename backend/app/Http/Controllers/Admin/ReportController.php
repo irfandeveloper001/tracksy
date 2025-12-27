@@ -63,7 +63,12 @@ class ReportController extends Controller
         
         // Get student data
         $totalStudents = User::where('role', 'student')->count();
-        $activeStudents = User::where('role', 'student')->where('status', 'active')->count();
+        $activeStudents = User::where('role', 'student')
+            ->where(function ($query) {
+                $query->where('status', 'active')
+                    ->orWhereNull('status');
+            })
+            ->count();
         
         // Get route efficiency data
         $routeEfficiency = Route::get()->map(function ($route) use ($startDate, $endDate) {

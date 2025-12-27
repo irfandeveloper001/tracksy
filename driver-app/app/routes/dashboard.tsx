@@ -48,6 +48,13 @@ export default function Dashboard() {
     loadDashboardData();
   }, [dispatch, navigate, isAuthenticated]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadDashboardData();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const loadDashboardData = async () => {
     try {
       await Promise.allSettled([
@@ -188,6 +195,5 @@ export default function Dashboard() {
     </div>
   );
 }
-
 
 

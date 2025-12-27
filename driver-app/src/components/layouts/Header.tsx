@@ -51,7 +51,7 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
   }, [showUserMenu, showNotifications]);
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white/80 backdrop-blur-xl shadow-sm border-b border-gray-200/70 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Left: Menu Toggle & Logo */}
@@ -59,7 +59,8 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
             {/* Mobile menu button */}
             <button
               onClick={onMenuToggle}
-              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+              className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+              aria-label="Toggle sidebar"
             >
               {isSidebarOpen ? (
                 <XMarkIcon className="h-6 w-6" />
@@ -69,18 +70,23 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
             </button>
 
             {/* Logo */}
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <div className="flex items-center space-x-3">
+              <div className="h-9 w-9 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-lg">T</span>
               </div>
-              <h1 className="ml-2 text-xl font-bold text-gray-900 hidden sm:block">
-                {t('appName')}
-              </h1>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold text-gray-900">{t('appName')}</h1>
+                <p className="text-xs text-gray-500 font-medium">{t('driverPortal')}</p>
+              </div>
             </div>
           </div>
 
           {/* Right: Notifications & User Menu */}
           <div className="flex items-center space-x-4">
+            <div className="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live
+            </div>
             {/* Notifications */}
             <div className="relative">
               <button
@@ -192,7 +198,7 @@ export default function Header({ onMenuToggle, isSidebarOpen }: HeaderProps) {
           </div>
         </div>
       </div>
+      <div className="h-px bg-gradient-to-r from-indigo-500/40 via-fuchsia-500/40 to-transparent"></div>
     </header>
   );
 }
-
