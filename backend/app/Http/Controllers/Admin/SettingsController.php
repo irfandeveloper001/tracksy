@@ -5,23 +5,47 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class SettingsController extends Controller
 {
+    private function settingsReady(): bool
+    {
+        return Schema::hasTable('settings') &&
+            Schema::hasColumn('settings', 'key') &&
+            Schema::hasColumn('settings', 'category') &&
+            Schema::hasColumn('settings', 'value');
+    }
+
     /**
      * Get system settings
      */
     public function getSystemSettings()
     {
-        $settings = Setting::where('category', 'system')->pluck('value', 'key')->toArray();
-        
         $defaults = [
             'app_name' => 'Tracksy Admin',
             'timezone' => 'UTC',
             'date_format' => 'YYYY-MM-DD',
             'time_format' => 'HH:mm',
             'language' => 'en',
+            'require_fee_clearance' => true,
         ];
+
+        if (!$this->settingsReady()) {
+            return $this->successResponse($defaults, 'Settings storage not initialized');
+        }
+
+        $settings = Setting::where('category', 'system')->pluck('value', 'key')->toArray();
+        
+        $booleanKeys = [
+            'require_fee_clearance',
+        ];
+
+        foreach ($booleanKeys as $key) {
+            if (isset($settings[$key])) {
+                $settings[$key] = $settings[$key] === '1' || $settings[$key] === 'true' || $settings[$key] === true;
+            }
+        }
         
         return $this->successResponse(array_merge($defaults, $settings));
     }
@@ -31,18 +55,23 @@ class SettingsController extends Controller
      */
     public function updateSystemSettings(Request $request)
     {
+        if (!$this->settingsReady()) {
+            return $this->errorResponse('Settings storage not initialized. Run database migrations.', null, 500);
+        }
+
         $validated = $this->validate($request, [
             'app_name' => 'sometimes|string|max:255',
             'timezone' => 'sometimes|string|max:50',
             'date_format' => 'sometimes|string|max:20',
             'time_format' => 'sometimes|string|max:20',
             'language' => 'sometimes|string|max:10',
+            'require_fee_clearance' => 'sometimes|boolean',
         ]);
 
         foreach ($validated as $key => $value) {
             Setting::updateOrCreate(
                 ['key' => $key, 'category' => 'system'],
-                ['value' => $value]
+                ['value' => is_bool($value) ? ($value ? '1' : '0') : $value]
             );
         }
 
@@ -54,13 +83,17 @@ class SettingsController extends Controller
      */
     public function getNotificationSettings()
     {
-        $settings = Setting::where('category', 'notifications')->pluck('value', 'key')->toArray();
-        
         $defaults = [
             'email_enabled' => true,
             'sms_enabled' => false,
             'push_enabled' => true,
         ];
+
+        if (!$this->settingsReady()) {
+            return $this->successResponse($defaults, 'Settings storage not initialized');
+        }
+
+        $settings = Setting::where('category', 'notifications')->pluck('value', 'key')->toArray();
         
         return $this->successResponse(array_merge($defaults, $settings));
     }
@@ -70,6 +103,10 @@ class SettingsController extends Controller
      */
     public function updateNotificationSettings(Request $request)
     {
+        if (!$this->settingsReady()) {
+            return $this->errorResponse('Settings storage not initialized. Run database migrations.', null, 500);
+        }
+
         $validated = $this->validate($request, [
             'email_enabled' => 'sometimes|boolean',
             'email_provider' => 'sometimes|string|max:50',
@@ -94,12 +131,16 @@ class SettingsController extends Controller
      */
     public function getMapSettings()
     {
-        $settings = Setting::where('category', 'map')->pluck('value', 'key')->toArray();
-        
         $defaults = [
-            'map_provider' => 'google',
+            'map_provider' => 'openstreetmap',
             'default_zoom' => 12,
         ];
+
+        if (!$this->settingsReady()) {
+            return $this->successResponse($defaults, 'Settings storage not initialized');
+        }
+
+        $settings = Setting::where('category', 'map')->pluck('value', 'key')->toArray();
         
         return $this->successResponse(array_merge($defaults, $settings));
     }
@@ -109,6 +150,10 @@ class SettingsController extends Controller
      */
     public function updateMapSettings(Request $request)
     {
+        if (!$this->settingsReady()) {
+            return $this->errorResponse('Settings storage not initialized. Run database migrations.', null, 500);
+        }
+
         $validated = $this->validate($request, [
             'map_provider' => 'sometimes|in:google,mapbox,openstreetmap',
             'api_key' => 'sometimes|string|max:255',
@@ -131,8 +176,6 @@ class SettingsController extends Controller
      */
     public function getSecuritySettings()
     {
-        $settings = Setting::where('category', 'security')->pluck('value', 'key')->toArray();
-        
         $defaults = [
             'password_min_length' => 8,
             'password_require_uppercase' => true,
@@ -142,6 +185,12 @@ class SettingsController extends Controller
             'session_timeout' => 30,
             'two_factor_enabled' => false,
         ];
+
+        if (!$this->settingsReady()) {
+            return $this->successResponse($defaults, 'Settings storage not initialized');
+        }
+
+        $settings = Setting::where('category', 'security')->pluck('value', 'key')->toArray();
         
         // Convert string booleans to actual booleans
         foreach ($defaults as $key => $defaultValue) {
@@ -158,6 +207,10 @@ class SettingsController extends Controller
      */
     public function updateSecuritySettings(Request $request)
     {
+        if (!$this->settingsReady()) {
+            return $this->errorResponse('Settings storage not initialized. Run database migrations.', null, 500);
+        }
+
         $validated = $this->validate($request, [
             'password_min_length' => 'sometimes|integer|min:6|max:32',
             'password_require_uppercase' => 'sometimes|boolean',
@@ -183,8 +236,12 @@ class SettingsController extends Controller
      */
     public function getIntegrationSettings()
     {
+        if (!$this->settingsReady()) {
+            return $this->successResponse([], 'Settings storage not initialized');
+        }
+
         $settings = Setting::where('category', 'integrations')->pluck('value', 'key')->toArray();
-        
+
         // Decode JSON values
         foreach ($settings as $key => $value) {
             $decoded = json_decode($value, true);
@@ -201,6 +258,10 @@ class SettingsController extends Controller
      */
     public function updateIntegrationSettings(Request $request)
     {
+        if (!$this->settingsReady()) {
+            return $this->errorResponse('Settings storage not initialized. Run database migrations.', null, 500);
+        }
+
         $validated = $request->all();
 
         foreach ($validated as $key => $value) {
@@ -218,6 +279,10 @@ class SettingsController extends Controller
      */
     public function uploadLogo(Request $request)
     {
+        if (!$this->settingsReady()) {
+            return $this->errorResponse('Settings storage not initialized. Run database migrations.', null, 500);
+        }
+
         $this->validate($request, [
             'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);

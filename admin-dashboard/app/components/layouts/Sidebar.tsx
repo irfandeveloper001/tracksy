@@ -15,10 +15,9 @@ import {
   BanknotesIcon,
   ReceiptPercentIcon,
   TicketIcon,
-  SparklesIcon,
   MegaphoneIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  Bars3Icon,
+  ChevronDownIcon,
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import {
@@ -35,11 +34,11 @@ import {
   BanknotesIcon as BanknotesIconSolid,
   ReceiptPercentIcon as ReceiptPercentIconSolid,
   TicketIcon as TicketIconSolid,
-  SparklesIcon as SparklesIconSolid,
   MegaphoneIcon as MegaphoneIconSolid,
 } from '@heroicons/react/24/solid';
 import { useAuthStore } from '../../lib/store/authStore';
 import { hasPermission, PERMISSIONS } from '../../lib/utils/permissions';
+import { useLanguage } from '../../lib/i18n/LanguageProvider';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -49,11 +48,21 @@ interface SidebarProps {
 export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const { t } = useLanguage();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    main: true,
+    fleet: true,
+    users: false,
+    operations: false,
+    financial: false,
+    insights: false,
+    system: false,
+  });
 
   const navigation = [
     {
-      name: 'Dashboard',
+      name: t('navDashboard'),
       href: '/dashboard',
       icon: HomeIcon,
       iconSolid: HomeIconSolid,
@@ -62,7 +71,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'main',
     },
     {
-      name: 'Buses',
+      name: t('navBuses'),
       href: '/buses',
       icon: TruckIcon,
       iconSolid: TruckIconSolid,
@@ -71,7 +80,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'fleet',
     },
     {
-      name: 'Routes',
+      name: t('navRoutes'),
       href: '/routes',
       icon: MapIcon,
       iconSolid: MapIconSolid,
@@ -80,7 +89,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'fleet',
     },
     {
-      name: 'Stops',
+      name: t('navStops'),
       href: '/stops',
       icon: MapPinIcon,
       iconSolid: MapPinIconSolid,
@@ -89,7 +98,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'fleet',
     },
     {
-      name: 'Live Map',
+      name: t('navLiveMap'),
       href: '/live-map',
       icon: MapIcon,
       iconSolid: MapIconSolid,
@@ -98,7 +107,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'fleet',
     },
     {
-      name: 'Students',
+      name: t('navStudents'),
       href: '/students',
       icon: UserGroupIcon,
       iconSolid: UserGroupIconSolid,
@@ -107,7 +116,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'users',
     },
     {
-      name: 'Drivers',
+      name: t('navDrivers'),
       href: '/drivers',
       icon: UserIcon,
       iconSolid: UserIconSolid,
@@ -116,7 +125,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'users',
     },
     {
-      name: 'Admins',
+      name: t('navAdmins'),
       href: '/admins',
       icon: UserIcon,
       iconSolid: UserIconSolid,
@@ -125,7 +134,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'users',
     },
     {
-      name: 'Trips',
+      name: t('navTrips'),
       href: '/trips',
       icon: MapPinIcon,
       iconSolid: MapPinIconSolid,
@@ -134,7 +143,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'operations',
     },
     {
-      name: 'Bookings',
+      name: t('navBookings'),
       href: '/bookings',
       icon: TicketIcon,
       iconSolid: TicketIconSolid,
@@ -143,7 +152,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'operations',
     },
     {
-      name: 'Analytics',
+      name: t('navAnalytics'),
       href: '/analytics',
       icon: ChartBarIcon,
       iconSolid: ChartBarIconSolid,
@@ -152,7 +161,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'insights',
     },
     {
-      name: 'Fee Management',
+      name: t('navFees'),
       href: '/fees',
       icon: BanknotesIcon,
       iconSolid: BanknotesIconSolid,
@@ -161,7 +170,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'financial',
     },
     {
-      name: 'Invoice Generator',
+      name: t('navInvoices'),
       href: '/fees/invoices',
       icon: ReceiptPercentIcon,
       iconSolid: ReceiptPercentIconSolid,
@@ -170,7 +179,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'financial',
     },
     {
-      name: 'Reports',
+      name: t('navReports'),
       href: '/reports',
       icon: DocumentTextIcon,
       iconSolid: DocumentTextIconSolid,
@@ -179,7 +188,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'insights',
     },
     {
-      name: 'Alerts',
+      name: t('navAlerts'),
       href: '/alerts',
       icon: BellAlertIcon,
       iconSolid: BellAlertIconSolid,
@@ -188,7 +197,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'system',
     },
     {
-      name: 'Announcements',
+      name: t('navAnnouncements'),
       href: '/notifications/new',
       icon: MegaphoneIcon,
       iconSolid: MegaphoneIconSolid,
@@ -197,7 +206,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'system',
     },
     {
-      name: 'Maintenance',
+      name: t('navMaintenance'),
       href: '/maintenance',
       icon: WrenchScrewdriverIcon,
       iconSolid: WrenchScrewdriverIconSolid,
@@ -206,7 +215,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       section: 'system',
     },
     {
-      name: 'Settings',
+      name: t('navSettings'),
       href: '/settings',
       icon: Cog6ToothIcon,
       iconSolid: Cog6ToothIcon,
@@ -272,155 +281,137 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           <div className="absolute inset-0 backdrop-blur-3xl opacity-30 pointer-events-none"></div>
 
           {/* Logo Section */}
-          <div className="relative flex items-center justify-between h-20 px-4 border-b border-white/10 bg-gradient-to-r from-indigo-900/60 to-purple-900/60 backdrop-blur-xl">
-            <div className="flex items-center space-x-3">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-400 to-fuchsia-500 rounded-xl blur-md opacity-75 group-hover:opacity-100 transition-opacity"></div>
-                <div className="relative w-12 h-12 bg-gradient-to-br from-white via-indigo-50 to-purple-100 rounded-xl flex items-center justify-center shadow-xl transform hover:rotate-6 hover:scale-110 transition-all duration-300 cursor-pointer">
-                  <span className="text-3xl font-black bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent">T</span>
+          <div className="relative flex items-center justify-between px-4 py-4 border-b border-white/10 bg-white/5 backdrop-blur-xl">
+            <div className="flex items-center space-x-3 min-w-0">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'A'}
                 </div>
+                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"></div>
               </div>
               {!isCollapsed && (
-                <div className="animate-in fade-in slide-in-from-left duration-300">
-                  <h1 className="text-xl font-bold text-white tracking-tight">Tracksy Admin</h1>
-                  <p className="text-xs text-indigo-200 flex items-center font-semibold">
-                    <SparklesIcon className="w-3 h-3 mr-1 animate-pulse" />
-                    Command Center
-                  </p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{user?.name || 'Admin User'}</p>
+                  <p className="text-xs text-indigo-200 truncate">{user?.role || 'admin'}</p>
                 </div>
               )}
             </div>
-            
-            {/* Collapse button - Desktop only */}
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-200 hover:scale-110"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-200"
+              aria-label="Toggle sidebar"
+              aria-pressed={isCollapsed}
             >
-              {isCollapsed ? (
-                <ChevronRightIcon className="w-4 h-4 text-white" />
-              ) : (
-                <ChevronLeftIcon className="w-4 h-4 text-white" />
-              )}
+              <Bars3Icon className="w-4 h-4 text-white" />
             </button>
           </div>
 
-          {/* User Profile Section */}
-          {!isCollapsed && user && (
-            <div className="relative p-4 border-b border-white/10 bg-white/5 backdrop-blur-sm">
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                    {user.name?.charAt(0)?.toUpperCase() || 'A'}
-                  </div>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{user.name || 'Admin User'}</p>
-                  <p className="text-xs text-indigo-200 truncate">{user.email}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Navigation */}
-          <nav className="relative flex-1 px-3 py-4 overflow-y-auto custom-scrollbar space-y-6">
-            {Object.entries(sections).map(([sectionKey, sectionName]) => {
-              const sectionItems = navigationItems.filter(item => item.section === sectionKey);
-              if (sectionItems.length === 0) return null;
+          <nav className="relative flex-1 px-3 py-4 overflow-y-auto custom-scrollbar space-y-3">
+            {isCollapsed
+              ? navigationItems.map((item) => {
+                  const Icon = isActive(item.href) ? item.iconSolid : item.icon;
+                  const active = isActive(item.href);
 
-              return (
-                <div key={sectionKey} className="space-y-1">
-                  {!isCollapsed && (
-                    <h3 className="px-3 text-xs font-bold text-indigo-200 uppercase tracking-wider mb-2 flex items-center">
-                      <div className="w-4 h-0.5 bg-gradient-to-r from-indigo-300 to-transparent mr-2"></div>
-                      {sectionName}
-                    </h3>
-                  )}
-                  {sectionItems.map((item) => {
-                    const Icon = isActive(item.href) ? item.iconSolid : item.icon;
-                    const active = isActive(item.href);
-                    
-                    return (
-                      <Link
-                        key={item.name}
-                        to={item.href}
-                        onClick={() => {
-                          if (onClose) onClose();
-                        }}
-                        className={`
-                          group relative flex items-center px-3 py-3 text-sm font-medium rounded-xl
-                          transition-all duration-200 transform hover:scale-[1.02]
-                          ${
-                            active
-                              ? 'bg-white text-indigo-900 shadow-xl shadow-indigo-500/20 border border-white/60'
-                              : 'text-indigo-100 hover:bg-white/10 hover:text-white border border-transparent'
-                          }
-                        `}
-                        title={isCollapsed ? item.name : undefined}
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      onClick={() => {
+                        if (onClose) onClose();
+                      }}
+                      className={`
+                        group relative flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg
+                        transition-all duration-200
+                        ${
+                          active
+                            ? 'bg-white text-indigo-900 shadow-md border border-white/60'
+                            : 'text-indigo-100 hover:bg-white/10 hover:text-white border border-transparent'
+                        }
+                      `}
+                      title={item.name}
+                    >
+                      <Icon className={`w-5 h-5 ${active ? 'text-indigo-700' : 'text-indigo-200'}`} />
+                    </Link>
+                  );
+                })
+              : Object.entries(sections).map(([sectionKey, sectionName]) => {
+                  const sectionItems = navigationItems.filter((item) => item.section === sectionKey);
+                  if (sectionItems.length === 0) return null;
+
+                  const isOpen = openSections[sectionKey] ?? true;
+
+                  return (
+                    <div key={sectionKey} className="space-y-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenSections((prev) => ({
+                            ...prev,
+                            [sectionKey]: !isOpen,
+                          }))
+                        }
+                        className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-indigo-200 hover:bg-white/5"
                       >
-                        {/* Active indicator */}
-                        {active && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-indigo-500 via-purple-500 to-fuchsia-500 rounded-r-full"></div>
-                        )}
-                        
-                        {/* Icon with glow effect */}
-                        <div className={`
-                          relative flex items-center justify-center
-                          ${isCollapsed ? 'w-full' : ''}
-                        `}>
-                          <div className={`
-                            relative w-8 h-8 flex items-center justify-center rounded-lg
-                            transition-all duration-200
-                            ${active 
-                              ? 'bg-indigo-100 shadow-lg' 
-                              : 'group-hover:bg-white/10'
-                            }
-                          `}>
-                            <Icon className={`
-                              w-5 h-5 transition-all duration-200
-                              ${active ? 'text-indigo-700 scale-110' : 'text-indigo-200 group-hover:text-white group-hover:scale-110'}
-                            `} />
-                          </div>
-                        </div>
-                        
-                        {!isCollapsed && (
-                          <>
-                            <span className="flex-1 ml-3 truncate">{item.name}</span>
-                            
-                            {/* Badge */}
-                            {item.badge && item.badge > 0 && (
-                              <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-2 text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-fuchsia-500 rounded-full shadow-lg animate-pulse">
-                                {item.badge}
-                              </span>
-                            )}
-                            
-                            {/* Active pulse dot */}
-                            {active && (
-                              <div className="ml-auto">
-                                <div className="relative">
-                                  <div className="w-2 h-2 bg-white rounded-full animate-ping absolute"></div>
-                                  <div className="w-2 h-2 bg-white rounded-full relative"></div>
+                        <span>{sectionName}</span>
+                        <ChevronDownIcon
+                          className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-0' : '-rotate-90'}`}
+                        />
+                      </button>
+                      {isOpen &&
+                        sectionItems.map((item) => {
+                          const Icon = isActive(item.href) ? item.iconSolid : item.icon;
+                          const active = isActive(item.href);
+
+                          return (
+                            <Link
+                              key={item.name}
+                              to={item.href}
+                              onClick={() => {
+                                if (onClose) onClose();
+                              }}
+                              className={`
+                                group relative flex items-center px-3 py-2 text-sm font-medium rounded-lg
+                                transition-all duration-200
+                                ${
+                                  active
+                                    ? 'bg-white text-indigo-900 shadow-sm border border-white/60'
+                                    : 'text-indigo-100 hover:bg-white/10 hover:text-white border border-transparent'
+                                }
+                              `}
+                              title={item.name}
+                            >
+                              {active && (
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-gradient-to-b from-indigo-500 via-purple-500 to-fuchsia-500 rounded-r-full"></div>
+                              )}
+                              <div className="flex items-center justify-center">
+                                <div
+                                  className={`w-7 h-7 flex items-center justify-center rounded-md ${
+                                    active ? 'bg-indigo-100' : 'group-hover:bg-white/10'
+                                  }`}
+                                >
+                                  <Icon className={`w-5 h-5 ${active ? 'text-indigo-700' : 'text-indigo-200'}`} />
                                 </div>
                               </div>
-                            )}
-                          </>
-                        )}
-
-                        {/* Hover shine effect */}
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-shimmer transition-opacity"></div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              );
-            })}
+                              <span className="flex-1 ml-3 truncate">{item.name}</span>
+                              {item.badge && item.badge > 0 && (
+                                <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-2 text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-fuchsia-500 rounded-full shadow-lg">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                    </div>
+                  );
+                })}
           </nav>
 
           {/* Logout Button */}
-          <div className="relative p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm space-y-4">
+          <div className="relative p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm space-y-3">
             {!isCollapsed && (
-              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-3">
-                <p className="text-xs font-semibold text-indigo-100 uppercase tracking-wide mb-2">Quick Actions</p>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[11px] font-semibold text-indigo-200 uppercase tracking-wide mb-2">Quick Actions</p>
                 <div className="grid grid-cols-1 gap-2">
                   <Link
                     to="/buses/new"
@@ -458,26 +449,12 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                 transition-all duration-200 transform hover:scale-[1.02]
                 ${isCollapsed ? 'justify-center' : ''}
               `}
-              title={isCollapsed ? 'Logout' : undefined}
+              title={isCollapsed ? t('logout') : undefined}
             >
               <ArrowRightOnRectangleIcon className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-              {!isCollapsed && <span className="ml-3">Logout</span>}
+              {!isCollapsed && <span className="ml-3">{t('logout')}</span>}
             </button>
           </div>
-
-          {/* Footer */}
-          {!isCollapsed && (
-            <div className="relative px-4 py-3 border-t border-white/10 bg-white/5 backdrop-blur-sm">
-              <div className="text-xs text-indigo-200 space-y-1">
-                <p className="font-semibold text-white flex items-center">
-                  <SparklesIcon className="w-3 h-3 mr-1" />
-                  Tracksy Admin
-                </p>
-                <p className="text-indigo-300">Version 2.0.0</p>
-                <p className="text-indigo-400">© 2025 All rights reserved</p>
-              </div>
-            </div>
-          )}
         </div>
       </aside>
     </>

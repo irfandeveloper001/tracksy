@@ -6,6 +6,8 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\Fee;
+use App\Models\Setting;
+use Illuminate\Support\Facades\Schema;
 
 class CheckFeePayment
 {
@@ -21,16 +23,37 @@ class CheckFeePayment
 
         // Only check for students
         if ($user && $user->role === 'student') {
-            // Check if student has overdue fees
-            $hasOverdueFees = Fee::where('user_id', $user->id)
-                ->where('status', 'overdue')
+            $enforceFeeClearance = true;
+
+            if (
+                Schema::hasTable('settings') &&
+                Schema::hasColumn('settings', 'key') &&
+                Schema::hasColumn('settings', 'category') &&
+                Schema::hasColumn('settings', 'value')
+            ) {
+                $settingValue = Setting::where('category', 'system')
+                    ->where('key', 'require_fee_clearance')
+                    ->value('value');
+
+                if ($settingValue !== null) {
+                    $enforceFeeClearance = $settingValue === '1' || $settingValue === 'true' || $settingValue === true;
+                }
+            }
+
+            if (!$enforceFeeClearance) {
+                return $next($request);
+            }
+
+            // Check if student has any unpaid fees
+            $hasOutstandingFees = Fee::where('user_id', $user->id)
+                ->whereIn('status', ['pending', 'overdue'])
                 ->exists();
 
-            if ($hasOverdueFees) {
+            if ($hasOutstandingFees) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Access restricted. You have overdue fees. Please pay your fees to access this feature.',
-                    'error_code' => 'OVERDUE_FEES',
+                    'message' => 'Access restricted. You have unpaid fees. Please pay your fees to access this feature.',
+                    'error_code' => 'UNPAID_FEES',
                     'redirect_to' => '/fees',
                 ], 403);
             }

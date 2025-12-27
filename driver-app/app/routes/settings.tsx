@@ -18,12 +18,16 @@ import {
   ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import { useLanguage } from "../../src/lib/i18n/LanguageProvider";
+import { SUPPORTED_LANGUAGE_CODES } from "../../src/lib/i18n/languages";
+import LanguageSelect from "../../src/components/ui/LanguageSelect";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { language, setLanguage, t } = useLanguage();
   const [settings, setSettings] = useState({
     notifications: true,
     soundEnabled: true,
@@ -37,13 +41,21 @@ export default function SettingsPage() {
     loadSettings();
   }, [dispatch]);
 
+  useEffect(() => {
+    setSettings((prev) => ({ ...prev, language: language.code }));
+  }, [language.code]);
+
   const loadSettings = async () => {
     try {
       await dispatch(getCurrentUser());
       // Load settings from localStorage
       const savedSettings = localStorage.getItem('driver_settings');
       if (savedSettings) {
-        setSettings({ ...settings, ...JSON.parse(savedSettings) });
+        const parsed = JSON.parse(savedSettings);
+        setSettings({ ...settings, ...parsed, language: parsed.language || language.code });
+        if (parsed.language) {
+          setLanguage(parsed.language);
+        }
       }
     } catch (error) {
       console.warn('⚠️ Error loading settings:', error);
@@ -89,10 +101,10 @@ export default function SettingsPage() {
               {/* Header */}
               <div className="mb-8">
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  Settings
+                  {t('settingsTitle')}
                 </h1>
                 <p className="mt-2 text-gray-600">
-                  Manage your app preferences and account settings
+                  {t('settingsSubtitle')}
                 </p>
               </div>
 
@@ -192,20 +204,18 @@ export default function SettingsPage() {
                     <div className="flex items-center space-x-4 mb-4">
                       <LanguageIcon className="h-5 w-5 text-gray-600" />
                       <div>
-                        <p className="font-semibold text-gray-900">Language</p>
-                        <p className="text-sm text-gray-500">Select your preferred language</p>
+                        <p className="font-semibold text-gray-900">{t('language')}</p>
+                        <p className="text-sm text-gray-500">{t('languageHint')}</p>
                       </div>
                     </div>
-                    <select
-                      value={settings.language}
-                      onChange={(e) => handleLanguageChange(e.target.value)}
-                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    >
-                      <option value="en">English</option>
-                      <option value="es">Spanish</option>
-                      <option value="fr">French</option>
-                      <option value="de">German</option>
-                    </select>
+                    <LanguageSelect
+                      value={language.code}
+                      onChange={(code) => {
+                        handleLanguageChange(code);
+                        setLanguage(code);
+                      }}
+                      allowedCodes={[...SUPPORTED_LANGUAGE_CODES]}
+                    />
                   </div>
                 </div>
               </div>
@@ -297,10 +307,6 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-
-
-
 
 
 

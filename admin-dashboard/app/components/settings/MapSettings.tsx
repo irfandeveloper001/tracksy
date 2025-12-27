@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import settingsService, { MapSettings } from '../../lib/api/settingsService';
+import settingsService, { type MapSettings } from '../../lib/api/settingsService';
 import toast from 'react-hot-toast';
 
 interface MapSettingsProps {
@@ -12,6 +12,10 @@ export default function MapSettingsComponent({ settings }: MapSettingsProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<MapSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setFormData(settings);
+  }, [settings]);
 
   const updateMutation = useMutation({
     mutationFn: settingsService.updateMapSettings,
@@ -160,4 +164,3 @@ export default function MapSettingsComponent({ settings }: MapSettingsProps) {
     </form>
   );
 }
-

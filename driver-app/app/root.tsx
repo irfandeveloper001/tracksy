@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "react-redux";
 import { store } from "../src/store/store";
 import type { Route } from "./+types/root";
+import { LanguageProvider } from "../src/lib/i18n/LanguageProvider";
 import "./app.css";
 
 // Create a client for React Query
@@ -83,7 +84,9 @@ export default function App() {
   return (
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
-        <Outlet />
+        <LanguageProvider>
+          <Outlet />
+        </LanguageProvider>
       </QueryClientProvider>
     </Provider>
   );
@@ -117,6 +120,5 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     </main>
   );
 }
-
 
 

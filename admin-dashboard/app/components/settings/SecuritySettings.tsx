@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import settingsService, { SecuritySettings } from '../../lib/api/settingsService';
+import settingsService, { type SecuritySettings } from '../../lib/api/settingsService';
 import toast from 'react-hot-toast';
 
 interface SecuritySettingsProps {
@@ -12,6 +12,10 @@ export default function SecuritySettings({ settings }: SecuritySettingsProps) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<SecuritySettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setFormData(settings);
+  }, [settings]);
 
   const updateMutation = useMutation({
     mutationFn: settingsService.updateSecuritySettings,
@@ -209,4 +213,3 @@ export default function SecuritySettings({ settings }: SecuritySettingsProps) {
     </form>
   );
 }
-

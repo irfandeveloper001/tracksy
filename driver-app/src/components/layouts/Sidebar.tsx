@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store/store';
+import { useLanguage } from '../../lib/i18n/LanguageProvider';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -20,45 +21,46 @@ interface SidebarProps {
 export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const location = useLocation();
   const { user } = useSelector((state: RootState) => state.auth);
+  const { t } = useLanguage();
 
   const navigation = [
     {
-      name: 'Dashboard',
+      name: t('dashboard'),
       href: '/dashboard',
       icon: HomeIcon,
     },
     {
-      name: 'My Trips',
+      name: t('myTrips'),
       href: '/trips',
       icon: MapIcon,
     },
     {
-      name: 'Trip History',
+      name: t('tripHistory'),
       href: '/trip/history',
       icon: ClockIcon,
     },
     {
-      name: 'My Route',
+      name: t('myRoute'),
       href: '/route',
       icon: MapPinIcon,
     },
     {
-      name: 'My Bus',
+      name: t('myBus'),
       href: '/bus',
       icon: TruckIcon,
     },
     {
-      name: 'Notifications',
+      name: t('notifications'),
       href: '/notifications',
       icon: BellAlertIcon,
     },
     {
-      name: 'Profile',
+      name: t('profile'),
       href: '/profile',
       icon: UserIcon,
     },
     {
-      name: 'Settings',
+      name: t('settings'),
       href: '/settings',
       icon: Cog6ToothIcon,
     },
@@ -98,7 +100,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">T</span>
               </div>
-              <h1 className="ml-2 text-xl font-bold text-gray-900">Tracksy Driver</h1>
+              <h1 className="ml-2 text-xl font-bold text-gray-900">{t('appName')}</h1>
             </div>
           </div>
 
@@ -162,5 +164,4 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     </>
   );
 }
-
 

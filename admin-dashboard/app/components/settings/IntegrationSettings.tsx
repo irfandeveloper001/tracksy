@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckIcon } from '@heroicons/react/24/outline';
-import settingsService, { IntegrationSettings } from '../../lib/api/settingsService';
+import settingsService, { type IntegrationSettings } from '../../lib/api/settingsService';
 import toast from 'react-hot-toast';
 
 interface IntegrationSettingsProps {
@@ -12,6 +12,10 @@ export default function IntegrationSettings({ settings }: IntegrationSettingsPro
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<IntegrationSettings>(settings);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setFormData(settings);
+  }, [settings]);
 
   const updateMutation = useMutation({
     mutationFn: settingsService.updateIntegrationSettings,
@@ -259,4 +263,3 @@ export default function IntegrationSettings({ settings }: IntegrationSettingsPro
     </form>
   );
 }
-

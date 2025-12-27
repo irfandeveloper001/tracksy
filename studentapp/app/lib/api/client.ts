@@ -118,12 +118,12 @@ api.interceptors.response.use(
       return Promise.reject(offlineError);
     }
 
-    // Handle fee restriction (403 with OVERDUE_FEES error code)
+    // Handle fee restriction (403 with fee restriction error code)
     if (error.response?.status === 403) {
       const errorData: any = error.response.data || {};
       
-      if (errorData.error_code === 'OVERDUE_FEES') {
-        const feeError = new Error(errorData.message || 'You have overdue fees. Please pay your fees to continue.');
+      if (errorData.error_code === 'OVERDUE_FEES' || errorData.error_code === 'UNPAID_FEES') {
+        const feeError = new Error(errorData.message || 'You have unpaid fees. Please pay your fees to continue.');
         
         if (typeof window !== 'undefined' && !isRedirecting) {
           const currentPath = window.location.pathname;
@@ -224,4 +224,3 @@ api.interceptors.response.use(
 
 export { API_BASE_URL, STORAGE_KEYS, secureStorage };
 export default api;
-

@@ -11,6 +11,7 @@ import {
 import authService from '../../lib/api/authService';
 import toast from 'react-hot-toast';
 import notificationService, { type StudentNotification } from '../../lib/api/notificationService';
+import { useLanguage } from '../../lib/i18n/LanguageProvider';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -24,6 +25,7 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<StudentNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { t } = useLanguage();
 
   const handleLogout = async () => {
     try {
@@ -104,7 +106,7 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
               </div>
               <div className="ml-2 hidden sm:block">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                  Tracksy Student
+                  {t('appName')}
                 </h1>
               </div>
             </div>
@@ -137,12 +139,12 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="px-4 py-3 border-b border-gray-200">
-                    <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">{t('notifications')}</h3>
                   </div>
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length === 0 ? (
                       <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                        No new notifications
+                        {t('noNotifications')}
                       </div>
                     ) : (
                       notifications.map((notification) => (
@@ -174,7 +176,7 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
                       }}
                       className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
                     >
-                      View all notifications →
+                      {t('viewAllNotifications')}
                     </button>
                   </div>
                 </div>
@@ -220,7 +222,7 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors"
                     >
                       <UserCircleIcon className="h-4 w-4 mr-2" />
-                      Profile
+                      {t('profile')}
                     </button>
                     <button
                       onClick={() => {
@@ -230,7 +232,7 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
                       className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center transition-colors"
                     >
                       <Cog6ToothIcon className="h-4 w-4 mr-2" />
-                      Settings
+                      {t('settings')}
                     </button>
                   </div>
                   <div className="border-t border-gray-200 py-1">
@@ -242,7 +244,7 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 flex items-center transition-colors"
                     >
                       <ArrowRightOnRectangleIcon className="h-4 w-4 mr-2" />
-                      Logout
+                      {t('logout')}
                     </button>
                   </div>
                 </div>

@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "./lib/store/authStore";
 import AppErrorBoundary from "./components/ui/ErrorBoundary";
 import OfflineBanner from "./components/offline/OfflineBanner";
+import { LanguageProvider } from "./lib/i18n/LanguageProvider";
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -143,7 +144,9 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <LanguageProvider>
+        <Outlet />
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

@@ -20,6 +20,7 @@ import {
   BellIcon as BellIconSolid,
   UserCircleIcon as UserCircleIconSolid
 } from "@heroicons/react/24/solid";
+import { useLanguage } from "../../lib/i18n/LanguageProvider";
 
 interface NavItem {
   name: string;
@@ -29,17 +30,6 @@ interface NavItem {
   badge?: number;
 }
 
-const navigation: NavItem[] = [
-  { name: 'Dashboard', path: '/dashboard', icon: HomeIcon, iconSolid: HomeIconSolid },
-  { name: 'Routes', path: '/routes', icon: MapIcon, iconSolid: MapIconSolid },
-  { name: 'My Bookings', path: '/bookings', icon: BookmarkIcon, iconSolid: BookmarkIconSolid },
-  { name: 'Fees & Payments', path: '/fees', icon: BanknotesIcon, iconSolid: BanknotesIconSolid },
-  { name: 'Track Bus', path: '/tracking', icon: TruckIcon, iconSolid: TruckIconSolid },
-  { name: 'Notifications', path: '/notifications', icon: BellIcon, iconSolid: BellIconSolid, badge: 3 },
-  { name: 'Profile', path: '/profile', icon: UserCircleIcon, iconSolid: UserCircleIconSolid },
-  { name: 'Settings', path: '/settings', icon: Cog6ToothIcon, iconSolid: Cog6ToothIcon },
-];
-
 interface SidebarProps {
   onLogout: () => void;
   isOpen?: boolean;
@@ -48,6 +38,18 @@ interface SidebarProps {
 
 export default function Sidebar({ onLogout, isOpen = false, onClose }: SidebarProps) {
   const location = useLocation();
+  const { t } = useLanguage();
+
+  const navigation: NavItem[] = [
+    { name: t('dashboard'), path: '/dashboard', icon: HomeIcon, iconSolid: HomeIconSolid },
+    { name: t('routes'), path: '/routes', icon: MapIcon, iconSolid: MapIconSolid },
+    { name: t('myBookings'), path: '/bookings', icon: BookmarkIcon, iconSolid: BookmarkIconSolid },
+    { name: t('feesPayments'), path: '/fees', icon: BanknotesIcon, iconSolid: BanknotesIconSolid },
+    { name: t('trackBus'), path: '/tracking', icon: TruckIcon, iconSolid: TruckIconSolid },
+    { name: t('notifications'), path: '/notifications', icon: BellIcon, iconSolid: BellIconSolid, badge: 3 },
+    { name: t('profile'), path: '/profile', icon: UserCircleIcon, iconSolid: UserCircleIconSolid },
+    { name: t('settings'), path: '/settings', icon: Cog6ToothIcon, iconSolid: Cog6ToothIcon },
+  ];
 
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
@@ -85,7 +87,7 @@ export default function Sidebar({ onLogout, isOpen = false, onClose }: SidebarPr
                 <h1 className="text-xl font-bold text-white">Tracksy</h1>
                 <p className="text-xs text-indigo-300 flex items-center">
                   <SparklesIcon className="w-3 h-3 mr-1" />
-                  Student Portal
+                  {t('studentPortal')}
                 </p>
               </div>
             </div>
@@ -128,14 +130,14 @@ export default function Sidebar({ onLogout, isOpen = false, onClose }: SidebarPr
               className="flex items-center px-4 py-3 text-indigo-100 rounded-xl hover:bg-indigo-700/50 hover:text-white transition-all hover:translate-x-1"
             >
               <Cog6ToothIcon className="w-6 h-6 mr-3" />
-              <span className="font-medium">Settings</span>
+              <span className="font-medium">{t('settings')}</span>
             </Link>
             <button
               onClick={onLogout}
               className="w-full flex items-center px-4 py-3 text-indigo-100 rounded-xl hover:bg-red-600 hover:text-white transition-all hover:translate-x-1"
             >
               <ArrowRightOnRectangleIcon className="w-6 h-6 mr-3" />
-              <span className="font-medium">Logout</span>
+              <span className="font-medium">{t('logout')}</span>
             </button>
           </div>
 

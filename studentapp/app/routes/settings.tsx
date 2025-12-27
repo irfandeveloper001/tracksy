@@ -9,10 +9,14 @@ import {
   ShieldCheckIcon,
   PaintBrushIcon,
 } from "@heroicons/react/24/outline";
+import { useLanguage } from "../lib/i18n/LanguageProvider";
+import { SUPPORTED_LANGUAGE_CODES } from "../lib/i18n/languages";
+import LanguageSelect from "../components/ui/LanguageSelect";
 
 export default function Settings() {
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("profile");
+  const { language, setLanguage, t } = useLanguage();
 
   useEffect(() => {
     loadUser();
@@ -28,10 +32,10 @@ export default function Settings() {
   };
 
   const tabs = [
-    { id: "profile", name: "Profile", icon: UserCircleIcon },
-    { id: "notifications", name: "Notifications", icon: BellIcon },
-    { id: "security", name: "Security", icon: LockClosedIcon },
-    { id: "preferences", name: "Preferences", icon: PaintBrushIcon },
+    { id: "profile", name: t('tabProfile'), icon: UserCircleIcon },
+    { id: "notifications", name: t('tabNotifications'), icon: BellIcon },
+    { id: "security", name: t('tabSecurity'), icon: LockClosedIcon },
+    { id: "preferences", name: t('tabPreferences'), icon: PaintBrushIcon },
   ];
 
   return (
@@ -39,9 +43,9 @@ export default function Settings() {
       <div className="p-6 space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t('settingsTitle')}</h1>
           <p className="text-gray-600 mt-1">
-            Manage your account settings and preferences
+            {t('settingsSubtitle')}
           </p>
         </div>
 
@@ -75,7 +79,7 @@ export default function Settings() {
               {activeTab === "profile" && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-bold text-gray-900">
-                    Profile Settings
+                    {t('profileSettings')}
                   </h2>
                   <div className="space-y-4">
                     <div>
@@ -109,7 +113,7 @@ export default function Settings() {
                       />
                     </div>
                     <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                      Save Changes
+                      {t('saveChanges')}
                     </button>
                   </div>
                 </div>
@@ -118,7 +122,7 @@ export default function Settings() {
               {activeTab === "notifications" && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-bold text-gray-900">
-                    Notification Preferences
+                    {t('notificationPreferences')}
                   </h2>
                   <div className="space-y-4">
                     {[
@@ -148,7 +152,7 @@ export default function Settings() {
               {activeTab === "security" && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-bold text-gray-900">
-                    Security Settings
+                    {t('securitySettings')}
                   </h2>
                   <div className="space-y-4">
                     <div>
@@ -179,7 +183,7 @@ export default function Settings() {
                       />
                     </div>
                     <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                      Update Password
+                      {t('updatePassword')}
                     </button>
                   </div>
                 </div>
@@ -188,22 +192,22 @@ export default function Settings() {
               {activeTab === "preferences" && (
                 <div className="space-y-6">
                   <h2 className="text-xl font-bold text-gray-900">
-                    Preferences
+                    {t('preferences')}
                   </h2>
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Language
+                        {t('language')}
                       </label>
-                      <select className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option>English</option>
-                        <option>Spanish</option>
-                        <option>French</option>
-                      </select>
+                      <LanguageSelect
+                        value={language.code}
+                        onChange={setLanguage}
+                        allowedCodes={[...SUPPORTED_LANGUAGE_CODES]}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Theme
+                        {t('theme')}
                       </label>
                       <select className="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option>Light</option>
@@ -212,7 +216,7 @@ export default function Settings() {
                       </select>
                     </div>
                     <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                      Save Preferences
+                      {t('savePreferences')}
                     </button>
                   </div>
                 </div>
@@ -224,4 +228,3 @@ export default function Settings() {
     </DashboardLayout>
   );
 }
-
