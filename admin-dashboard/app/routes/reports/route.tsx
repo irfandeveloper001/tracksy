@@ -6,6 +6,7 @@ import {
   ArrowDownTrayIcon,
   EnvelopeIcon,
   ClockIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import analyticsService from '../../lib/api/analyticsService';
 import DateRangePicker from '../../components/analytics/DateRangePicker';
@@ -333,132 +334,88 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 p-6">
-      {/* Header with gradient */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-8 text-white shadow-2xl">
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex-1">
-              <h1 className="text-4xl font-bold mb-2 flex items-center">
-                <DocumentTextIcon className="w-10 h-10 mr-3" />
-                Generate Reports
-              </h1>
-              <p className="text-indigo-100 text-lg">Create and export comprehensive analytics reports</p>
-            </div>
-            <div className="hidden lg:block">
-              <div className="bg-white/20 backdrop-blur-lg rounded-xl p-6 text-center">
-                <p className="text-3xl font-bold">📊</p>
-                <p className="text-sm text-indigo-100 mt-1">Analytics</p>
-              </div>
-            </div>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Header */}
+      <div className="rounded-2xl border border-white/60 bg-gradient-to-br from-indigo-500/10 via-white to-slate-50 px-6 py-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Reports</p>
+            <h1 className="text-3xl font-bold text-gray-900">Generate Reports</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Create, schedule, and export comprehensive analytics reports.
+            </p>
           </div>
-          
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => handleExport('excel')}
-              className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              onClick={() => refetch()}
+              className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              <span>Export Excel</span>
-            </button>
-            <button
-              onClick={() => handleExport('pdf')}
-              className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-            >
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              <span>Export PDF</span>
+              <ArrowPathIcon className="h-5 w-5 mr-2" />
+              Refresh
             </button>
             <button
               onClick={() => setShowScheduleModal(true)}
-              className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-semibold transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              className="flex items-center px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
             >
-              <EnvelopeIcon className="w-5 h-5" />
-              <span>Schedule Report</span>
+              <EnvelopeIcon className="h-5 w-5 mr-2" />
+              Schedule
+            </button>
+            <button
+              onClick={() => handleExport('excel')}
+              className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              Export Excel
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              Export PDF
             </button>
           </div>
         </div>
-        {/* Decorative background elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-400/20 rounded-full -ml-24 -mb-24 blur-2xl"></div>
       </div>
 
       {/* Content */}
       <div className="space-y-6">
         {/* Report Type Selection */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Report Type</h2>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setShowScheduleModal(true)}
-            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <EnvelopeIcon className="h-5 w-5 mr-2" />
-            Schedule Report
-          </button>
-          <button
-            onClick={() => handleExport('excel')}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export Excel
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export PDF
-          </button>
-        </div>
-      </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button
-            onClick={() => setReportType('daily')}
-            className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-              reportType === 'daily'
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <DocumentTextIcon className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-medium">Daily Report</p>
-          </button>
-          <button
-            onClick={() => setReportType('weekly')}
-            className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-              reportType === 'weekly'
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <DocumentTextIcon className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-medium">Weekly Report</p>
-          </button>
-          <button
-            onClick={() => setReportType('monthly')}
-            className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-              reportType === 'monthly'
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <DocumentTextIcon className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-medium">Monthly Report</p>
-          </button>
-          <button
-            onClick={() => setReportType('custom')}
-            className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-              reportType === 'custom'
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <CalendarIcon className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-medium">Custom Range</p>
-          </button>
-        </div>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <ClockIcon className="h-4 w-4" />
+              Updated on demand
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[
+              { key: 'daily', label: 'Daily Report', icon: DocumentTextIcon },
+              { key: 'weekly', label: 'Weekly Report', icon: DocumentTextIcon },
+              { key: 'monthly', label: 'Monthly Report', icon: DocumentTextIcon },
+              { key: 'custom', label: 'Custom Range', icon: CalendarIcon },
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setReportType(key as typeof reportType)}
+                className={`group flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-semibold transition-all ${
+                  reportType === key
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
+                    : 'border-gray-200 text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                }`}
+              >
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                    reportType === key ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
 
         {/* Date Range for Custom */}
         {reportType === 'custom' && (
@@ -485,8 +442,8 @@ export default function ReportsPage() {
 
       {/* Schedule Modal */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Schedule Report</h3>
             <div className="space-y-4">
               <div>
