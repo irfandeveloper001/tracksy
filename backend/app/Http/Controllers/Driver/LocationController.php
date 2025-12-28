@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Driver;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bus;
 use App\Models\Location;
 use Illuminate\Http\Request;
 
@@ -12,7 +13,7 @@ class LocationController extends Controller
     {
         // Update bus location
         $driver = auth()->user();
-        $bus = $driver->assignedBus;
+        $bus = $driver->assignedBus ?: Bus::where('current_driver_id', $driver->id)->first();
 
         if (!$bus) {
             return $this->errorResponse('No bus assigned', null, 400);
@@ -47,7 +48,7 @@ class LocationController extends Controller
     {
         // Batch location updates
         $driver = auth()->user();
-        $bus = $driver->assignedBus;
+        $bus = $driver->assignedBus ?: Bus::where('current_driver_id', $driver->id)->first();
 
         if (!$bus) {
             return $this->errorResponse('No bus assigned', null, 400);
@@ -80,4 +81,3 @@ class LocationController extends Controller
         return $this->successResponse($locations);
     }
 }
-

@@ -16,7 +16,13 @@ class BusController extends Controller
     public function index(Request $request)
     {
         // List all buses with filters
-        $buses = Bus::with(['currentRoute', 'currentDriver'])
+        $buses = Bus::with([
+                'currentRoute',
+                'currentDriver',
+                'locations' => function ($query) {
+                    $query->latest('recorded_at')->limit(1);
+                },
+            ])
             ->when($request->status, function ($query, $status) {
                 return $query->where('status', $status);
             })

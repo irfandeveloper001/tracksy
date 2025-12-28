@@ -13,7 +13,13 @@ class BusController extends Controller
     public function index(Request $request)
     {
         // Get all buses (for students)
-        $buses = Bus::with(['currentRoute', 'currentDriver'])
+        $buses = Bus::with([
+                'currentRoute',
+                'currentDriver',
+                'locations' => function ($query) {
+                    $query->latest('recorded_at')->limit(1);
+                },
+            ])
             ->when($request->routeId, function ($query, $routeId) {
                 return $query->where('current_route_id', $routeId);
             })
@@ -26,7 +32,13 @@ class BusController extends Controller
     public function show($id)
     {
         // Get bus details (for students)
-        $bus = Bus::with(['currentRoute', 'currentDriver'])->findOrFail($id);
+        $bus = Bus::with([
+            'currentRoute',
+            'currentDriver',
+            'locations' => function ($query) {
+                $query->latest('recorded_at')->limit(1);
+            },
+        ])->findOrFail($id);
         
         return $this->successResponse($bus);
     }
@@ -100,4 +112,3 @@ class BusController extends Controller
         return $this->successResponse($availability);
     }
 }
-

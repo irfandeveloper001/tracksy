@@ -25,12 +25,32 @@ export interface BusLocation {
 }
 
 class BusService {
+  private normalizeBus(bus: any): Bus {
+    const latestLocation = bus?.current_location || bus?.locations?.[0] || null;
+    const timestamp =
+      latestLocation?.timestamp ||
+      latestLocation?.recorded_at ||
+      latestLocation?.created_at ||
+      undefined;
+
+    return {
+      ...bus,
+      current_location: latestLocation
+        ? {
+            latitude: Number(latestLocation.latitude),
+            longitude: Number(latestLocation.longitude),
+            timestamp,
+          }
+        : undefined,
+    };
+  }
+
   // Get all buses
   async getBuses(): Promise<Bus[]> {
     try {
       const response = await api.get('/buses');
       const buses = response.data.data || response.data;
-      return Array.isArray(buses) ? buses : [];
+      return Array.isArray(buses) ? buses.map((bus) => this.normalizeBus(bus)) : [];
     } catch (error: any) {
       console.error('Error getting buses:', error);
       const errorMessage =
@@ -46,7 +66,8 @@ class BusService {
   async getBus(id: number): Promise<Bus> {
     try {
       const response = await api.get(`/buses/${id}`);
-      return response.data.data || response.data;
+      const bus = response.data.data || response.data;
+      return this.normalizeBus(bus);
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message ||
@@ -95,4 +116,3 @@ class BusService {
 }
 
 export default new BusService();
-

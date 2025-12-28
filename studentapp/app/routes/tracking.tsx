@@ -241,7 +241,7 @@ export default function Tracking() {
         lng: liveLocation.longitude,
         isSimulated: false,
         sourceLabel: "Live (API)",
-        timestamp: liveLocation.timestamp,
+        timestamp: liveLocation.timestamp || (liveLocation as any).recorded_at || (liveLocation as any).created_at,
       };
     }
 

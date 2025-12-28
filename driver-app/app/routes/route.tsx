@@ -54,6 +54,8 @@ export default function RoutePage() {
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
+  const effectiveRoute = assignedRoute || (user?.assigned_route as any) || null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-indigo-50 to-purple-50">
       <Header
@@ -65,8 +67,8 @@ export default function RoutePage() {
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
-        <main className="flex-1 lg:ml-0 w-full">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <main className="flex-1 w-full min-w-0">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
             <div className="space-y-6">
               {/* Header */}
               <div className="mb-8">
@@ -82,13 +84,13 @@ export default function RoutePage() {
                 <div className="flex justify-center items-center py-20">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
                 </div>
-              ) : assignedRoute ? (
+              ) : effectiveRoute ? (
                 <>
                   {/* Route Information Card */}
                   <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-8">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold text-gray-900">
-                        {assignedRoute.name || 'Unnamed Route'}
+                        {effectiveRoute.name || 'Unnamed Route'}
                       </h2>
                       <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
                         Active
@@ -103,7 +105,7 @@ export default function RoutePage() {
                         <div>
                           <p className="text-sm text-gray-500">Distance</p>
                           <p className="text-lg font-semibold text-gray-900">
-                            {formatDistance(assignedRoute.distance)}
+                            {formatDistance(effectiveRoute.distance)}
                           </p>
                         </div>
                       </div>
@@ -115,7 +117,7 @@ export default function RoutePage() {
                         <div>
                           <p className="text-sm text-gray-500">Estimated Duration</p>
                           <p className="text-lg font-semibold text-gray-900">
-                            {formatDuration(assignedRoute.estimated_duration)}
+                            {formatDuration(effectiveRoute.estimated_duration)}
                           </p>
                         </div>
                       </div>
@@ -138,14 +140,14 @@ export default function RoutePage() {
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-gray-500 mb-1">Start Location</p>
                           <p className="text-base text-gray-900">
-                            {assignedRoute.start_location || assignedRoute.start_point || assignedRoute.origin || 'N/A'}
+                            {effectiveRoute.start_location || effectiveRoute.start_point || effectiveRoute.origin || 'N/A'}
                           </p>
                         </div>
                         <ChevronRightIcon className="h-6 w-6 text-gray-400 mt-6" />
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-gray-500 mb-1">End Location</p>
                           <p className="text-base text-gray-900">
-                            {assignedRoute.end_location || assignedRoute.end_point || assignedRoute.destination || 'N/A'}
+                            {effectiveRoute.end_location || effectiveRoute.end_point || effectiveRoute.destination || 'N/A'}
                           </p>
                         </div>
                       </div>
@@ -211,7 +213,6 @@ export default function RoutePage() {
     </div>
   );
 }
-
 
 
 

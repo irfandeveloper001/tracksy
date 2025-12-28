@@ -76,6 +76,23 @@ class BusService {
 
   // Map backend bus data to frontend Bus interface
   private mapBackendBusToFrontend(bus: any): Bus {
+    const latestLocation = bus?.current_location || bus?.locations?.[0] || null;
+    const rawLatitude = latestLocation?.latitude ?? bus.current_latitude ?? null;
+    const rawLongitude = latestLocation?.longitude ?? bus.current_longitude ?? null;
+    const latitude =
+      rawLatitude === null || rawLatitude === undefined
+        ? null
+        : Number(rawLatitude);
+    const longitude =
+      rawLongitude === null || rawLongitude === undefined
+        ? null
+        : Number(rawLongitude);
+    const lastUpdate =
+      latestLocation?.recorded_at ||
+      latestLocation?.timestamp ||
+      bus.last_location_update ||
+      null;
+
     return {
       id: bus.id,
       bus_number: bus.bus_number,
@@ -87,9 +104,9 @@ class BusService {
       route_name: bus.current_route?.name || bus.route_name || null,
       driver_id: bus.current_driver_id || bus.driver_id,
       driver_name: bus.current_driver?.name || bus.driver_name || null,
-      current_latitude: bus.locations?.[0]?.latitude || bus.current_latitude || null,
-      current_longitude: bus.locations?.[0]?.longitude || bus.current_longitude || null,
-      last_location_update: bus.locations?.[0]?.recorded_at || bus.last_location_update || null,
+      current_latitude: latitude,
+      current_longitude: longitude,
+      last_location_update: lastUpdate,
       created_at: bus.created_at,
       updated_at: bus.updated_at,
     };
