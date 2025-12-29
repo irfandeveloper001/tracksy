@@ -24,6 +24,10 @@ class Bus extends Model
         'capacity' => 'integer',
     ];
 
+    protected $appends = [
+        'current_location',
+    ];
+
     // Relationships
     public function currentRoute()
     {
@@ -62,6 +66,10 @@ class Bus extends Model
 
     public function getCurrentLocationAttribute()
     {
+        if ($this->relationLoaded('locations')) {
+            return $this->locations->sortByDesc('recorded_at')->first();
+        }
+
         return $this->locations()
             ->latest('recorded_at')
             ->first();
@@ -78,4 +86,3 @@ class Bus extends Model
         return $query->whereNotNull('current_route_id');
     }
 }
-

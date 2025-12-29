@@ -1,0 +1,386 @@
+{
+  "../node_modules/@react-router/dev/dist/config/defaults/entry.client.tsx": {
+    "file": "assets/entry.client-z4EwhhSi.js",
+    "name": "entry.client",
+    "src": "../node_modules/@react-router/dev/dist/config/defaults/entry.client.tsx",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "/home/irfan/tracksy/studentapp/app/styles/app.css": {
+    "file": "assets/app-UwivGjSO.css",
+    "src": "/home/irfan/tracksy/studentapp/app/styles/app.css"
+  },
+  "/home/irfan/tracksy/studentapp/app/styles/custom.css": {
+    "file": "assets/custom-DLCNONaK.css",
+    "src": "/home/irfan/tracksy/studentapp/app/styles/custom.css"
+  },
+  "_ArrowRightIcon-Dq4WJP-d.js": {
+    "file": "assets/ArrowRightIcon-Dq4WJP-d.js",
+    "name": "ArrowRightIcon",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_Button-_eewgG5_.js": {
+    "file": "assets/Button-_eewgG5_.js",
+    "name": "Button",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_CalendarIcon-CJ29o3gu.js": {
+    "file": "assets/CalendarIcon-CJ29o3gu.js",
+    "name": "CalendarIcon",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_CheckCircleIcon-8lxtDRjE.js": {
+    "file": "assets/CheckCircleIcon-8lxtDRjE.js",
+    "name": "CheckCircleIcon",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_ClockIcon-CgY8bcbJ.js": {
+    "file": "assets/ClockIcon-CgY8bcbJ.js",
+    "name": "ClockIcon",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_DashboardLayout-ph5SHVH-.js": {
+    "file": "assets/DashboardLayout-ph5SHVH-.js",
+    "name": "DashboardLayout",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_authService-DS_fpHe7.js",
+      "_index-COXF0K7V.js"
+    ]
+  },
+  "_DocumentArrowDownIcon-BInAIwAV.js": {
+    "file": "assets/DocumentArrowDownIcon-BInAIwAV.js",
+    "name": "DocumentArrowDownIcon",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_ExclamationTriangleIcon-JxZwtGj-.js": {
+    "file": "assets/ExclamationTriangleIcon-JxZwtGj-.js",
+    "name": "ExclamationTriangleIcon",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_LoadingSpinner-BedKyOsL.js": {
+    "file": "assets/LoadingSpinner-BedKyOsL.js",
+    "name": "LoadingSpinner",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_MapPinIcon-CQWZJBPw.js": {
+    "file": "assets/MapPinIcon-CQWZJBPw.js",
+    "name": "MapPinIcon",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_XCircleIcon-D7u_AR9_.js": {
+    "file": "assets/XCircleIcon-D7u_AR9_.js",
+    "name": "XCircleIcon",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_authService-DS_fpHe7.js": {
+    "file": "assets/authService-DS_fpHe7.js",
+    "name": "authService",
+    "imports": [
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "_bookingService-4fho-4E8.js": {
+    "file": "assets/bookingService-4fho-4E8.js",
+    "name": "bookingService",
+    "imports": [
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "_busService-DUlGAhyZ.js": {
+    "file": "assets/busService-DUlGAhyZ.js",
+    "name": "busService",
+    "imports": [
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "_chunk-4WY6JWTD-DDrDh67T.js": {
+    "file": "assets/chunk-4WY6JWTD-DDrDh67T.js",
+    "name": "chunk-4WY6JWTD"
+  },
+  "_client-BGGNiUU-.js": {
+    "file": "assets/client-BGGNiUU-.js",
+    "name": "client",
+    "imports": [
+      "_index-COXF0K7V.js"
+    ]
+  },
+  "_feeService-Dj0RxzfK.js": {
+    "file": "assets/feeService-Dj0RxzfK.js",
+    "name": "feeService",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "_index-COXF0K7V.js": {
+    "file": "assets/index-COXF0K7V.js",
+    "name": "index",
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js"
+    ]
+  },
+  "_routeService-CyXR6pNd.js": {
+    "file": "assets/routeService-CyXR6pNd.js",
+    "name": "routeService",
+    "imports": [
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/root.tsx?__react-router-build-client-route": {
+    "file": "assets/root-Br6cZuXW.js",
+    "name": "root",
+    "src": "app/root.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_index-COXF0K7V.js"
+    ],
+    "assets": [
+      "assets/app-UwivGjSO.css",
+      "assets/custom-DLCNONaK.css"
+    ]
+  },
+  "app/routes/bookings.tsx?__react-router-build-client-route": {
+    "file": "assets/bookings-Ao_IbSO2.js",
+    "name": "bookings",
+    "src": "app/routes/bookings.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_LoadingSpinner-BedKyOsL.js",
+      "_Button-_eewgG5_.js",
+      "_bookingService-4fho-4E8.js",
+      "_authService-DS_fpHe7.js",
+      "_index-COXF0K7V.js",
+      "_CalendarIcon-CJ29o3gu.js",
+      "_ClockIcon-CgY8bcbJ.js",
+      "_ArrowRightIcon-Dq4WJP-d.js",
+      "_CheckCircleIcon-8lxtDRjE.js",
+      "_XCircleIcon-D7u_AR9_.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/dashboard.tsx?__react-router-build-client-route": {
+    "file": "assets/dashboard-DbFq0RRY.js",
+    "name": "dashboard",
+    "src": "app/routes/dashboard.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_Button-_eewgG5_.js",
+      "_LoadingSpinner-BedKyOsL.js",
+      "_authService-DS_fpHe7.js",
+      "_bookingService-4fho-4E8.js",
+      "_routeService-CyXR6pNd.js",
+      "_busService-DUlGAhyZ.js",
+      "_index-COXF0K7V.js",
+      "_CheckCircleIcon-8lxtDRjE.js",
+      "_ClockIcon-CgY8bcbJ.js",
+      "_ArrowRightIcon-Dq4WJP-d.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/fees.$id.pay.tsx?__react-router-build-client-route": {
+    "file": "assets/fees._id.pay-_T1jBnvw.js",
+    "name": "fees._id.pay",
+    "src": "app/routes/fees.$id.pay.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_feeService-Dj0RxzfK.js",
+      "_authService-DS_fpHe7.js",
+      "_index-COXF0K7V.js",
+      "_ExclamationTriangleIcon-JxZwtGj-.js",
+      "_CalendarIcon-CJ29o3gu.js",
+      "_CheckCircleIcon-8lxtDRjE.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/fees._index.tsx?__react-router-build-client-route": {
+    "file": "assets/fees._index-Cjtdc_JG.js",
+    "name": "fees._index",
+    "src": "app/routes/fees._index.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_feeService-Dj0RxzfK.js",
+      "_authService-DS_fpHe7.js",
+      "_index-COXF0K7V.js",
+      "_ExclamationTriangleIcon-JxZwtGj-.js",
+      "_CheckCircleIcon-8lxtDRjE.js",
+      "_ClockIcon-CgY8bcbJ.js",
+      "_DocumentArrowDownIcon-BInAIwAV.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/home.tsx?__react-router-build-client-route": {
+    "file": "assets/home-XUlMAVjP.js",
+    "name": "home",
+    "src": "app/routes/home.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_client-BGGNiUU-.js",
+      "_index-COXF0K7V.js"
+    ]
+  },
+  "app/routes/login.tsx?__react-router-build-client-route": {
+    "file": "assets/login--AcsxEXu.js",
+    "name": "login",
+    "src": "app/routes/login.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_index-COXF0K7V.js",
+      "_authService-DS_fpHe7.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/notifications.tsx?__react-router-build-client-route": {
+    "file": "assets/notifications-CngpK0J5.js",
+    "name": "notifications",
+    "src": "app/routes/notifications.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_authService-DS_fpHe7.js",
+      "_CheckCircleIcon-8lxtDRjE.js",
+      "_ExclamationTriangleIcon-JxZwtGj-.js",
+      "_index-COXF0K7V.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/payment-history.tsx?__react-router-build-client-route": {
+    "file": "assets/payment-history-hUWADzZh.js",
+    "name": "payment-history",
+    "src": "app/routes/payment-history.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_feeService-Dj0RxzfK.js",
+      "_authService-DS_fpHe7.js",
+      "_CalendarIcon-CJ29o3gu.js",
+      "_DocumentArrowDownIcon-BInAIwAV.js",
+      "_ClockIcon-CgY8bcbJ.js",
+      "_XCircleIcon-D7u_AR9_.js",
+      "_CheckCircleIcon-8lxtDRjE.js",
+      "_index-COXF0K7V.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/profile.tsx?__react-router-build-client-route": {
+    "file": "assets/profile-Ccm4-vUo.js",
+    "name": "profile",
+    "src": "app/routes/profile.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_LoadingSpinner-BedKyOsL.js",
+      "_Button-_eewgG5_.js",
+      "_authService-DS_fpHe7.js",
+      "_index-COXF0K7V.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/register.tsx?__react-router-build-client-route": {
+    "file": "assets/register-BFKOhTcb.js",
+    "name": "register",
+    "src": "app/routes/register.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_index-COXF0K7V.js",
+      "_authService-DS_fpHe7.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/route-details.tsx?__react-router-build-client-route": {
+    "file": "assets/route-details-B4tjtSY1.js",
+    "name": "route-details",
+    "src": "app/routes/route-details.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_index-COXF0K7V.js",
+      "_routeService-CyXR6pNd.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/routes-list.tsx?__react-router-build-client-route": {
+    "file": "assets/routes-list-CizxSIAQ.js",
+    "name": "routes-list",
+    "src": "app/routes/routes-list.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_index-COXF0K7V.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_routeService-CyXR6pNd.js",
+      "_authService-DS_fpHe7.js",
+      "_MapPinIcon-CQWZJBPw.js",
+      "_ArrowRightIcon-Dq4WJP-d.js",
+      "_ClockIcon-CgY8bcbJ.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/settings.tsx?__react-router-build-client-route": {
+    "file": "assets/settings-DNyttxxv.js",
+    "name": "settings",
+    "src": "app/routes/settings.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_authService-DS_fpHe7.js",
+      "_index-COXF0K7V.js",
+      "_client-BGGNiUU-.js"
+    ]
+  },
+  "app/routes/tracking.tsx?__react-router-build-client-route": {
+    "file": "assets/tracking-D6hSRDXV.js",
+    "name": "tracking",
+    "src": "app/routes/tracking.tsx?__react-router-build-client-route",
+    "isEntry": true,
+    "imports": [
+      "_chunk-4WY6JWTD-DDrDh67T.js",
+      "_DashboardLayout-ph5SHVH-.js",
+      "_LoadingSpinner-BedKyOsL.js",
+      "_busService-DUlGAhyZ.js",
+      "_authService-DS_fpHe7.js",
+      "_index-COXF0K7V.js",
+      "_MapPinIcon-CQWZJBPw.js",
+      "_ClockIcon-CgY8bcbJ.js",
+      "_client-BGGNiUU-.js"
+    ]
+  }
+}

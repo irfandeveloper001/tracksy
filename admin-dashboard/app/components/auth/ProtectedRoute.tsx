@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, Outlet } from 'react-router';
 import { useAuthStore } from '../../lib/store/authStore';
 import { AdminRole } from '../../lib/api/authService';
@@ -7,12 +7,14 @@ interface ProtectedRouteProps {
   requiredRole?: AdminRole;
   requiredPermission?: string;
   redirectTo?: string;
+  children?: ReactNode;
 }
 
 export default function ProtectedRoute({
   requiredRole,
   requiredPermission,
   redirectTo = '/login',
+  children,
 }: ProtectedRouteProps) {
   const { isAuthenticated, user, isLoading, getCurrentUser } = useAuthStore();
   const navigate = useNavigate();
@@ -20,8 +22,16 @@ export default function ProtectedRoute({
   useEffect(() => {
     const checkAuth = async () => {
       if (!isAuthenticated) {
-        // Try to get current user
-        await getCurrentUser();
+        // Try to get current user with timeout
+        try {
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+          );
+          await Promise.race([getCurrentUser(), timeoutPromise]);
+        } catch (error) {
+          console.warn('Auth check failed or timed out:', error);
+          // If auth check fails, still allow navigation (will redirect if not authenticated)
+        }
       }
     };
 
@@ -29,6 +39,7 @@ export default function ProtectedRoute({
   }, [isAuthenticated, getCurrentUser]);
 
   useEffect(() => {
+    // Only redirect if we've finished loading and still not authenticated
     if (!isLoading && !isAuthenticated) {
       navigate(redirectTo, { replace: true });
     }
@@ -61,13 +72,60 @@ export default function ProtectedRoute({
     }
   }, [isLoading, isAuthenticated, user, requiredRole, navigate]);
 
-  // Show loading state
-  if (isLoading || !isAuthenticated) {
+  // Show loading state only if we're actively loading and haven't timed out
+  // Add a timeout to prevent infinite loading - reduced to 1 second
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  
+  useEffect(() => {
+    if (isLoading) {
+      const timeout = setTimeout(() => {
+        setHasTimedOut(true);
+      }, 1000); // 1 second timeout - very aggressive
+      
+      return () => clearTimeout(timeout);
+    } else {
+      setHasTimedOut(false);
+    }
+  }, [isLoading]);
+
+  // Show loading only if loading and not timed out - but allow render if we have a session
+  // Check for session in URL or localStorage to bypass loading
+  const [hasSession, setHasSession] = useState(false);
+  
+  useEffect(() => {
+    // Check if we have a Laravel token in localStorage
+    const checkSession = () => {
+      const token = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
+      if (token) {
+        setHasSession(true);
+      }
+    };
+    checkSession();
+  }, []);
+
+  // Show loading only if loading and not timed out AND no session detected
+  if ((isLoading && !hasTimedOut && !hasSession) || (!isAuthenticated && !hasTimedOut && isLoading && !hasSession)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If timed out or not authenticated after loading, redirect
+  if (!isLoading && !isAuthenticated) {
+    // Small delay to prevent flash
+    setTimeout(() => {
+      navigate(redirectTo, { replace: true });
+    }, 100);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Redirecting...</p>
         </div>
       </div>
     );
@@ -79,6 +137,9 @@ export default function ProtectedRoute({
     return null;
   }
 
+  if (children) {
+    return <>{children}</>;
+  }
+
   return <Outlet />;
 }
-

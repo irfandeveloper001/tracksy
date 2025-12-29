@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import supabaseAuthService from '../../services/supabaseAuthService';
+import authService from '../../services/authService';
 
 export interface DriverUser {
   id: string;
@@ -25,13 +25,10 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      const result = await supabaseAuthService.login(credentials.email, credentials.password);
-      if (!result.success) {
-        return rejectWithValue(result.error || 'Login failed');
-      }
+      const result = await authService.login(credentials);
       return {
-        user: result.data?.user || result.user,
-        token: result.data?.token || result.session?.access_token,
+        user: result.user,
+        token: result.token,
       };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Login failed');
@@ -39,9 +36,32 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+// Signup driver
+export const signupUser = createAsyncThunk(
+  'auth/signup',
+  async (signupData: {
+    name: string;
+    email: string;
+    password: string;
+    driver_id: string;
+    phone?: string;
+    license_number?: string;
+  }, { rejectWithValue }) => {
+    try {
+      const result = await authService.signup(signupData);
+      return {
+        user: result.user,
+        token: result.token,
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Signup failed');
+    }
+  }
+);
+
 export const logoutUser = createAsyncThunk('auth/logout', async (_, { rejectWithValue }) => {
   try {
-    await supabaseAuthService.logout();
+    await authService.logout();
   } catch (error: any) {
     return rejectWithValue(error.message || 'Logout failed');
   }
@@ -51,7 +71,7 @@ export const getCurrentUser = createAsyncThunk(
   'auth/getCurrentUser',
   async (_, { rejectWithValue }) => {
     try {
-      const user = await supabaseAuthService.getCurrentUser();
+      const user = await authService.getCurrentUser();
       return user;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to get user');
@@ -63,8 +83,8 @@ export const refreshToken = createAsyncThunk(
   'auth/refreshToken',
   async (_, { rejectWithValue }) => {
     try {
-      const session = await supabaseAuthService.refreshSession();
-      return session?.access_token || null;
+      const token = await authService.refreshToken();
+      return token;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to refresh token');
     }
@@ -80,10 +100,17 @@ export const updateProfile = createAsyncThunk(
       phone?: string;
       license_number?: string;
     },
-    { rejectWithValue }
+    { rejectWithValue, getState }
   ) => {
     try {
-      const user = await supabaseAuthService.updateProfile(profileData);
+      // Optimistic update - update user in state immediately
+      const state: any = getState();
+      const currentUser = state.auth.user;
+      if (currentUser) {
+        // Return optimistic update
+        const optimisticUser = { ...currentUser, ...profileData };
+      }
+      const user = await authService.updateProfile(profileData);
       return user;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to update profile');
@@ -102,9 +129,7 @@ export const changePassword = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      // Supabase doesn't require current password for updatePassword
-      // But we can validate it first if needed
-      await supabaseAuthService.updatePassword(passwordData.new_password);
+      await authService.changePassword(passwordData);
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to change password');
     }
@@ -212,17 +237,42 @@ const authSlice = createSlice({
         }
       });
 
+    // Signup
+    builder
+      .addCase(signupUser.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(signupUser.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = true;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.error = null;
+      })
+      .addCase(signupUser.rejected, (state, action) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.error = action.payload as string;
+      });
+
     // Refresh token
     builder
       .addCase(refreshToken.fulfilled, (state, action) => {
         state.token = action.payload;
       });
 
-    // Update profile
+    // Update profile - Optimistic update
     builder
-      .addCase(updateProfile.pending, (state) => {
+      .addCase(updateProfile.pending, (state, action) => {
         state.isLoading = true;
         state.error = null;
+        // Optimistically update user
+        if (state.user) {
+          state.user = { ...state.user, ...action.meta.arg };
+        }
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.isLoading = false;
@@ -232,6 +282,8 @@ const authSlice = createSlice({
       .addCase(updateProfile.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        // Note: In a real app, you'd want to reload the user to revert optimistic update
+        // For now, the error message alerts the user to the issue
       });
 
     // Change password

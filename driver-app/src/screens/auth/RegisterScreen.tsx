@@ -14,12 +14,13 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store/store';
 import { COLORS } from '../../constants';
-import supabaseAuthService from '../../services/supabaseAuthService';
+import { signupUser } from '../../store/slices/authSlice';
 
 const RegisterScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { isLoading, error, isAuthenticated } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   const [formData, setFormData] = useState({
     name: '',
@@ -33,6 +34,19 @@ const RegisterScreen = ({ navigation }: any) => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Registration Failed', error);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Navigate to dashboard after successful signup
+      navigation.replace('Dashboard');
+    }
+  }, [isAuthenticated, navigation]);
 
   const handleRegister = async () => {
     // Validation
@@ -66,83 +80,23 @@ const RegisterScreen = ({ navigation }: any) => {
       return;
     }
 
-    setIsLoading(true);
-    setError('');
-
     try {
-      console.log('📝 Registering driver...');
-      const result = await supabaseAuthService.register(
-        formData.email.trim(),
-        formData.password.trim(),
-        {
+      await dispatch(
+        signupUser({
           name: formData.name.trim(),
+          email: formData.email.trim(),
+          password: formData.password.trim(),
           driver_id: formData.driver_id.trim(),
           phone: formData.phone.trim() || undefined,
           license_number: formData.license_number.trim() || undefined,
-        }
-      );
-
-      if (result.success) {
-        console.log('✅ Registration successful:', result);
-        setIsLoading(false); // Clear loading immediately
-        
-        if (result.requiresVerification) {
-          // Use setTimeout to ensure Alert shows after state update
-          setTimeout(() => {
-            Alert.alert(
-              'Registration Successful',
-              result.message || 'Please check your email to verify your account before logging in.',
-              [
-                {
-                  text: 'Resend Email',
-                  onPress: async () => {
-                    try {
-                      await supabaseAuthService.resendVerificationEmail(formData.email);
-                      Alert.alert('Success', 'Verification email sent. Please check your inbox.');
-                    } catch (err: any) {
-                      Alert.alert('Error', err.message || 'Failed to resend verification email');
-                    }
-                  },
-                },
-                {
-                  text: 'Go to Login',
-                  onPress: () => {
-                    navigation.navigate('Login');
-                  },
-                  style: 'default',
-                },
-              ]
-            );
-          }, 100);
-        } else {
-          // Use setTimeout to ensure Alert shows after state update
-          setTimeout(() => {
-            Alert.alert('Success', 'Registration successful!', [
-              {
-                text: 'OK',
-                onPress: () => {
-                  navigation.navigate('Login');
-                },
-              },
-            ]);
-          }, 100);
-        }
-      } else {
-        console.error('❌ Registration failed:', result.error);
-        setIsLoading(false);
-        setError(result.error || 'Registration failed');
-        setTimeout(() => {
-          Alert.alert('Registration Failed', result.error || 'Registration failed');
-        }, 100);
-      }
+        })
+      ).unwrap();
+      
+      // Success - navigation will happen via useEffect when isAuthenticated becomes true
+      Alert.alert('Success', 'Registration successful! You are now logged in.');
     } catch (err: any) {
-      console.error('❌ Registration error:', err);
-      const errorMessage = err.message || err.error || 'Registration failed';
-      setError(errorMessage);
-      setIsLoading(false);
-      setTimeout(() => {
-        Alert.alert('Registration Failed', errorMessage);
-      }, 100);
+      // Error is handled in useEffect
+      console.error('Registration error:', err);
     }
   };
 

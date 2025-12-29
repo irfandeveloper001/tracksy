@@ -3,11 +3,25 @@ import api from './api/api';
 export interface Route {
   id: number;
   name: string;
-  origin: string;
-  destination: string;
+  origin?: string;
+  destination?: string;
+  start_location?: string;
+  end_location?: string;
+  start_point?: string;
+  end_point?: string;
   distance?: number;
   estimated_duration?: number;
   stops?: Stop[];
+}
+
+// Helper function to normalize route data from backend
+function normalizeRoute(route: any): Route {
+  return {
+    ...route,
+    // Ensure origin and destination are set (use start_point/end_point as fallback)
+    origin: route.origin || route.start_point || route.start_location || '',
+    destination: route.destination || route.end_point || route.end_location || '',
+  };
 }
 
 export interface Stop {
@@ -30,10 +44,18 @@ class RouteService {
     try {
       const response = await api.get('/driver/route');
       const route = response.data.data || response.data;
-      return route;
+      if (route && route.id) {
+        return normalizeRoute(route);
+      }
+      return null;
     } catch (error: any) {
-      // If backend unavailable or route not found, return null gracefully
-      if (error.response?.status === 404 || error.response?.status === 500 || !error.response) {
+      // If route not found (404), return null gracefully - this is expected if no route assigned
+      if (error.response?.status === 404) {
+        console.log('ℹ️ No route assigned to driver');
+        return null;
+      }
+      // If backend unavailable or server error, return null gracefully
+      if (error.response?.status === 500 || !error.response) {
         console.warn('⚠️ Backend unavailable getting route, returning null');
         return null;
       }
@@ -42,6 +64,7 @@ class RouteService {
         error.response?.data?.error ||
         error.message ||
         'Failed to get route';
+      console.error('❌ Error getting route:', errorMessage);
       throw new Error(errorMessage);
     }
   }

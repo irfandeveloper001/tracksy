@@ -2,12 +2,15 @@ import api from './api/api';
 
 export interface Notification {
   id: number;
-  type: 'announcement' | 'route_change' | 'emergency' | 'system' | 'maintenance';
+  type: string; // Can be 'route_deviation', 'delay', 'seat_available', 'stop_arrival', 'safety', 'emergency', 'general', etc.
+  notification_type?: string; // Display type: 'info', 'warning', 'success', 'error'
   title: string;
   message: string;
   data?: any;
   read: boolean;
+  read_at?: string | null;
   created_at: string;
+  user_id?: number;
   driver_id?: number;
 }
 
@@ -15,8 +18,6 @@ class NotificationService {
   // Get notifications for driver
   async getNotifications(): Promise<Notification[]> {
     try {
-      // Note: This endpoint may need to be created in backend
-      // For now, we'll use a placeholder or get from alerts
       const response = await api.get('/driver/notifications');
       const notifications = response.data.data || response.data;
       return Array.isArray(notifications) ? notifications : [];
@@ -44,7 +45,11 @@ class NotificationService {
       if (error.response?.status === 404) {
         return;
       }
-      throw new Error('Failed to mark notification as read');
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to mark notification as read';
+      throw new Error(errorMessage);
     }
   }
 
@@ -57,7 +62,11 @@ class NotificationService {
       if (error.response?.status === 404) {
         return;
       }
-      throw new Error('Failed to mark all notifications as read');
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to mark all notifications as read';
+      throw new Error(errorMessage);
     }
   }
 

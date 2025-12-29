@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('seat_number');
             $table->date('trip_date');
             $table->string('booking_reference')->unique();
-            $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed'])->default('pending');
+            $table->enum('status', ['pending', 'confirmed', 'cancelled', 'completed', 'rejected'])->default('pending');
             $table->timestamp('cancelled_at')->nullable();
             $table->foreignId('cancelled_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();

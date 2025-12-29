@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\User;
 
 class Route extends Model
 {
@@ -17,6 +18,7 @@ class Route extends Model
         'distance',
         'estimated_duration',
         'is_active',
+        'status',
     ];
 
     protected $casts = [
@@ -24,6 +26,18 @@ class Route extends Model
         'estimated_duration' => 'integer',
         'is_active' => 'boolean',
     ];
+
+    // Override toArray to include compatibility fields
+    public function toArray()
+    {
+        $array = parent::toArray();
+        
+        // Add origin and destination for frontend compatibility
+        $array['origin'] = $this->start_point;
+        $array['destination'] = $this->end_point;
+        
+        return $array;
+    }
 
     // Relationships
     public function stops()
@@ -36,6 +50,12 @@ class Route extends Model
     public function buses()
     {
         return $this->hasMany(Bus::class, 'current_route_id');
+    }
+
+    public function students()
+    {
+        return $this->hasMany(User::class, 'assigned_route_id')
+            ->where('role', 'student');
     }
 
     public function trips()
@@ -54,4 +74,3 @@ class Route extends Model
         return $query->where('is_active', true);
     }
 }
-

@@ -1,70 +1,38 @@
-# Quick Start Guide
+# Quick Start Guide - Driver App Backend
 
-## ⚠️ Prerequisites Check
+## 🚀 Get the Backend Running in 5 Minutes
 
-Before running setup, ensure you have:
-
-1. ✅ **PHP 8.1+** installed and in PATH
-2. ✅ **Composer** installed and in PATH
-3. ✅ **MySQL 8.0+** installed and running
-4. ✅ **Redis** installed (optional but recommended)
-
-**Check if installed:**
-```bash
-php -v          # Should show PHP 8.1+
-composer -v     # Should show Composer version
-mysql --version # Should show MySQL 8.0+
-redis-cli ping  # Should return PONG (if Redis installed)
-```
-
-If any are missing, see `MANUAL_SETUP.md` for installation instructions.
-
-## 🚀 Automated Setup
-
-### Windows:
-```powershell
-cd backend
-.\setup.ps1
-```
-
-### Linux/Mac:
+### Step 1: Navigate to Backend Directory
 ```bash
 cd backend
-chmod +x setup.sh
-./setup.sh
 ```
 
-## 📝 Manual Setup (Step by Step)
-
-If automated setup doesn't work, follow these steps:
-
-### Step 1: Install Dependencies
+### Step 2: Install Dependencies (if not done)
 ```bash
-cd backend
 composer install
 ```
 
-### Step 2: Configure Environment
+### Step 3: Configure Environment
 ```bash
-# Copy .env.example to .env
+# Copy .env.example if .env doesn't exist
 cp .env.example .env
 
-# Edit .env file and update:
-# DB_DATABASE=tracksy
-# DB_USERNAME=root
-# DB_PASSWORD=your_password
-```
-
-### Step 3: Generate Keys
-```bash
+# Generate application key
 php artisan key:generate
-php artisan jwt:secret
+
+# Generate JWT secret
+php artisan jwt:secret --force
 ```
 
-### Step 4: Create Database
-```bash
-# Create MySQL database
-mysql -u root -p -e "CREATE DATABASE tracksy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+### Step 4: Configure Database in .env
+Edit `.env` file and set your database credentials:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=tracksy
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
 ```
 
 ### Step 5: Run Migrations
@@ -72,51 +40,74 @@ mysql -u root -p -e "CREATE DATABASE tracksy CHARACTER SET utf8mb4 COLLATE utf8m
 php artisan migrate
 ```
 
-### Step 6: Seed Database
+### Step 6: Clear Cache
 ```bash
-php artisan db:seed
+php artisan config:clear
+php artisan cache:clear
+php artisan route:clear
 ```
 
-### Step 7: Create Storage Link
-```bash
-php artisan storage:link
-```
-
-### Step 8: Start Server
+### Step 7: Start the Server
 ```bash
 php artisan serve
 ```
 
-API will be available at: `http://localhost:8000/api`
+The API will be available at: **http://localhost:8000/api**
 
-## ✅ Verify Installation
-
+### Step 8: Test the API
+Open a new terminal and run:
 ```bash
-# Check if server is running
-curl http://localhost:8000
-
-# Check routes
-php artisan route:list
-
-# Check migrations status
-php artisan migrate:status
+curl http://localhost:8000/api
 ```
 
-## 📚 Next Steps
+You should see:
+```json
+{
+  "message": "Tracksy API",
+  "version": "1.0.0",
+  "status": "running"
+}
+```
 
-1. **Configure .env** with your settings
-2. **Test API endpoints** using Postman
-3. **Start development** following:
-   - `../IRFAN_TASK_ASSIGNMENT.md` (for Irfan)
-   - `../DURIA_TASK_ASSIGNMENT.md` (for Duria)
+## ✅ Verification Checklist
 
-## 🆘 Need Help?
+- [ ] Server starts without errors
+- [ ] `curl http://localhost:8000/api` returns JSON response
+- [ ] Database migrations completed successfully
+- [ ] JWT secret is generated
+- [ ] CORS is configured (check `config/cors.php`)
 
-- See `MANUAL_SETUP.md` for detailed installation instructions
-- See `INSTALLATION_GUIDE.md` for complete guide
-- See `PREREQUISITES_CHECKLIST.md` for file checklist
+## 🔧 If Something Goes Wrong
 
----
+### Server Won't Start
+- Check if port 8000 is in use: `lsof -i :8000`
+- Use different port: `php artisan serve --port=8001`
 
-**Happy Coding! 🚀**
+### Database Errors
+- Verify database exists and credentials are correct
+- Check database server is running
+- Run: `php artisan migrate:status` to check migration status
+
+### 500 Errors
+- Check logs: `tail -f storage/logs/laravel.log`
+- Clear cache: `php artisan config:clear && php artisan cache:clear`
+- Verify `.env` file is configured correctly
+
+### CORS Errors
+- Check `config/cors.php` includes your frontend port
+- Clear config cache: `php artisan config:clear`
+
+## 📝 Next Steps
+
+Once the backend is running:
+
+1. **Frontend should connect to**: `http://localhost:8000/api`
+2. **Test driver login** from the frontend
+3. **Check browser console** for any API errors
+4. **Check Laravel logs** if issues persist: `storage/logs/laravel.log`
+
+## 🆘 Still Having Issues?
+
+See `TROUBLESHOOTING.md` for detailed solutions to common problems.
+
 

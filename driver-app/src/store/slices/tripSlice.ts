@@ -114,9 +114,10 @@ const tripSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Start trip
+    // Start trip - Optimistic update
     builder
-      .addCase(startTrip.pending, (state) => {
+      .addCase(startTrip.pending, (state, action) => {
+        // Optimistically set current trip if we have route_id
         state.isLoading = true;
         state.error = null;
       })
@@ -130,22 +131,47 @@ const tripSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // End trip
+    // End trip - Optimistic update
     builder
       .addCase(endTrip.pending, (state) => {
         state.isLoading = true;
         state.error = null;
+        // Optimistically add current trip to history and clear it
+        if (state.currentTrip) {
+          const endedTrip = {
+            ...state.currentTrip,
+            status: 'completed' as const,
+            end_time: new Date().toISOString(),
+          };
+          state.tripHistory.unshift(endedTrip);
+          state.currentTrip = null;
+        }
       })
       .addCase(endTrip.fulfilled, (state, action) => {
         state.isLoading = false;
         state.currentTrip = null;
-        // Add to history
-        state.tripHistory.unshift(action.payload);
+        // Replace optimistic entry with actual response
+        if (state.tripHistory.length > 0 && state.tripHistory[0].id === action.payload.id) {
+          state.tripHistory[0] = action.payload;
+        } else {
+          state.tripHistory.unshift(action.payload);
+        }
         state.error = null;
       })
       .addCase(endTrip.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        // Revert optimistic update - restore current trip if it was cleared
+        if (state.tripHistory.length > 0) {
+          const lastTrip = state.tripHistory[0];
+          if (lastTrip.status === 'completed' && !lastTrip.end_time) {
+            state.tripHistory.shift();
+            // Restore current trip if needed
+            if (!state.currentTrip && lastTrip.status === 'in_progress') {
+              state.currentTrip = lastTrip;
+            }
+          }
+        }
       });
 
     // Get current trip
@@ -180,15 +206,18 @@ const tripSlice = createSlice({
         state.isLoading = false;
         // Handle both object format { trips, total, current_page } and array format
         if (action.payload && typeof action.payload === 'object' && 'trips' in action.payload) {
-          state.tripHistory = action.payload.trips || [];
-          state.totalTrips = action.payload.total || 0;
-          state.currentPage = action.payload.current_page || 1;
+          const payload = action.payload as { trips: Trip[]; total: number; current_page: number };
+          state.tripHistory = payload.trips || [];
+          state.totalTrips = payload.total || 0;
+          state.currentPage = payload.current_page || 1;
         } else if (Array.isArray(action.payload)) {
           state.tripHistory = action.payload;
           state.totalTrips = action.payload.length;
+          state.currentPage = 1;
         } else {
           state.tripHistory = [];
           state.totalTrips = 0;
+          state.currentPage = 1;
         }
         state.error = null;
       })

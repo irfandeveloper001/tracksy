@@ -41,34 +41,57 @@ class PermissionSeeder extends Seeder
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate(
+                ['name' => $permission, 'guard_name' => 'api'],
+                ['name' => $permission, 'guard_name' => 'api']
+            );
         }
 
-        // Assign permissions to roles
-        $admin = Role::findByName('admin');
-        $admin->givePermissionTo(Permission::all());
+        // Assign permissions to roles (only if roles exist)
+        try {
+            $admin = Role::findByName('admin', 'api');
+            if ($admin) {
+                $admin->syncPermissions(Permission::all());
+            }
+        } catch (\Exception $e) {
+            $this->command->warn('Admin role not found, skipping permission assignment');
+        }
 
-        $manager = Role::findByName('manager');
-        $manager->givePermissionTo([
-            'buses.view',
-            'routes.view',
-            'students.view',
-            'drivers.view',
-            'bookings.view',
-            'trips.view',
-            'analytics.view',
-        ]);
+        try {
+            $manager = Role::findByName('manager', 'api');
+            if ($manager) {
+                $manager->syncPermissions([
+                    'buses.view',
+                    'routes.view',
+                    'students.view',
+                    'drivers.view',
+                    'bookings.view',
+                    'trips.view',
+                    'analytics.view',
+                ]);
+            }
+        } catch (\Exception $e) {
+            $this->command->warn('Manager role not found, skipping permission assignment');
+        }
 
-        $viewer = Role::findByName('viewer');
-        $viewer->givePermissionTo([
-            'buses.view',
-            'routes.view',
-            'students.view',
-            'drivers.view',
-            'bookings.view',
-            'trips.view',
-            'analytics.view',
-        ]);
+        try {
+            $viewer = Role::findByName('viewer', 'api');
+            if ($viewer) {
+                $viewer->syncPermissions([
+                    'buses.view',
+                    'routes.view',
+                    'students.view',
+                    'drivers.view',
+                    'bookings.view',
+                    'trips.view',
+                    'analytics.view',
+                ]);
+            }
+        } catch (\Exception $e) {
+            $this->command->warn('Viewer role not found, skipping permission assignment');
+        }
+
+        $this->command->info('✅ Permissions seeded successfully');
     }
 }
 

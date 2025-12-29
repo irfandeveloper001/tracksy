@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams, Link } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -56,7 +56,9 @@ export default function LoginPage() {
       const redirectTo = searchParams.get('redirect') || '/dashboard';
       navigate(redirectTo, { replace: true });
     } catch (error: any) {
-      toast.error(error.message || 'Login failed');
+      console.error('❌ Login error:', error);
+      const errorMessage = error.message || 'Login failed. Please check your credentials and try again.';
+      toast.error(errorMessage);
     }
   };
 
@@ -198,6 +200,19 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        {/* Sign Up Link */}
+        <div className="mt-6 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <Link
+              to="/signup"
+              className="font-medium text-blue-600 hover:text-blue-500"
+            >
+              Sign up
+            </Link>
+          </p>
+        </div>
 
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-600">

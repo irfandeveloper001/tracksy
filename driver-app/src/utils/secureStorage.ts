@@ -1,7 +1,6 @@
 // Secure storage utility for sensitive data
-// Uses AsyncStorage for now, but can be upgraded to expo-secure-store or react-native-keychain
+// Uses localStorage for web
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS } from '../constants';
 
 // Simple encryption/decryption (for production, use proper encryption library)
@@ -11,23 +10,15 @@ class SecureStorage {
   // Encrypt data (simple base64 encoding - upgrade to AES in production)
   private encrypt(data: string): string {
     // Simple encoding for demo - use proper encryption in production
-    // Using btoa for base64 encoding (works in React Native)
-    if (typeof btoa !== 'undefined') {
+    // Using btoa for base64 encoding (works in browser)
       return btoa(data);
-    }
-    // Fallback for Node.js environment
-    return Buffer.from(data).toString('base64');
   }
 
   // Decrypt data
   private decrypt(encryptedData: string): string {
     try {
-      // Using atob for base64 decoding (works in React Native)
-      if (typeof atob !== 'undefined') {
+      // Using atob for base64 decoding (works in browser)
         return atob(encryptedData);
-      }
-      // Fallback for Node.js environment
-      return Buffer.from(encryptedData, 'base64').toString('utf-8');
     } catch (error) {
       console.error('Decryption error:', error);
       throw new Error('Failed to decrypt data');
@@ -38,7 +29,7 @@ class SecureStorage {
   async setToken(token: string): Promise<void> {
     try {
       const encrypted = this.encrypt(token);
-      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, encrypted);
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, encrypted);
     } catch (error) {
       console.error('Error storing token:', error);
       throw error;
@@ -48,7 +39,7 @@ class SecureStorage {
   // Get secure token
   async getToken(): Promise<string | null> {
     try {
-      const encrypted = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      const encrypted = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       if (!encrypted) return null;
       return this.decrypt(encrypted);
     } catch (error) {
@@ -60,7 +51,7 @@ class SecureStorage {
   // Remove token
   async removeToken(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     } catch (error) {
       console.error('Error removing token:', error);
       throw error;
@@ -71,7 +62,7 @@ class SecureStorage {
   async setSecureData(key: string, data: any): Promise<void> {
     try {
       const encrypted = this.encrypt(JSON.stringify(data));
-      await AsyncStorage.setItem(`@secure:${key}`, encrypted);
+      localStorage.setItem(`@secure:${key}`, encrypted);
     } catch (error) {
       console.error('Error storing secure data:', error);
       throw error;
@@ -81,7 +72,7 @@ class SecureStorage {
   // Get sensitive user data
   async getSecureData(key: string): Promise<any | null> {
     try {
-      const encrypted = await AsyncStorage.getItem(`@secure:${key}`);
+      const encrypted = localStorage.getItem(`@secure:${key}`);
       if (!encrypted) return null;
       const decrypted = this.decrypt(encrypted);
       return JSON.parse(decrypted);
@@ -94,7 +85,7 @@ class SecureStorage {
   // Remove sensitive data
   async removeSecureData(key: string): Promise<void> {
     try {
-      await AsyncStorage.removeItem(`@secure:${key}`);
+      localStorage.removeItem(`@secure:${key}`);
     } catch (error) {
       console.error('Error removing secure data:', error);
       throw error;
@@ -106,9 +97,9 @@ class SecureStorage {
     try {
       await this.removeToken();
       // Remove other secure keys as needed
-      const keys = await AsyncStorage.getAllKeys();
+      const keys = Object.keys(localStorage);
       const secureKeys = keys.filter((key) => key.startsWith('@secure:'));
-      await AsyncStorage.multiRemove(secureKeys);
+      secureKeys.forEach((key) => localStorage.removeItem(key));
     } catch (error) {
       console.error('Error clearing secure data:', error);
       throw error;

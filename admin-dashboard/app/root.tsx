@@ -5,15 +5,14 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useLocation,
 } from "react-router";
 import { useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "./lib/store/authStore";
-import { supabase } from "./lib/config/supabase";
 import AppErrorBoundary from "./components/ui/ErrorBoundary";
 import OfflineBanner from "./components/offline/OfflineBanner";
+import { LanguageProvider } from "./lib/i18n/LanguageProvider";
 import type { Route } from "./+types/root";
 import "./app.css";
 
@@ -35,6 +34,8 @@ export const links: Route.LinksFunction = () => [
     href: "https://fonts.gstatic.com",
     crossOrigin: "anonymous",
   },
+  // Leaflet assets are vendored in /public for offline/demo use.
+  { rel: "stylesheet", href: "/vendor/leaflet/leaflet.css" },
   {
     rel: "stylesheet",
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
@@ -87,62 +88,65 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const location = useLocation();
-  const { getCurrentUser, refreshSession } = useAuthStore();
-
-  // Initialize auth state on app load
+  // Initialize auth state on app load (only on client) - Laravel API only
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Skip auth check on public routes (login, signup, forgot-password, reset-password)
+    const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password'];
+    const currentPath = window.location.pathname;
+    if (publicRoutes.includes(currentPath)) {
+      return;
+    }
+
     const initializeAuth = async () => {
       try {
-        // Check for existing session
-        const { data: { session } } = await supabase.auth.getSession();
+        // Get store methods
+        const { getCurrentUser, refreshSession } = useAuthStore.getState();
+
+        // Check for Laravel token
+        const token = localStorage.getItem('laravel_token') || localStorage.getItem('tracksy_admin:auth_token');
         
-        if (session) {
-          // Get current user
-          await getCurrentUser();
+        if (token) {
+          // Get current user with timeout
+          try {
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Auth initialization timeout')), 5000)
+            );
+            await Promise.race([getCurrentUser(), timeoutPromise]);
+          } catch (error) {
+            console.warn('⚠️ Auth initialization timed out or failed:', error);
+          }
           
           // Set up session refresh interval (refresh every 30 minutes)
-          const refreshInterval = setInterval(async () => {
+          setInterval(async () => {
             try {
               await refreshSession();
             } catch (error) {
               console.error('Failed to refresh session:', error);
             }
           }, 30 * 60 * 1000); // 30 minutes
-          
-          return () => clearInterval(refreshInterval);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
       }
     };
 
-    initializeAuth();
-  }, [getCurrentUser, refreshSession]);
-
-  // Listen for auth state changes
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        await getCurrentUser();
-      } else if (event === 'SIGNED_OUT') {
-        // User signed out
-        window.location.href = '/login';
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        await refreshSession();
-      }
-    });
+    // Small delay to ensure everything is mounted
+    const timer = setTimeout(() => {
+      initializeAuth();
+    }, 100);
 
     return () => {
-      subscription.unsubscribe();
+      clearTimeout(timer);
     };
-  }, [getCurrentUser, refreshSession]);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <LanguageProvider>
+        <Outlet />
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

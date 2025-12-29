@@ -29,7 +29,7 @@ class AlertController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'type' => 'required|in:route_deviation,delay,emergency,maintenance,system',
             'title' => 'required|string|max:255',
             'message' => 'required|string',
@@ -54,7 +54,7 @@ class AlertController extends Controller
         return $this->successResponse($alert, 'Alert created successfully', 201);
     }
 
-    public function acknowledge($id)
+    public function acknowledge(Request $request, $id)
     {
         // Acknowledge alert
         $alert = Alert::findOrFail($id);
@@ -62,13 +62,13 @@ class AlertController extends Controller
         $alert->update([
             'status' => 'acknowledged',
             'acknowledged_at' => now(),
-            'acknowledged_by' => auth()->id(),
+            'acknowledged_by' => $request->user()->id,
         ]);
         
         return $this->successResponse($alert, 'Alert acknowledged');
     }
 
-    public function resolve($id)
+    public function resolve(Request $request, $id)
     {
         // Resolve alert
         $alert = Alert::findOrFail($id);
@@ -76,7 +76,7 @@ class AlertController extends Controller
         $alert->update([
             'status' => 'resolved',
             'resolved_at' => now(),
-            'resolved_by' => auth()->id(),
+            'resolved_by' => $request->user()->id,
         ]);
         
         return $this->successResponse($alert, 'Alert resolved');

@@ -40,10 +40,22 @@ class Kernel extends HttpKernel
 
     /**
      * The application's route middleware.
+     * For Laravel 11+, use $middlewareAliases instead
      *
      * @var array
      */
     protected $routeMiddleware = [
+        'auth:api' => \App\Http\Middleware\ApiAuth::class,
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
+    ];
+    
+    /**
+     * The application's middleware aliases.
+     * Used in Laravel 11+ for route middleware
+     *
+     * @var array
+     */
+    protected $middlewareAliases = [
         'auth:api' => \App\Http\Middleware\ApiAuth::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
     ];

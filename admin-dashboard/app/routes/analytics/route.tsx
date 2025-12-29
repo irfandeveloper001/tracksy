@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ChartBarIcon,
-  CalendarIcon,
   ArrowDownTrayIcon,
+  ArrowPathIcon,
+  ArrowTrendingUpIcon,
+  ClockIcon,
+  MapIcon,
 } from '@heroicons/react/24/outline';
 import analyticsService from '../../lib/api/analyticsService';
 import DateRangePicker from '../../components/analytics/DateRangePicker';
@@ -65,36 +68,98 @@ export default function AnalyticsPage() {
     },
   };
 
+  const periodTrips =
+    period === 'daily'
+      ? analyticsData.usage_stats.daily_trips
+      : period === 'weekly'
+      ? analyticsData.usage_stats.weekly_trips
+      : analyticsData.usage_stats.monthly_trips;
+
+  const totalTrips = periodTrips.reduce((sum, item) => sum + item.count, 0);
+  const peakHour = analyticsData.usage_stats.peak_hours.reduce(
+    (max, item) => (!max || item.count > max.count ? item : max),
+    null as null | { hour: number; count: number }
+  );
+  const topRoute = analyticsData.usage_stats.route_popularity.reduce(
+    (max, item) => (!max || item.count > max.count ? item : max),
+    null as null | { route_name: string; count: number }
+  );
+
+  const insightCards = [
+    {
+      label: 'Total Trips',
+      value: totalTrips.toLocaleString(),
+      meta: `Across ${period}`,
+      icon: ArrowTrendingUpIcon,
+      accent: 'from-indigo-500/10 to-indigo-500/0',
+      iconBg: 'bg-indigo-500',
+    },
+    {
+      label: 'On-Time Rate',
+      value: `${analyticsData.performance_metrics.on_time_percentage}%`,
+      meta: 'Current performance',
+      icon: ChartBarIcon,
+      accent: 'from-emerald-500/10 to-emerald-500/0',
+      iconBg: 'bg-emerald-500',
+    },
+    {
+      label: 'Peak Hour',
+      value: peakHour ? `${peakHour.hour}:00` : '—',
+      meta: peakHour ? `${peakHour.count} trips` : 'No data yet',
+      icon: ClockIcon,
+      accent: 'from-amber-500/10 to-amber-500/0',
+      iconBg: 'bg-amber-500',
+    },
+    {
+      label: 'Top Route',
+      value: topRoute ? topRoute.route_name : '—',
+      meta: topRoute ? `${topRoute.count} trips` : 'No data yet',
+      icon: MapIcon,
+      accent: 'from-fuchsia-500/10 to-fuchsia-500/0',
+      iconBg: 'bg-fuchsia-500',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Real-time insights and performance metrics
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => handleExport('excel')}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export Excel
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export PDF
-          </button>
+      <div className="rounded-2xl border border-white/60 bg-gradient-to-br from-indigo-500/10 via-white to-slate-50 px-6 py-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Insights</p>
+            <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Real-time insights and performance metrics
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => refetch()}
+              className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <ArrowPathIcon className="h-5 w-5 mr-2" />
+              Refresh
+            </button>
+            <button
+              onClick={() => handleExport('excel')}
+              className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              Export Excel
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              Export PDF
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <DateRangePicker
             startDate={dateRange.start}
@@ -125,6 +190,30 @@ export default function AnalyticsPage() {
           <span className="ml-3 text-gray-600">Loading analytics...</span>
         </div>
       )}
+
+      {/* Quick Insights */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {insightCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.label}
+              className={`rounded-2xl border border-gray-200 bg-white p-5 shadow-sm bg-gradient-to-br ${card.accent}`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">{card.label}</p>
+                  <p className="mt-2 text-2xl font-bold text-gray-900">{card.value}</p>
+                  <p className="mt-1 text-xs text-gray-500">{card.meta}</p>
+                </div>
+                <div className={`h-11 w-11 rounded-xl ${card.iconBg} flex items-center justify-center text-white shadow-md`}>
+                  <Icon className="h-6 w-6" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {/* Usage Statistics */}
       <div className="space-y-6">

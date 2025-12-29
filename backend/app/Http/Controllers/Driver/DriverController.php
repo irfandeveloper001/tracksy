@@ -3,18 +3,22 @@
 namespace App\Http\Controllers\Driver;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bus;
+use App\Models\Notification;
 use App\Models\User;
 use App\Models\Route;
 use App\Models\Trip;
 use App\Models\Booking;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Http\Resources\RouteResource;
 
 class DriverController extends Controller
 {
     public function login(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'email' => 'required|string',
             'password' => 'required|string|min:6',
         ]);
@@ -25,7 +29,7 @@ class DriverController extends Controller
             ->orWhere('driver_id', $credentials['email'])
             ->first();
 
-        if (!$user || !\Hash::check($credentials['password'], $user->password)) {
+        if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return $this->errorResponse('Invalid credentials', null, 401);
         }
 
@@ -38,6 +42,16 @@ class DriverController extends Controller
             return $this->errorResponse('Could not create token', null, 500);
         }
 
+        // Load relationships
+        $user->load(['assignedBus', 'assignedRoute']);
+        
+        // Get route - prefer direct assignment, otherwise from bus
+        $route = $user->assignedRoute;
+        if (!$route && $user->assignedBus && $user->assignedBus->current_route_id) {
+            // Load route from bus if driver doesn't have direct assignment
+            $route = Route::find($user->assignedBus->current_route_id);
+        }
+        
         return $this->successResponse([
             'token' => $token,
             'refreshToken' => $token,
@@ -47,8 +61,11 @@ class DriverController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'driver_id' => $user->driver_id,
+                'license_number' => $user->license_number,
+                'phone' => $user->phone,
                 'assigned_bus' => $user->assignedBus,
-                'assigned_route' => $user->assignedRoute,
+                'assigned_route' => $route, // Use computed route (direct or from bus)
+                'status' => $user->status,
             ],
         ], 'Login successful');
     }
@@ -56,18 +73,44 @@ class DriverController extends Controller
     public function me()
     {
         // Get driver profile
-        $driver = auth()->user();
+        $driver = auth()->user()->fresh(); // Get fresh data from database
+        
+        // Load relationships
+        $driver->load(['assignedBus', 'assignedRoute']);
+        
+        // Get route - prefer direct assignment, otherwise from bus
+        $route = $driver->assignedRoute;
+        if (!$route && $driver->assignedBus && $driver->assignedBus->current_route_id) {
+            // Load route from bus if driver doesn't have direct assignment
+            $route = Route::find($driver->assignedBus->current_route_id);
+        }
         
         return $this->successResponse([
             'id' => $driver->id,
             'name' => $driver->name,
             'email' => $driver->email,
+            'role' => $driver->role,
             'driver_id' => $driver->driver_id,
             'license_number' => $driver->license_number,
+            'phone' => $driver->phone,
             'assigned_bus' => $driver->assignedBus,
-            'assigned_route' => $driver->assignedRoute,
+            'assigned_route' => $route, // Use computed route (direct or from bus)
             'status' => $driver->status,
         ]);
+    }
+
+    public function logout()
+    {
+        try {
+            // Invalidate the current token
+            JWTAuth::invalidate(JWTAuth::getToken());
+            
+            return $this->successResponse(null, 'Logged out successfully');
+        } catch (\Exception $e) {
+            // Even if token invalidation fails, return success
+            // (token might already be invalid or expired)
+            return $this->successResponse(null, 'Logged out successfully');
+        }
     }
 
     public function refreshToken()
@@ -84,7 +127,7 @@ class DriverController extends Controller
     {
         $driver = auth()->user();
         
-        $request->validate([
+        $this->validate($request, [
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|unique:users,email,' . $driver->id,
             'phone' => 'nullable|string',
@@ -99,7 +142,7 @@ class DriverController extends Controller
 
     public function changePassword(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'current_password' => 'required|string',
             'new_password' => 'required|string|min:6',
             'confirm_password' => 'required|string|same:new_password',
@@ -107,12 +150,12 @@ class DriverController extends Controller
 
         $driver = auth()->user();
 
-        if (!\Hash::check($request->current_password, $driver->password)) {
+        if (!Hash::check($request->current_password, $driver->password)) {
             return $this->errorResponse('Current password is incorrect', null, 400);
         }
 
         $driver->update([
-            'password' => \Hash::make($request->new_password),
+            'password' => Hash::make($request->new_password),
         ]);
 
         return $this->successResponse(null, 'Password changed successfully');
@@ -120,30 +163,85 @@ class DriverController extends Controller
 
     public function getRoute()
     {
-        // Get assigned route
-        $driver = auth()->user();
+        // Get assigned route - try from assigned_route_id first, then from assigned bus
+        $driver = auth()->user()->fresh(); // Get fresh data from database
         
-        if (!$driver->assigned_route_id) {
-            return $this->errorResponse('No route assigned', null, 404);
+        // Check if driver has direct route assignment
+        if ($driver->assigned_route_id) {
+            $route = Route::with('stops')->findOrFail($driver->assigned_route_id);
+            return $this->successResponse(new RouteResource($route));
         }
-
-        $route = Route::with('stops')->findOrFail($driver->assigned_route_id);
         
-        return $this->successResponse($route);
+        // If no direct assignment, check if driver's bus has a route
+        $bus = null;
+        if ($driver->assigned_bus_id) {
+            $bus = Bus::where('id', $driver->assigned_bus_id)->first();
+        }
+        if (!$bus) {
+            $bus = Bus::where('current_driver_id', $driver->id)->first();
+        }
+        if ($bus) {
+            if ($bus && $bus->current_route_id) {
+                $route = Route::with('stops')->findOrFail($bus->current_route_id);
+                return $this->successResponse(new RouteResource($route));
+            }
+        }
+        
+        return $this->errorResponse('No route assigned', null, 404);
     }
 
     public function getRouteStops()
     {
-        // Get route stops
+        // Get route stops - try from assigned_route_id first, then from assigned bus
         $driver = auth()->user();
         
-        if (!$driver->assigned_route_id) {
+        $routeId = null;
+        
+        // Check if driver has direct route assignment
+        if ($driver->assigned_route_id) {
+            $routeId = $driver->assigned_route_id;
+        } else {
+            // If no direct assignment, check if driver's bus has a route
+            $bus = null;
+            if ($driver->assigned_bus_id) {
+                $bus = Bus::find($driver->assigned_bus_id);
+            }
+            if (!$bus) {
+                $bus = Bus::where('current_driver_id', $driver->id)->first();
+            }
+            if ($bus && $bus->current_route_id) {
+                $routeId = $bus->current_route_id;
+            }
+        }
+        
+        if (!$routeId) {
             return $this->errorResponse('No route assigned', null, 404);
         }
 
-        $stops = Route::findOrFail($driver->assigned_route_id)->stops;
+        $stops = Route::findOrFail($routeId)->stops;
         
         return $this->successResponse($stops);
+    }
+
+    public function getBus()
+    {
+        // Get assigned bus - try from assigned_bus_id first
+        $driver = auth()->user();
+        
+        $bus = null;
+        if ($driver->assigned_bus_id) {
+            $bus = Bus::with(['currentRoute'])->find($driver->assigned_bus_id);
+        }
+        if (!$bus) {
+            $bus = Bus::with(['currentRoute'])
+                ->where('current_driver_id', $driver->id)
+                ->first();
+        }
+        if (!$bus) {
+            return $this->errorResponse('No bus assigned', null, 404);
+        }
+        
+        return $this->successResponse($bus);
     }
 
     public function markStopArrival($id)
@@ -194,7 +292,7 @@ class DriverController extends Controller
 
     public function checkIn(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'student_id' => 'required|exists:users,id',
             'trip_id' => 'required|exists:trips,id',
             'seat_number' => 'nullable|string',
@@ -248,14 +346,52 @@ class DriverController extends Controller
                 return $query->where('status', $status);
             })
             ->with(['assignedBus', 'assignedRoute'])
-            ->paginate($request->limit ?? 10);
+            ->paginate($request->per_page ?? $request->limit ?? 10);
 
         return $this->successResponse($drivers);
     }
 
+    public function show($id)
+    {
+        $driver = User::drivers()
+            ->with(['assignedBus', 'assignedRoute'])
+            ->findOrFail($id);
+
+        return $this->successResponse($driver);
+    }
+
+    public function signup(Request $request)
+    {
+        // Public driver signup endpoint
+        $this->validate($request, [
+            'driver_id' => 'required|string|unique:users,driver_id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'license_number' => 'nullable|string',
+            'phone' => 'nullable|string',
+        ]);
+
+        $driver = User::create([
+            'driver_id' => $request->driver_id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'license_number' => $request->license_number ?? null,
+            'phone' => $request->phone ?? null,
+            'role' => 'driver',
+            'status' => 'active',
+        ]);
+
+        $driver->assignRole('driver');
+
+        return $this->successResponse($driver, 'Driver registered successfully', 201);
+    }
+
     public function store(Request $request)
     {
-        $request->validate([
+        // Admin endpoint for creating drivers
+        $this->validate($request, [
             'driver_id' => 'required|string|unique:users,driver_id',
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|unique:users,email',
@@ -268,7 +404,7 @@ class DriverController extends Controller
             'driver_id' => $request->driver_id,
             'name' => $request->name,
             'email' => $request->email,
-            'password' => \Hash::make($request->password),
+            'password' => Hash::make($request->password),
             'license_number' => $request->license_number,
             'phone' => $request->phone ?? null,
             'role' => 'driver',
@@ -284,7 +420,7 @@ class DriverController extends Controller
     {
         $driver = User::drivers()->findOrFail($id);
 
-        $request->validate([
+        $this->validate($request, [
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|unique:users,email,' . $id,
             'password' => 'sometimes|string|min:6',
@@ -296,15 +432,101 @@ class DriverController extends Controller
             'driver_id' => 'sometimes|string|unique:users,driver_id,' . $id,
         ]);
 
+        $previousBusId = $driver->assigned_bus_id;
+        $previousRouteId = $driver->assigned_route_id;
         $updateData = $request->only(['name', 'email', 'license_number', 'phone', 'status', 'assigned_bus_id', 'assigned_route_id', 'driver_id']);
         
         if ($request->has('password')) {
-            $updateData['password'] = \Hash::make($request->password);
+            $updateData['password'] = Hash::make($request->password);
         }
 
         $driver->update($updateData);
 
+        if ($request->has('assigned_bus_id') && $previousBusId != $driver->assigned_bus_id) {
+            if ($driver->assigned_bus_id) {
+                $bus = Bus::find($driver->assigned_bus_id);
+                Notification::create([
+                    'user_id' => $driver->id,
+                    'type' => 'bus_assignment',
+                    'notification_type' => 'info',
+                    'title' => 'Bus assigned',
+                    'message' => $bus
+                        ? "You have been assigned to bus {$bus->bus_number}."
+                        : 'You have been assigned to a bus.',
+                    'data' => [
+                        'bus_id' => $driver->assigned_bus_id,
+                        'bus_number' => $bus?->bus_number,
+                    ],
+                    'read' => false,
+                ]);
+            } else {
+                Notification::create([
+                    'user_id' => $driver->id,
+                    'type' => 'bus_assignment',
+                    'notification_type' => 'warning',
+                    'title' => 'Bus unassigned',
+                    'message' => 'Your bus assignment has been removed.',
+                    'data' => [],
+                    'read' => false,
+                ]);
+            }
+        }
+
+        if ($request->has('assigned_route_id') && $previousRouteId != $driver->assigned_route_id) {
+            if ($driver->assigned_route_id) {
+                $route = Route::find($driver->assigned_route_id);
+                Notification::create([
+                    'user_id' => $driver->id,
+                    'type' => 'route_assignment',
+                    'notification_type' => 'info',
+                    'title' => 'Route assigned',
+                    'message' => $route
+                        ? "Route {$route->name} has been assigned to you."
+                        : 'A route has been assigned to you.',
+                    'data' => [
+                        'route_id' => $driver->assigned_route_id,
+                        'route_name' => $route?->name,
+                    ],
+                    'read' => false,
+                ]);
+            } else {
+                Notification::create([
+                    'user_id' => $driver->id,
+                    'type' => 'route_assignment',
+                    'notification_type' => 'warning',
+                    'title' => 'Route unassigned',
+                    'message' => 'Your route assignment has been removed.',
+                    'data' => [],
+                    'read' => false,
+                ]);
+            }
+        }
+
         return $this->successResponse($driver->fresh()->load(['assignedBus', 'assignedRoute']), 'Driver updated successfully');
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $this->validate($request, [
+            'status' => 'required|in:active,inactive,on_leave',
+        ]);
+
+        $driver = User::drivers()->findOrFail($id);
+        $driver->update(['status' => $request->status]);
+
+        return $this->successResponse($driver->fresh()->load(['assignedBus', 'assignedRoute']), 'Driver status updated successfully');
+    }
+
+    public function getTrips($id, Request $request)
+    {
+        $driver = User::drivers()->findOrFail($id);
+
+        $trips = Trip::where('driver_id', $driver->id)
+            ->with(['route', 'bus'])
+            ->orderBy('start_time', 'desc')
+            ->paginate($request->per_page ?? $request->limit ?? 20);
+
+        return $this->successResponse($trips);
     }
 
     public function destroy($id)
@@ -315,4 +537,3 @@ class DriverController extends Controller
         return $this->successResponse(null, 'Driver deleted successfully');
     }
 }
-

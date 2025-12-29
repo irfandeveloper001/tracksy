@@ -20,6 +20,8 @@ info:
 servers:
   - url: http://localhost:8000/api
     description: Development server
+  - url: http://127.0.0.1:4010
+    description: Prism mock server
   - url: https://api.tracksy.com/api
     description: Production server
 
@@ -46,6 +48,8 @@ tags:
     description: Analytics and reporting endpoints
   - name: Notifications
     description: Notification management endpoints
+  - name: System
+    description: System settings and assets
 
 components:
   securitySchemes:
@@ -140,6 +144,31 @@ components:
         role:
           type: string
           enum: [student, driver, admin]
+
+    SystemSettings:
+      type: object
+      properties:
+        app_name:
+          type: string
+          example: Tracksy
+        app_logo:
+          type: string
+          example: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%235b21b6'/><stop offset='1' stop-color='%23c026d3'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><text x='50%25' y='50%25' font-size='28' font-family='Arial' fill='white' dominant-baseline='middle' text-anchor='middle'>T</text></svg>"
+        timezone:
+          type: string
+          example: Asia/Karachi
+        date_format:
+          type: string
+          example: YYYY-MM-DD
+        time_format:
+          type: string
+          example: HH:mm
+        language:
+          type: string
+          example: en
+        require_fee_clearance:
+          type: boolean
+          example: true
     
     # Bus Schemas
     Bus:
@@ -634,6 +663,14 @@ components:
                 type: integer
 
 paths:
+  /favicon.ico:
+    get:
+      tags:
+        - System
+      summary: Favicon placeholder for mock server
+      responses:
+        '204':
+          description: No content
   # ============================================
   # ROOT ENDPOINT (API Information)
   # ============================================
@@ -825,6 +862,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Success'
+
+  /settings/system:
+    get:
+      tags:
+        - System
+      summary: Get system settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: System settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+              example:
+                app_name: Tracksy
+                app_logo: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%235b21b6'/><stop offset='1' stop-color='%23c026d3'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><text x='50%25' y='50%25' font-size='28' font-family='Arial' fill='white' dominant-baseline='middle' text-anchor='middle'>T</text></svg>"
+                timezone: Asia/Karachi
+                date_format: YYYY-MM-DD
+                time_format: HH:mm
+                language: en
+                require_fee_clearance: true
+    put:
+      tags:
+        - System
+      summary: Update system settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSettings'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+
+  /settings/upload-logo:
+    post:
+      tags:
+        - System
+      summary: Upload system logo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                logo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Logo uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+              example:
+                url: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%235b21b6'/><stop offset='1' stop-color='%23c026d3'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><text x='50%25' y='50%25' font-size='28' font-family='Arial' fill='white' dominant-baseline='middle' text-anchor='middle'>T</text></svg>"
   
   # ============================================
   # DRIVER ENDPOINTS
@@ -951,6 +1060,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Trip'
+              example:
+                id: 101
+                driver_id: 12
+                bus_id: 4
+                route_id: 2
+                start_time: "2025-12-28T08:10:00Z"
+                status: in_progress
+                distance: 18.7
+                duration: null
+                passenger_count: 22
+                bus:
+                  id: 4
+                  bus_number: BUS-407
+                  license_plate: ISB-4407
+                route:
+                  id: 2
+                  name: Islamabad Tech Corridor
+                  start_point: G-9 Markaz, Islamabad
+                  end_point: NUST H-12, Islamabad
         '404':
           description: No active trip
   
@@ -997,6 +1125,50 @@ paths:
                       $ref: '#/components/schemas/Trip'
                   pagination:
                     type: object
+              example:
+                data:
+                  - id: 90
+                    driver_id: 12
+                    bus_id: 4
+                    route_id: 2
+                    start_time: "2025-12-27T07:30:00Z"
+                    end_time: "2025-12-27T08:15:00Z"
+                    status: completed
+                    distance: 18.7
+                    duration: 45
+                    passenger_count: 26
+                    bus:
+                      id: 4
+                      bus_number: BUS-407
+                      license_plate: ISB-4407
+                    route:
+                      id: 2
+                      name: Islamabad Tech Corridor
+                      start_point: G-9 Markaz, Islamabad
+                      end_point: NUST H-12, Islamabad
+                  - id: 91
+                    driver_id: 12
+                    bus_id: 4
+                    route_id: 2
+                    start_time: "2025-12-26T07:30:00Z"
+                    end_time: "2025-12-26T08:20:00Z"
+                    status: completed
+                    distance: 18.7
+                    duration: 50
+                    passenger_count: 24
+                    bus:
+                      id: 4
+                      bus_number: BUS-407
+                      license_plate: ISB-4407
+                    route:
+                      id: 2
+                      name: Islamabad Tech Corridor
+                      start_point: G-9 Markaz, Islamabad
+                      end_point: NUST H-12, Islamabad
+                pagination:
+                  total: 2
+                  per_page: 10
+                  current_page: 1
   
   /driver/trips/{id}:
     get:
@@ -1544,6 +1716,81 @@ paths:
       responses:
         '200':
           description: Token refreshed
+
+  /admin/settings/system:
+    get:
+      tags:
+        - Admins
+        - System
+      summary: Get admin system settings
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: System settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+              example:
+                app_name: Tracksy
+                app_logo: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%235b21b6'/><stop offset='1' stop-color='%23c026d3'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><text x='50%25' y='50%25' font-size='28' font-family='Arial' fill='white' dominant-baseline='middle' text-anchor='middle'>T</text></svg>"
+                timezone: Asia/Karachi
+                date_format: YYYY-MM-DD
+                time_format: HH:mm
+                language: en
+                require_fee_clearance: true
+    put:
+      tags:
+        - Admins
+        - System
+      summary: Update admin system settings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSettings'
+      responses:
+        '200':
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+
+  /admin/settings/upload-logo:
+    post:
+      tags:
+        - Admins
+        - System
+      summary: Upload system logo (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                logo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Logo uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+              example:
+                url: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%235b21b6'/><stop offset='1' stop-color='%23c026d3'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><text x='50%25' y='50%25' font-size='28' font-family='Arial' fill='white' dominant-baseline='middle' text-anchor='middle'>T</text></svg>"
   
   /admin/buses:
     get:
@@ -2769,4 +3016,3 @@ paths:
               schema:
                 type: string
                 format: binary
-

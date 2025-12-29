@@ -52,21 +52,114 @@ export interface ReportData {
 }
 
 class AnalyticsService {
-  // Get analytics data
+  // Get analytics overview
+  async getOverview(): Promise<any> {
+    try {
+      const response = await api.get('/admin/analytics/overview');
+      return response.data.data || response.data;
+    } catch (error: any) {
+      if (!error.response || error.response.status === 500) {
+        console.warn('⚠️ Backend unavailable, returning default overview');
+        return {
+          total_buses: 0,
+          active_buses: 0,
+          total_students: 0,
+          total_routes: 0,
+          on_time_percentage: 0,
+          current_alerts: 0,
+        };
+      }
+      throw error;
+    }
+  }
+
+  // Get usage statistics
+  async getUsageStatistics(startDate?: string, endDate?: string): Promise<any> {
+    try {
+      const params: any = {};
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+
+      const response = await api.get('/admin/analytics/usage', { params });
+      return response.data.data || response.data;
+    } catch (error: any) {
+      if (!error.response || error.response.status === 500) {
+        console.warn('⚠️ Backend unavailable, returning default usage stats');
+        return {
+          date_range: { start: startDate, end: endDate },
+          daily_trips: [],
+          peak_hours: [],
+          route_popularity: [],
+        };
+      }
+      throw error;
+    }
+  }
+
+  // Get performance metrics
+  async getPerformanceMetrics(startDate?: string, endDate?: string): Promise<any> {
+    try {
+      const params: any = {};
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+
+      const response = await api.get('/admin/analytics/performance', { params });
+      return response.data.data || response.data;
+    } catch (error: any) {
+      if (!error.response || error.response.status === 500) {
+        console.warn('⚠️ Backend unavailable, returning default performance metrics');
+        return {
+          on_time_percentage: 0,
+          average_duration: 0,
+          bus_utilization_rate: 0,
+          total_trips: 0,
+          completed_trips: 0,
+          total_passengers: 0,
+        };
+      }
+      throw error;
+    }
+  }
+
+  // Get analytics data (combined - for backward compatibility)
   async getAnalytics(
     startDate?: string,
     endDate?: string,
     period: 'daily' | 'weekly' | 'monthly' = 'daily'
   ): Promise<AnalyticsData> {
     try {
-      const params: any = { period };
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
+      // Fetch all analytics endpoints and combine
+      const [overview, usage, performance] = await Promise.all([
+        this.getOverview().catch(() => null),
+        this.getUsageStatistics(startDate, endDate).catch(() => null),
+        this.getPerformanceMetrics(startDate, endDate).catch(() => null),
+      ]);
 
-      const response = await api.get('/admin/analytics', { params });
-      return response.data.data || response.data;
+      return {
+        usage_stats: usage ? {
+          daily_trips: usage.daily_trips || [],
+          weekly_trips: [],
+          monthly_trips: [],
+          peak_hours: usage.peak_hours || [],
+          route_popularity: usage.route_popularity || [],
+        } : {
+          daily_trips: [],
+          weekly_trips: [],
+          monthly_trips: [],
+          peak_hours: [],
+          route_popularity: [],
+        },
+        performance_metrics: performance ? {
+          on_time_percentage: performance.on_time_percentage || 0,
+          average_wait_time: [],
+          bus_utilization: [],
+        } : {
+          on_time_percentage: 0,
+          average_wait_time: [],
+          bus_utilization: [],
+        },
+      };
     } catch (error: any) {
-      if (!error.response || error.response.status === 500) {
         console.warn('⚠️ Backend unavailable, returning default analytics');
         return {
           usage_stats: {
@@ -82,8 +175,6 @@ class AnalyticsService {
             bus_utilization: [],
           },
         };
-      }
-      throw error;
     }
   }
 
@@ -95,11 +186,28 @@ class AnalyticsService {
   ): Promise<ReportData> {
     try {
       const params: any = { type: reportType };
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
 
-      const response = await api.get('/admin/reports', { params });
-      return response.data.data || response.data;
+      const response = await api.get('/admin/reports/generate', { params });
+      const reportData = response.data.data || response.data;
+      
+      // Backend now returns data in the correct format, just map it directly
+      return {
+        total_trips: reportData.total_trips || 0,
+        student_usage: {
+          total_students: reportData.student_usage?.total_students || 0,
+          active_students: reportData.student_usage?.active_students || 0,
+          total_bookings: reportData.student_usage?.total_bookings || 0,
+        },
+        bus_performance: {
+          total_buses: reportData.bus_performance?.total_buses || 0,
+          active_buses: reportData.bus_performance?.active_buses || 0,
+          average_utilization: reportData.bus_performance?.average_utilization || 0,
+        },
+        route_efficiency: reportData.route_efficiency || [],
+        incidents: reportData.incidents || [],
+      };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         console.warn('⚠️ Backend unavailable, returning default report');
@@ -162,6 +270,10 @@ class AnalyticsService {
       });
       return response.data;
     } catch (error: any) {
+      // Handle 501 (Not Implemented) gracefully
+      if (error.response?.status === 501) {
+        throw new Error('Export functionality is not yet implemented. Please use the generate endpoint to view report data.');
+      }
       throw new Error(error.response?.data?.message || 'Failed to export report');
     }
   }

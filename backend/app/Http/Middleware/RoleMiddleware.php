@@ -18,9 +18,19 @@ class RoleMiddleware
             ], 401);
         }
 
-        if (!in_array($user->role, $roles)) {
+        // Handle role string like "admin|manager" by splitting
+        $allowedRoles = [];
+        foreach ($roles as $role) {
+            if (strpos($role, '|') !== false) {
+                $allowedRoles = array_merge($allowedRoles, explode('|', $role));
+            } else {
+                $allowedRoles[] = $role;
+            }
+        }
+
+        if (!in_array($user->role, $allowedRoles)) {
             return response()->json([
-                'message' => 'Forbidden - Insufficient permissions',
+                'message' => 'Forbidden - Insufficient permissions. Required role: ' . implode(' or ', $allowedRoles),
             ], 403);
         }
 

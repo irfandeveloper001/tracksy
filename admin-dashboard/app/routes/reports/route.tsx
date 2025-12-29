@@ -6,6 +6,7 @@ import {
   ArrowDownTrayIcon,
   EnvelopeIcon,
   ClockIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import analyticsService from '../../lib/api/analyticsService';
 import DateRangePicker from '../../components/analytics/DateRangePicker';
@@ -45,24 +46,264 @@ export default function ReportsPage() {
 
   const handleExport = async (format: 'pdf' | 'excel') => {
     try {
-      const blob = await analyticsService.exportReport(
-        reportType,
-        format,
-        dateRange.start,
-        dateRange.end
-      );
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report-${reportType}-${dateRange.start}-${dateRange.end}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast.success(`Report exported as ${format.toUpperCase()}`);
+      toast.loading(`Generating ${format.toUpperCase()} report...`);
+      
+      // Generate actual file download
+      if (format === 'excel') {
+        await downloadExcelReport();
+      } else {
+        await downloadPDFReport();
+      }
+      
+      toast.dismiss();
+      toast.success(`${format.toUpperCase()} report downloaded successfully!`, {
+        duration: 3000,
+      });
     } catch (error: any) {
-      toast.error(error.message || 'Failed to export report');
+      console.error('Export error:', error);
+      toast.dismiss();
+      toast.error('Failed to download report. Please try again.', { duration: 3000 });
     }
+  };
+
+  const downloadExcelReport = async () => {
+    // Create CSV content (Excel-compatible)
+    const csvContent = generateCSVContent();
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tracksy-report-${reportType}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPDFReport = async () => {
+    // Create HTML content for PDF
+    const htmlContent = generatePDFContent();
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      
+      // Wait for content to load then trigger print
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
+  };
+
+  const generateCSVContent = () => {
+    const data = reportData;
+    let csv = 'Tracksy Bus Tracking System - Daily Operations Report\n\n';
+    csv += `Generated on: ${new Date().toLocaleString()}\n\n`;
+    
+    // Summary Statistics
+    csv += 'Summary Statistics\n';
+    csv += 'Metric,Value\n';
+    csv += `Total Trips,${data.total_trips}\n`;
+    csv += `Total Students,${data.student_usage.total_students}\n`;
+    csv += `Active Students,${data.student_usage.active_students}\n`;
+    csv += `Total Bookings,${data.student_usage.total_bookings}\n`;
+    csv += `Total Buses,${data.bus_performance.total_buses}\n`;
+    csv += `Active Buses,${data.bus_performance.active_buses}\n`;
+    csv += `Average Utilization,${data.bus_performance.average_utilization}%\n\n`;
+    
+    // Route Efficiency
+    if (data.route_efficiency.length > 0) {
+      csv += 'Route Efficiency\n';
+      csv += 'Route Name,Trips Count,Avg Duration (min),On-Time %\n';
+      data.route_efficiency.forEach(route => {
+        csv += `${route.route_name},${route.trips_count},${route.average_duration},${route.on_time_percentage}%\n`;
+      });
+      csv += '\n';
+    }
+    
+    // Incidents
+    if (data.incidents.length > 0) {
+      csv += 'Incidents\n';
+      csv += 'Type,Description,Timestamp,Status\n';
+      data.incidents.forEach(incident => {
+        csv += `${incident.type},${incident.description},${incident.timestamp},${incident.status}\n`;
+      });
+    }
+    
+    return csv;
+  };
+
+  const generatePDFContent = () => {
+    const data = reportData;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Tracksy Report</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            color: #333;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #4F46E5;
+            padding-bottom: 20px;
+          }
+          .header h1 {
+            color: #4F46E5;
+            margin: 0;
+          }
+          .header p {
+            color: #666;
+            margin: 10px 0 0 0;
+          }
+          .section {
+            margin: 30px 0;
+          }
+          .section h2 {
+            color: #4F46E5;
+            border-bottom: 2px solid #E5E7EB;
+            padding-bottom: 10px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+          }
+          th, td {
+            border: 1px solid #E5E7EB;
+            padding: 12px;
+            text-align: left;
+          }
+          th {
+            background-color: #4F46E5;
+            color: white;
+          }
+          tr:nth-child(even) {
+            background-color: #F9FAFB;
+          }
+          .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+          }
+          .stat-box {
+            border: 1px solid #E5E7EB;
+            padding: 20px;
+            border-radius: 8px;
+            background: #F9FAFB;
+          }
+          .stat-label {
+            color: #666;
+            font-size: 14px;
+          }
+          .stat-value {
+            color: #4F46E5;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 5px;
+          }
+          @media print {
+            body { padding: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🚌 Tracksy Bus Tracking System</h1>
+          <p><strong>${reportType.charAt(0).toUpperCase() + reportType.slice(1)} Operations Report</strong></p>
+          <p>Generated on: ${new Date().toLocaleString()}</p>
+        </div>
+
+        <div class="section">
+          <h2>📊 Summary Statistics</h2>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-label">Total Trips</div>
+              <div class="stat-value">${data.total_trips}</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Active Students</div>
+              <div class="stat-value">${data.student_usage.active_students}</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Total Bookings</div>
+              <div class="stat-value">${data.student_usage.total_bookings}</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Active Buses</div>
+              <div class="stat-value">${data.bus_performance.active_buses}</div>
+            </div>
+          </div>
+        </div>
+
+        ${data.route_efficiency.length > 0 ? `
+        <div class="section">
+          <h2>🗺️ Route Efficiency</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Route Name</th>
+                <th>Trips Count</th>
+                <th>Avg Duration (min)</th>
+                <th>On-Time %</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.route_efficiency.map(route => `
+                <tr>
+                  <td>${route.route_name}</td>
+                  <td>${route.trips_count}</td>
+                  <td>${route.average_duration}</td>
+                  <td>${route.on_time_percentage}%</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        ${data.incidents.length > 0 ? `
+        <div class="section">
+          <h2>⚠️ Incidents Report</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Timestamp</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.incidents.map(incident => `
+                <tr>
+                  <td>${incident.type}</td>
+                  <td>${incident.description}</td>
+                  <td>${new Date(incident.timestamp).toLocaleString()}</td>
+                  <td>${incident.status}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div class="section">
+          <p style="text-align: center; color: #666; margin-top: 40px;">
+            <strong>Tracksy Bus Tracking System</strong><br>
+            Professional Bus Management Solution
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
   };
 
   const handleSchedule = () => {
@@ -93,88 +334,88 @@ export default function ReportsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Generate and export comprehensive reports
-          </p>
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setShowScheduleModal(true)}
-            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <EnvelopeIcon className="h-5 w-5 mr-2" />
-            Schedule Report
-          </button>
-          <button
-            onClick={() => handleExport('excel')}
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export Excel
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
-            Export PDF
-          </button>
+      <div className="rounded-2xl border border-white/60 bg-gradient-to-br from-indigo-500/10 via-white to-slate-50 px-6 py-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Reports</p>
+            <h1 className="text-3xl font-bold text-gray-900">Generate Reports</h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Create, schedule, and export comprehensive analytics reports.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => refetch()}
+              className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <ArrowPathIcon className="h-5 w-5 mr-2" />
+              Refresh
+            </button>
+            <button
+              onClick={() => setShowScheduleModal(true)}
+              className="flex items-center px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              <EnvelopeIcon className="h-5 w-5 mr-2" />
+              Schedule
+            </button>
+            <button
+              onClick={() => handleExport('excel')}
+              className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              Export Excel
+            </button>
+            <button
+              onClick={() => handleExport('pdf')}
+              className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
+              Export PDF
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Report Type Selection */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button
-            onClick={() => setReportType('daily')}
-            className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-              reportType === 'daily'
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <DocumentTextIcon className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-medium">Daily Report</p>
-          </button>
-          <button
-            onClick={() => setReportType('weekly')}
-            className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-              reportType === 'weekly'
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <DocumentTextIcon className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-medium">Weekly Report</p>
-          </button>
-          <button
-            onClick={() => setReportType('monthly')}
-            className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-              reportType === 'monthly'
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <DocumentTextIcon className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-medium">Monthly Report</p>
-          </button>
-          <button
-            onClick={() => setReportType('custom')}
-            className={`px-4 py-3 rounded-lg border-2 transition-colors ${
-              reportType === 'custom'
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            <CalendarIcon className="h-6 w-6 mx-auto mb-2" />
-            <p className="font-medium">Custom Range</p>
-          </button>
-        </div>
+      {/* Content */}
+      <div className="space-y-6">
+        {/* Report Type Selection */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Report Type</h2>
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <ClockIcon className="h-4 w-4" />
+              Updated on demand
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[
+              { key: 'daily', label: 'Daily Report', icon: DocumentTextIcon },
+              { key: 'weekly', label: 'Weekly Report', icon: DocumentTextIcon },
+              { key: 'monthly', label: 'Monthly Report', icon: DocumentTextIcon },
+              { key: 'custom', label: 'Custom Range', icon: CalendarIcon },
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setReportType(key as typeof reportType)}
+                className={`group flex flex-col items-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-semibold transition-all ${
+                  reportType === key
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
+                    : 'border-gray-200 text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                }`}
+              >
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                    reportType === key ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
 
         {/* Date Range for Custom */}
         {reportType === 'custom' && (
@@ -201,8 +442,8 @@ export default function ReportsPage() {
 
       {/* Schedule Modal */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Schedule Report</h3>
             <div className="space-y-4">
               <div>
@@ -250,6 +491,7 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

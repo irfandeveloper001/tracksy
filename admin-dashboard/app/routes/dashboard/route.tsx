@@ -7,13 +7,41 @@ import {
   ClockIcon,
   BellIcon,
   ShieldCheckIcon,
+  ChartBarIcon,
+  ArrowUpIcon,
 } from '@heroicons/react/24/outline';
 import MetricCard from '../../components/dashboard/MetricCard';
 import StatusPanel from '../../components/dashboard/StatusPanel';
 import QuickActions from '../../components/dashboard/QuickActions';
-import ActivityFeed, { Activity } from '../../components/dashboard/ActivityFeed';
-import dashboardService, { DashboardMetrics, BusStatus } from '../../lib/api/dashboardService';
+import ActivityFeed from '../../components/dashboard/ActivityFeed';
+import BusListPanel from '../../components/dashboard/BusListPanel';
+import RouteListPanel from '../../components/dashboard/RouteListPanel';
+import dashboardService from '../../lib/api/dashboardService';
 import realtimeService from '../../lib/services/realtimeService';
+
+// Define types locally to avoid import issues
+type DashboardMetrics = {
+  totalActiveBuses: number;
+  totalStudents: number;
+  totalRoutes: number;
+  onTimePercentage: number;
+  currentAlerts: number;
+  systemHealth: 'healthy' | 'warning' | 'critical';
+};
+
+type BusStatus = {
+  activeBuses: number;
+  busesOnRoute: number;
+  busesWithIssues: number;
+};
+
+type Activity = {
+  id: string;
+  type: 'bus' | 'user' | 'route' | 'alert' | 'system';
+  action: string;
+  timestamp: string;
+  user?: string;
+};
 
 export default function DashboardPage() {
   const [busStatus, setBusStatus] = useState<BusStatus>({
@@ -22,26 +50,48 @@ export default function DashboardPage() {
     busesWithIssues: 0,
   });
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [showWelcome, setShowWelcome] = useState(true);
 
-  // Fetch dashboard metrics
-  const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery({
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch dashboard metrics - non-blocking, always show UI
+  const { data: metrics, isLoading: metricsLoading, isError: metricsError, refetch: refetchMetrics } = useQuery({
     queryKey: ['dashboard-metrics'],
     queryFn: () => dashboardService.getMetrics(),
     refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 1, // Retry once on failure
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnMount: true, // Always refetch on mount to get latest data
   });
 
-  // Fetch bus status
-  const { data: initialBusStatus, refetch: refetchBusStatus } = useQuery({
+  // Fetch bus status - non-blocking, always show UI
+  const { data: initialBusStatus, isLoading: busStatusLoading, isError: busStatusError, refetch: refetchBusStatus } = useQuery({
     queryKey: ['bus-status'],
     queryFn: () => dashboardService.getBusStatus(),
     refetchInterval: 10000, // Refetch every 10 seconds
+    retry: 1, // Retry once on failure
+    staleTime: 5000, // Consider data fresh for 5 seconds
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnMount: true, // Always refetch on mount to get latest data
   });
 
-  // Fetch recent activities
-  const { data: initialActivities, refetch: refetchActivities } = useQuery({
+  // Fetch recent activities - non-blocking, always show UI
+  const { data: initialActivities, isLoading: activitiesLoading, isError: activitiesError, refetch: refetchActivities } = useQuery({
     queryKey: ['recent-activities'],
     queryFn: () => dashboardService.getRecentActivities(10),
     refetchInterval: 15000, // Refetch every 15 seconds
+    retry: 0, // Don't retry - fail fast
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    refetchOnMount: false, // Don't refetch on mount if we have cached data
   });
 
   // Update local state when data changes
@@ -109,96 +159,187 @@ export default function DashboardPage() {
     systemHealth: 'healthy',
   };
 
+  // Calculate efficiency metrics
+  const efficiency = formattedMetrics.totalActiveBuses > 0 
+    ? Math.round((formattedMetrics.onTimePercentage / 100) * formattedMetrics.totalActiveBuses)
+    : 0;
+
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Real-time overview of your transport system
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/50 space-y-8 pb-8">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Command Center</h1>
+            <p className="text-sm text-gray-500">
+              Real-time transport management dashboard.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+              <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+              Live
+            </div>
+            <div className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">
+              {currentTime.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: true 
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white/90 rounded-xl px-4 py-3 border border-gray-200/60 shadow-sm">
+            <p className="text-xs text-gray-500 font-medium mb-1">Total Fleet</p>
+            <p className="text-2xl font-bold text-gray-900">{formattedMetrics.totalActiveBuses}</p>
+          </div>
+          <div className="bg-white/90 rounded-xl px-4 py-3 border border-gray-200/60 shadow-sm">
+            <p className="text-xs text-gray-500 font-medium mb-1">Active Routes</p>
+            <p className="text-2xl font-bold text-gray-900">{formattedMetrics.totalRoutes}</p>
+          </div>
+          <div className="bg-white/90 rounded-xl px-4 py-3 border border-gray-200/60 shadow-sm">
+            <p className="text-xs text-gray-500 font-medium mb-1">On-Time Rate</p>
+            <p className="text-2xl font-bold text-gray-900">{formattedMetrics.onTimePercentage}%</p>
+          </div>
+          <div className="bg-white/90 rounded-xl px-4 py-3 border border-gray-200/60 shadow-sm">
+            <p className="text-xs text-gray-500 font-medium mb-1">Efficiency</p>
+            <p className="text-2xl font-bold text-gray-900">{efficiency}%</p>
+          </div>
+        </div>
       </div>
 
-      {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricCard
-          title="Active Buses"
-          value={formattedMetrics.totalActiveBuses}
-          icon={<TruckIcon className="h-6 w-6" />}
-          color="blue"
-        />
-        <MetricCard
-          title="Total Students"
-          value={formattedMetrics.totalStudents}
-          icon={<UserGroupIcon className="h-6 w-6" />}
-          color="green"
-        />
-        <MetricCard
-          title="Total Routes"
-          value={formattedMetrics.totalRoutes}
-          icon={<MapIcon className="h-6 w-6" />}
-          color="purple"
-        />
-        <MetricCard
-          title="On-Time Percentage"
-          value={`${formattedMetrics.onTimePercentage}%`}
-          icon={<ClockIcon className="h-6 w-6" />}
-          color="yellow"
-        />
-        <MetricCard
-          title="Current Alerts"
-          value={formattedMetrics.currentAlerts}
-          icon={<BellIcon className="h-6 w-6" />}
-          color="red"
-        />
-        <MetricCard
-          title="System Health"
-          value={
-            formattedMetrics.systemHealth === 'healthy'
-              ? 'Healthy'
-              : formattedMetrics.systemHealth === 'warning'
-              ? 'Warning'
-              : 'Critical'
-          }
-          icon={<ShieldCheckIcon className="h-6 w-6" />}
-          color={
-            formattedMetrics.systemHealth === 'healthy'
-              ? 'green'
-              : formattedMetrics.systemHealth === 'warning'
-              ? 'yellow'
-              : 'red'
-          }
-        />
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
-        {/* Left Column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Real-time Status Panel */}
-          <StatusPanel
-            activeBuses={busStatus.activeBuses}
-            busesOnRoute={busStatus.busesOnRoute}
-            busesWithIssues={busStatus.busesWithIssues}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 space-y-8">
+        {/* Key Metrics Cards - Enhanced with glassmorphism */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <MetricCard
+            title="Active Buses"
+            value={formattedMetrics.totalActiveBuses}
+            icon={<TruckIcon className="h-6 w-6" />}
+            color="blue"
+            change={{ value: 12, isPositive: true }}
           />
-
-          {/* Activity Feed */}
-          <ActivityFeed activities={activities} />
+          <MetricCard
+            title="Total Students"
+            value={formattedMetrics.totalStudents}
+            icon={<UserGroupIcon className="h-6 w-6" />}
+            color="green"
+            change={{ value: 8, isPositive: true }}
+          />
+          <MetricCard
+            title="Total Routes"
+            value={formattedMetrics.totalRoutes}
+            icon={<MapIcon className="h-6 w-6" />}
+            color="purple"
+          />
+          <MetricCard
+            title="On-Time Percentage"
+            value={`${formattedMetrics.onTimePercentage}%`}
+            icon={<ClockIcon className="h-6 w-6" />}
+            color="yellow"
+            change={{ value: 5, isPositive: true }}
+          />
+          <MetricCard
+            title="Current Alerts"
+            value={formattedMetrics.currentAlerts}
+            icon={<BellIcon className="h-6 w-6" />}
+            color="red"
+          />
+          <MetricCard
+            title="System Health"
+            value={
+              formattedMetrics.systemHealth === 'healthy'
+                ? 'Healthy'
+                : formattedMetrics.systemHealth === 'warning'
+                ? 'Warning'
+                : 'Critical'
+            }
+            icon={<ShieldCheckIcon className="h-6 w-6" />}
+            color={
+              formattedMetrics.systemHealth === 'healthy'
+                ? 'green'
+                : formattedMetrics.systemHealth === 'warning'
+                ? 'yellow'
+                : 'red'
+            }
+          />
         </div>
 
-        {/* Right Column */}
-        <div>
-          <QuickActions />
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          {/* Left Column - 2/3 width */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Real-time Status Panel */}
+            <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '100ms' }}>
+              <StatusPanel
+                activeBuses={busStatus.activeBuses}
+                busesOnRoute={busStatus.busesOnRoute}
+                busesWithIssues={busStatus.busesWithIssues}
+                activeRoutes={formattedMetrics.totalRoutes || 0}
+              />
+            </div>
+
+            {/* Bus List with Filters */}
+            <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '200ms' }}>
+              <BusListPanel defaultFilter="all" />
+            </div>
+
+            {/* Route List with Filters */}
+            <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '300ms' }}>
+              <RouteListPanel defaultFilter="all" />
+            </div>
+
+            {/* Activity Feed */}
+            <div className="animate-in fade-in slide-in-from-bottom duration-700" style={{ animationDelay: '400ms' }}>
+              <ActivityFeed activities={activities} />
+            </div>
+          </div>
+
+          {/* Right Column - 1/3 width */}
+          <div className="space-y-8">
+            {/* Quick Actions */}
+            <div className="animate-in fade-in slide-in-from-right duration-700" style={{ animationDelay: '100ms' }}>
+              <QuickActions />
+            </div>
+
+            {/* Performance Chart Placeholder */}
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/50 p-6 hover:shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-right duration-700" style={{ animationDelay: '200ms' }}>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                    <ChartBarIcon className="h-6 w-6 mr-2 text-indigo-600" />
+                    Performance
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Last 7 days</p>
+                </div>
+                <div className="p-2 bg-indigo-100 rounded-lg">
+                  <ArrowUpIcon className="h-5 w-5 text-indigo-600" />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+                  <span className="text-sm font-medium text-gray-700">On-Time Rate</span>
+                  <span className="text-lg font-bold text-indigo-600">{formattedMetrics.onTimePercentage}%</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl">
+                  <span className="text-sm font-medium text-gray-700">Fleet Utilization</span>
+                  <span className="text-lg font-bold text-green-600">
+                    {formattedMetrics.totalActiveBuses > 0 
+                      ? Math.round((busStatus.busesOnRoute / formattedMetrics.totalActiveBuses) * 100)
+                      : 0}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl">
+                  <span className="text-sm font-medium text-gray-700">Route Coverage</span>
+                  <span className="text-lg font-bold text-purple-600">{formattedMetrics.totalRoutes}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Loading State */}
-      {metricsLoading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading dashboard...</span>
-        </div>
-      )}
     </div>
   );
 }

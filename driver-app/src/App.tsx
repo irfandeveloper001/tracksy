@@ -6,11 +6,10 @@ import { store } from './store/store';
 import AppNavigator from './navigation/AppNavigator';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
-import { supabase } from './config/supabase';
-import supabaseAuthService from './services/supabaseAuthService';
-import { setUser, setAuthenticated } from './store/slices/authSlice';
+import { setUser, setAuthenticated, getCurrentUser } from './store/slices/authSlice';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from './store/store';
+import authService from './services/authService';
 
 const AppContent = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -37,63 +36,31 @@ const AppContent = () => {
     try {
       console.log('🚀 Initializing app...');
       
-      // Check for existing session
+      // Check for existing session using Laravel API
       try {
-        const session = await supabaseAuthService.getCurrentSession();
-        console.log('📦 Session check:', session ? 'Found' : 'None');
-        if (session?.user) {
-          const user = await supabaseAuthService.getCurrentUser();
+        const token = await authService.getToken();
+        if (token) {
+          console.log('📦 Token found, fetching user...');
+          const user = await authService.getCurrentUser();
           if (user) {
             console.log('✅ User found:', user.email);
             dispatch(setUser(user));
             dispatch(setAuthenticated(true));
+          } else {
+            // Token exists but user fetch failed - clear token
+            await authService.logout();
           }
+        } else {
+          console.log('📦 No token found');
         }
       } catch (sessionError) {
         console.warn('⚠️ Session check error (non-critical):', sessionError);
+        // Clear invalid token
+        await authService.logout();
       }
 
-      // Set up auth state listener
-      try {
-        supabaseAuthService.onAuthStateChange((event, session, user) => {
-          console.log('🔔 Auth state changed:', event);
-          if (event === 'SIGNED_IN' && user) {
-            dispatch(setUser(user));
-            dispatch(setAuthenticated(true));
-          } else if (event === 'SIGNED_OUT') {
-            dispatch(setUser(null));
-            dispatch(setAuthenticated(false));
-          }
-        });
-      } catch (listenerError) {
-        console.warn('⚠️ Auth listener error (non-critical):', listenerError);
-      }
-
-      // Handle deep linking for email verification
-      if (Platform.OS === 'web') {
-        // For web, check URL hash for email verification
-        if (typeof window !== 'undefined') {
-          const url = window.location.href;
-          if (url.includes('email-verified') || url.includes('access_token') || url.includes('token_hash')) {
-            console.log('🔗 Detected email verification link in URL');
-            handleDeepLink(url);
-          }
-        }
-      } else {
-        // For native platforms
-        try {
-          const url = await Linking.getInitialURL();
-          if (url) {
-            handleDeepLink(url);
-          }
-
-          Linking.addEventListener('url', ({ url }) => {
-            handleDeepLink(url);
-          });
-        } catch (linkError) {
-          console.warn('⚠️ Deep linking error (non-critical):', linkError);
-        }
-      }
+      // Deep linking can be added later if needed for password reset, etc.
+      // For now, Laravel API handles email verification differently
 
       console.log('✅ App initialization complete');
       setIsReady(true);
@@ -104,45 +71,7 @@ const AppContent = () => {
     }
   };
 
-  const handleDeepLink = async (url) => {
-    console.log('🔗 Handling deep link:', url);
-    
-    // Check for error in URL (expired link, etc.)
-    if (url.includes('error=') || url.includes('error_code=')) {
-      console.warn('⚠️ Email verification error detected in URL');
-      // Clear error from URL immediately
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.history.replaceState(null, '', '/');
-      }
-      // Don't try to process - let user login normally
-      return;
-    }
-    
-    // Check for Supabase email verification tokens
-    if (url.includes('access_token=') || url.includes('token_hash=') || url.includes('email-verified')) {
-      try {
-        console.log('✅ Processing email verification...');
-        const { user, session } = await supabaseAuthService.verifyEmailFromURL(url);
-        if (user && session) {
-          console.log('✅ Email verified successfully, user:', user.email);
-          dispatch(setUser(user));
-          dispatch(setAuthenticated(true));
-          
-          // Clear URL hash after processing (for web)
-          if (Platform.OS === 'web' && typeof window !== 'undefined') {
-            window.history.replaceState(null, '', '/');
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error handling deep link:', error);
-        // Clear error URL
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
-          window.history.replaceState(null, '', '/');
-        }
-        // Don't show error to user - let them login normally
-      }
-    }
-  };
+  // Deep linking handler can be added later if needed
 
   if (!isReady) {
     return (

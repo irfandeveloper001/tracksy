@@ -72,7 +72,7 @@ export default function TripDetailPage() {
         </button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Trip Details</h1>
-          <p className="mt-1 text-sm text-gray-600">Trip #{trip.id.substring(0, 8)}</p>
+          <p className="mt-1 text-sm text-gray-600">Trip #{String(trip.id).substring(0, 8)}</p>
         </div>
       </div>
 
@@ -100,14 +100,14 @@ export default function TripDetailPage() {
               <div>
                 <p className="text-sm text-gray-500">Start Time</p>
                 <p className="font-medium text-gray-900 mt-1">
-                  {new Date(trip.start_time).toLocaleString()}
+                  {trip.start_time ? new Date(trip.start_time).toLocaleString() : 'N/A'}
                 </p>
               </div>
               {trip.end_time && (
                 <div>
                   <p className="text-sm text-gray-500">End Time</p>
                   <p className="font-medium text-gray-900 mt-1">
-                    {new Date(trip.end_time).toLocaleString()}
+                    {trip.end_time ? new Date(trip.end_time).toLocaleString() : 'N/A'}
                   </p>
                 </div>
               )}
@@ -195,4 +195,3 @@ export default function TripDetailPage() {
     </div>
   );
 }
-

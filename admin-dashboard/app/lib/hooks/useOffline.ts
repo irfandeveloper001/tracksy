@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 export function useOffline() {
+  // Guard against React being null (multiple instances issue)
+  if (typeof useState !== 'function') {
+    console.error('React useState is not available. This may indicate multiple React instances.');
+    return { isOffline: false, wasOffline: false };
+  }
+
   const [isOffline, setIsOffline] = useState(false);
   const [wasOffline, setWasOffline] = useState(false);
 

@@ -10,19 +10,28 @@ class Notification extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
+        'notifiable_type',
+        'notifiable_id',
         'type',
+        'user_id',
+        'notification_type',
         'title',
         'message',
         'data',
         'read',
         'read_at',
+        'audience_type',
+        'audience_ids',
+        'status',
+        'sent_at',
     ];
 
     protected $casts = [
         'data' => 'array',
+        'audience_ids' => 'array',
         'read' => 'boolean',
         'read_at' => 'datetime',
+        'sent_at' => 'datetime',
     ];
 
     // Relationships

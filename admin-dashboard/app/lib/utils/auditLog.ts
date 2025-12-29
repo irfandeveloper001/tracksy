@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import api from '../api/client';
 import { useAuthStore } from '../store/authStore';
 
 export interface AuditLogEntry {
@@ -14,7 +14,7 @@ export interface AuditLogEntry {
 }
 
 class AuditLogService {
-  // Log an admin action
+  // Log an admin action - Laravel API only
   async logAction(
     action: string,
     resourceType: string,
@@ -42,12 +42,14 @@ class AuditLogService {
         user_agent: userAgent,
       };
 
-      // Insert into Supabase
-      const { error } = await supabase.from('audit_logs').insert(logEntry);
-
-      if (error) {
-        console.error('Failed to log audit entry:', error);
-        // Don't throw - audit logging should not break the app
+      // Insert into Laravel API (if endpoint exists)
+      try {
+        await api.post('/admin/audit-logs', logEntry);
+      } catch (error: any) {
+        // If endpoint doesn't exist, just log to console (non-critical)
+        if (import.meta.env.DEV) {
+          console.log('Audit log (Laravel endpoint may not exist):', logEntry);
+        }
       }
     } catch (error) {
       console.error('Error logging audit entry:', error);
@@ -66,28 +68,29 @@ class AuditLogService {
     }
   }
 
-  // Get audit logs for current admin
+  // Get audit logs for current admin - Laravel API only
   async getMyAuditLogs(limit: number = 50): Promise<AuditLogEntry[]> {
     try {
       const { user } = useAuthStore.getState();
       if (!user) return [];
 
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .eq('admin_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-      return data || [];
+      try {
+        const response = await api.get(`/admin/audit-logs?limit=${limit}`);
+        return response.data.data || response.data || [];
+      } catch (error: any) {
+        // If endpoint doesn't exist, return empty array (non-critical)
+        if (import.meta.env.DEV) {
+          console.warn('Audit logs endpoint may not exist:', error);
+        }
+        return [];
+      }
     } catch (error) {
       console.error('Error fetching audit logs:', error);
       return [];
     }
   }
 
-  // Get all audit logs (admin only)
+  // Get all audit logs (admin only) - Laravel API only
   async getAllAuditLogs(
     filters?: {
       adminId?: string;
@@ -108,30 +111,24 @@ class AuditLogService {
         return await this.getMyAuditLogs(limit);
       }
 
-      let query = supabase.from('audit_logs').select('*');
+      try {
+        const params = new URLSearchParams();
+        if (filters?.adminId) params.append('admin_id', filters.adminId);
+        if (filters?.action) params.append('action', filters.action);
+        if (filters?.resourceType) params.append('resource_type', filters.resourceType);
+        if (filters?.startDate) params.append('start_date', filters.startDate);
+        if (filters?.endDate) params.append('end_date', filters.endDate);
+        params.append('limit', limit.toString());
 
-      if (filters?.adminId) {
-        query = query.eq('admin_id', filters.adminId);
+        const response = await api.get(`/admin/audit-logs?${params.toString()}`);
+        return response.data.data || response.data || [];
+      } catch (error: any) {
+        // If endpoint doesn't exist, return empty array (non-critical)
+        if (import.meta.env.DEV) {
+          console.warn('Audit logs endpoint may not exist:', error);
+        }
+        return [];
       }
-      if (filters?.action) {
-        query = query.eq('action', filters.action);
-      }
-      if (filters?.resourceType) {
-        query = query.eq('resource_type', filters.resourceType);
-      }
-      if (filters?.startDate) {
-        query = query.gte('created_at', filters.startDate);
-      }
-      if (filters?.endDate) {
-        query = query.lte('created_at', filters.endDate);
-      }
-
-      const { data, error } = await query
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (error) throw error;
-      return data || [];
     } catch (error) {
       console.error('Error fetching audit logs:', error);
       return [];

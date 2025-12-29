@@ -96,7 +96,7 @@ class AlertService {
   // Acknowledge alert
   async acknowledgeAlert(alertId: string, notes?: string): Promise<Alert> {
     try {
-      const response = await api.post(`/admin/alerts/${alertId}/acknowledge`, { notes });
+      const response = await api.put(`/admin/alerts/${alertId}/acknowledge`, { notes });
       return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to acknowledge alert');
@@ -106,7 +106,7 @@ class AlertService {
   // Resolve alert
   async resolveAlert(alertId: string, resolution?: string): Promise<Alert> {
     try {
-      const response = await api.post(`/admin/alerts/${alertId}/resolve`, { resolution });
+      const response = await api.put(`/admin/alerts/${alertId}/resolve`, { resolution });
       return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to resolve alert');
@@ -142,13 +142,29 @@ class AlertService {
     }
   }
 
-  // Create notification
+  // Create notification - Laravel API only
   async createNotification(notificationData: Partial<Notification>): Promise<Notification> {
     try {
       const response = await api.post('/admin/notifications', notificationData);
       return response.data.data || response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create notification');
+      console.error('❌ Notification creation error details:', error);
+      
+      // Handle Laravel validation errors
+      if (error.response?.status === 422) {
+        const validationErrors = error.response.data?.errors;
+        if (validationErrors) {
+          const errorMessages = Object.values(validationErrors).flat().join(', ');
+          throw new Error(errorMessages || 'Validation failed');
+        }
+      }
+      
+      // Handle other errors
+      const errorMessage = error.response?.data?.message 
+        || error.message 
+        || 'Failed to create notification. Please check your connection and try again.';
+      
+      throw new Error(errorMessage);
     }
   }
 
@@ -200,6 +216,8 @@ class AlertService {
       throw new Error(error.response?.data?.message || 'Failed to update preferences');
     }
   }
+
+  // createNotificationInSupabase removed - using Laravel API only
 }
 
 export default new AlertService();

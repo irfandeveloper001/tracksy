@@ -5,6 +5,12 @@ export interface Route {
   name: string;
   start_location: string;
   end_location: string;
+  // Backend uses start_point/end_point, frontend uses start_location/end_location
+  start_point?: string;
+  end_point?: string;
+  // Supabase uses origin/destination
+  origin?: string;
+  destination?: string;
   start_latitude?: number;
   start_longitude?: number;
   end_latitude?: number;
@@ -15,6 +21,7 @@ export interface Route {
   active_buses_count?: number;
   student_count?: number;
   status: 'active' | 'inactive';
+  is_active?: boolean; // Backend uses this
   created_at: string;
   updated_at: string;
 }
@@ -45,7 +52,7 @@ export interface RouteListResponse {
 }
 
 class RouteService {
-  // Get all routes with filters and pagination
+  // Get all routes with filters and pagination - Use Laravel backend API only
   async getRoutes(
     page: number = 1,
     perPage: number = 20,
@@ -54,37 +61,101 @@ class RouteService {
     try {
       const params: any = {
         page,
-        per_page: perPage,
-        ...filters,
+        limit: perPage,
       };
 
+      // Add filters to params
+      if (filters?.status) {
+        params.status = filters.status;
+      }
+      if (filters?.search) {
+        params.search = filters.search;
+      }
+
       const response = await api.get('/admin/routes', { params });
-      return response.data.data || response.data;
-    } catch (error: any) {
-      if (!error.response || error.response.status === 500) {
-        console.warn('⚠️ Backend unavailable, returning empty routes list');
+      const backendData = response.data.data || response.data;
+
+      // Handle Laravel pagination response format
+      if (backendData.data && Array.isArray(backendData.data)) {
+        // Laravel paginated response
+        const routes = backendData.data.map((route: any) => this.mapBackendRouteToFrontend(route));
+        
         return {
-          routes: [],
-          total: 0,
-          current_page: 1,
+          routes,
+          total: backendData.total || 0,
+          current_page: backendData.current_page || page,
+          per_page: backendData.per_page || perPage,
+          last_page: backendData.last_page || 1,
+        };
+      } else if (Array.isArray(backendData)) {
+        // Simple array response
+        const routes = backendData.map((route: any) => this.mapBackendRouteToFrontend(route));
+        
+        return {
+          routes,
+          total: routes.length,
+          current_page: page,
           per_page: perPage,
-          last_page: 1,
+          last_page: Math.ceil(routes.length / perPage) || 1,
         };
       }
-      throw error;
+      
+      return {
+        routes: [],
+        total: 0,
+        current_page: page,
+        per_page: perPage,
+        last_page: 1,
+      };
+    } catch (error: any) {
+      console.error('❌ Failed to fetch routes from backend:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch routes');
     }
   }
 
-  // Get single route by ID
+  // Map backend route data to frontend Route interface
+  private mapBackendRouteToFrontend(route: any): Route {
+    return {
+      id: route.id?.toString() || String(route.id), // Ensure ID is always a string
+      name: route.name || 'Unnamed Route',
+      start_location: route.start_point || route.origin || route.start_location || '',
+      end_location: route.end_point || route.destination || route.end_location || '',
+      start_latitude: route.start_latitude || null,
+      start_longitude: route.start_longitude || null,
+      end_latitude: route.end_latitude || null,
+      end_longitude: route.end_longitude || null,
+      distance: route.distance || null,
+      estimated_duration: route.estimated_duration || null,
+      stops_count: route.stops_count ?? route.stops?.length ?? 0,
+      active_buses_count: route.active_buses_count ?? route.buses_count ?? route.buses?.length ?? 0,
+      student_count: route.student_count ?? route.students_count ?? route.students?.length ?? 0,
+      status: (route.status || (route.is_active ? 'active' : 'inactive')) as 'active' | 'inactive',
+      created_at: route.created_at,
+      updated_at: route.updated_at,
+        };
+  }
+
+  // Get routes directly from Supabase (DEPRECATED - Use Laravel API)
+  async getRoutesFromSupabase(filters?: RouteFilters): Promise<Route[]> {
+    // This method is deprecated - use getRoutes() instead
+    console.warn('⚠️ getRoutesFromSupabase is deprecated. Use getRoutes() with Laravel API instead.');
+    return [];
+  }
+
+  // Get single route by ID - Use Laravel backend API only
   async getRouteById(routeId: string): Promise<Route> {
     try {
       const response = await api.get(`/admin/routes/${routeId}`);
-      return response.data.data || response.data;
-    } catch (error: any) {
-      if (!error.response || error.response.status === 500) {
-        throw new Error('Backend unavailable');
+      const backendRoute = response.data.data || response.data;
+      
+      if (!backendRoute) {
+        throw new Error('Route not found');
       }
-      throw error;
+
+      return this.mapBackendRouteToFrontend(backendRoute);
+    } catch (error: any) {
+      console.error('❌ Failed to fetch route:', error);
+      throw new Error(error.response?.data?.message || 'Failed to fetch route details');
     }
   }
 
@@ -101,31 +172,147 @@ class RouteService {
     }
   }
 
-  // Create new route
+  // Create new route - Laravel API only
   async createRoute(routeData: Partial<Route>): Promise<Route> {
     try {
-      const response = await api.post('/admin/routes', routeData);
-      return response.data.data || response.data;
+      // Map frontend Route interface to backend format
+      const backendData: any = {
+        name: routeData.name?.trim(),
+        start_point: (routeData.start_location || routeData.start_point || '').trim(),
+        end_point: (routeData.end_location || routeData.end_point || '').trim(),
+      };
+
+      // Add optional fields only if provided
+      if (routeData.distance !== undefined && routeData.distance !== null) {
+        backendData.distance = routeData.distance;
+      }
+      if (routeData.estimated_duration !== undefined && routeData.estimated_duration !== null) {
+        backendData.estimated_duration = routeData.estimated_duration;
+      }
+
+      // Handle status - Laravel accepts both 'status' and 'is_active'
+      if (routeData.status) {
+        backendData.status = routeData.status;
+        backendData.is_active = routeData.status === 'active';
+      } else if (routeData.is_active !== undefined) {
+        backendData.is_active = routeData.is_active;
+        backendData.status = routeData.is_active ? 'active' : 'inactive';
+      } else {
+        backendData.status = 'active';
+        backendData.is_active = true;
+      }
+
+      // Handle stops array if provided (from route creation form)
+      if ((routeData as any).stops && Array.isArray((routeData as any).stops)) {
+        backendData.stops = (routeData as any).stops;
+      }
+
+      // Remove undefined/null fields (but keep stops array even if empty)
+      Object.keys(backendData).forEach(key => {
+        if (key !== 'stops' && (backendData[key] === undefined || backendData[key] === null)) {
+          delete backendData[key];
+        }
+      });
+
+      console.log('🛣️ Creating route with data:', backendData);
+      const response = await api.post('/admin/routes', backendData);
+      const backendRoute = response.data.data || response.data;
+      
+      if (!backendRoute) {
+        throw new Error('Route creation succeeded but no data returned');
+      }
+
+      console.log('✅ Route created successfully:', backendRoute);
+      return this.mapBackendRouteToFrontend(backendRoute);
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create route');
+      console.error('❌ Failed to create route:', error);
+      
+      // Extract detailed error message
+      let errorMessage = 'Failed to create route. Please try again.';
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.errors) {
+          // Laravel validation errors
+          const validationErrors = Object.entries(errorData.errors)
+            .map(([field, messages]: [string, any]) => {
+              const msg = Array.isArray(messages) ? messages[0] : messages;
+              return `${field}: ${msg}`;
+            })
+            .join(', ');
+          errorMessage = validationErrors;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   }
 
-  // Update route
+  // Create route directly in Supabase (DEPRECATED - Use Laravel API)
+  async createRouteInSupabase(routeData: Partial<Route>): Promise<Route | null> {
+    // This method is deprecated - use createRoute() instead
+    console.warn('⚠️ createRouteInSupabase is deprecated. Use createRoute() with Laravel API instead.');
+    return null;
+  }
+
+  // Update route - Use Laravel backend API only
   async updateRoute(routeId: string, routeData: Partial<Route>): Promise<Route> {
     try {
-      const response = await api.put(`/admin/routes/${routeId}`, routeData);
-      return response.data.data || response.data;
+      // Map Route interface to backend format
+      const backendData: any = {
+        name: routeData.name?.trim(),
+        start_point: (routeData.start_location || routeData.start_point || '').trim(),
+        end_point: (routeData.end_location || routeData.end_point || '').trim(),
+      };
+
+      // Add optional fields only if provided
+      if (routeData.distance !== undefined && routeData.distance !== null) {
+        backendData.distance = routeData.distance;
+      }
+      if (routeData.estimated_duration !== undefined && routeData.estimated_duration !== null) {
+        backendData.estimated_duration = routeData.estimated_duration;
+      }
+
+      // Handle status - Laravel accepts both 'status' and 'is_active'
+      if (routeData.status) {
+        backendData.status = routeData.status;
+        backendData.is_active = routeData.status === 'active';
+      } else if (routeData.is_active !== undefined) {
+        backendData.is_active = routeData.is_active;
+        backendData.status = routeData.is_active ? 'active' : 'inactive';
+      }
+
+      // Remove undefined/null fields
+      Object.keys(backendData).forEach(key => {
+        if (backendData[key] === undefined || backendData[key] === null) {
+          delete backendData[key];
+        }
+      });
+
+      console.log('🛣️ Updating route with data:', backendData);
+      const response = await api.put(`/admin/routes/${routeId}`, backendData);
+      const backendRoute = response.data.data || response.data;
+      
+      if (!backendRoute) {
+        throw new Error('Route update succeeded but no data returned');
+      }
+      
+      return this.mapBackendRouteToFrontend(backendRoute);
     } catch (error: any) {
+      console.error('❌ Failed to update route:', error);
       throw new Error(error.response?.data?.message || 'Failed to update route');
     }
   }
 
-  // Delete route
+  // Delete route - Use Laravel backend API only
   async deleteRoute(routeId: string): Promise<void> {
     try {
       await api.delete(`/admin/routes/${routeId}`);
     } catch (error: any) {
+      console.error('❌ Failed to delete route:', error);
       throw new Error(error.response?.data?.message || 'Failed to delete route');
     }
   }
@@ -174,7 +361,14 @@ class RouteService {
       const response = await api.get('/admin/stops', {
         params: { page, per_page: perPage },
       });
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data;
+      if (Array.isArray(payload)) {
+        return { stops: payload, total: payload.length };
+      }
+      if (payload && Array.isArray(payload.data)) {
+        return { stops: payload.data, total: payload.total || payload.data.length };
+      }
+      return { stops: [], total: 0 };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         return { stops: [], total: 0 };

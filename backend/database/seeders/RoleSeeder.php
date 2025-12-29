@@ -9,11 +9,16 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        Role::create(['name' => 'student']);
-        Role::create(['name' => 'driver']);
-        Role::create(['name' => 'admin']);
-        Role::create(['name' => 'manager']);
-        Role::create(['name' => 'viewer']);
+        $roles = ['student', 'driver', 'admin', 'manager', 'viewer'];
+        
+        foreach ($roles as $roleName) {
+            Role::firstOrCreate(
+                ['name' => $roleName, 'guard_name' => 'api'],
+                ['name' => $roleName, 'guard_name' => 'api']
+            );
+        }
+        
+        $this->command->info('✅ Roles seeded successfully');
     }
 }
 

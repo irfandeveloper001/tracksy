@@ -1,6 +1,4 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { DESIGN } from '../constants/design';
 
 interface Props {
   children: ReactNode;
@@ -57,111 +55,48 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <View style={styles.container}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <Text style={styles.icon}>⚠️</Text>
-            <Text style={styles.title}>Something went wrong</Text>
-            <Text style={styles.message}>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
+            <div className="text-center">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                Something went wrong
+              </h1>
+              <p className="text-gray-600 mb-6">
               The app encountered an unexpected error. Please try again.
-            </Text>
+              </p>
 
-            {__DEV__ && this.state.error && (
-              <View style={styles.errorDetails}>
-                <Text style={styles.errorTitle}>Error Details:</Text>
-                <Text style={styles.errorText}>
+              {import.meta.env.DEV && this.state.error && (
+                <div className="bg-gray-100 p-4 rounded-md mb-6 text-left">
+                  <h2 className="text-sm font-bold text-red-600 mb-2">
+                    Error Details:
+                  </h2>
+                  <pre className="text-xs text-gray-800 mb-2 overflow-auto">
                   {this.state.error.toString()}
-                </Text>
+                  </pre>
                 {this.state.errorInfo && (
-                  <Text style={styles.errorStack}>
+                    <pre className="text-xs text-gray-600 overflow-auto">
                     {this.state.errorInfo.componentStack}
-                  </Text>
+                    </pre>
                 )}
-              </View>
+                </div>
             )}
 
-            <TouchableOpacity
-              style={styles.button}
-              onPress={this.handleReset}
-            >
-              <Text style={styles.buttonText}>Try Again</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+              <button
+                onClick={this.handleReset}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded-md"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
       );
     }
 
     return this.props.children;
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: DESIGN.COLORS.BACKGROUND,
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: DESIGN.SPACING.XL,
-  },
-  icon: {
-    fontSize: DESIGN.FONTS.SIZE.XXL,
-    marginBottom: DESIGN.SPACING.M,
-  },
-  title: {
-    fontSize: DESIGN.FONTS.SIZE.XL,
-    fontWeight: DESIGN.FONTS.WEIGHT.BOLD,
-    color: DESIGN.COLORS.TEXT,
-    marginBottom: DESIGN.SPACING.S,
-    textAlign: 'center',
-  },
-  message: {
-    fontSize: DESIGN.FONTS.SIZE.M,
-    color: DESIGN.COLORS.TEXT_SECONDARY,
-    textAlign: 'center',
-    marginBottom: DESIGN.SPACING.XL,
-    lineHeight: DESIGN.FONTS.LINE_HEIGHT.M,
-  },
-  errorDetails: {
-    width: '100%',
-    backgroundColor: DESIGN.COLORS.SURFACE,
-    padding: DESIGN.SPACING.M,
-    borderRadius: DESIGN.RADIUS.M,
-    marginBottom: DESIGN.SPACING.L,
-  },
-  errorTitle: {
-    fontSize: DESIGN.FONTS.SIZE.M,
-    fontWeight: DESIGN.FONTS.WEIGHT.BOLD,
-    color: DESIGN.COLORS.ERROR,
-    marginBottom: DESIGN.SPACING.S,
-  },
-  errorText: {
-    fontSize: DESIGN.FONTS.SIZE.S,
-    color: DESIGN.COLORS.TEXT,
-    fontFamily: 'monospace',
-    marginBottom: DESIGN.SPACING.S,
-  },
-  errorStack: {
-    fontSize: DESIGN.FONTS.SIZE.XS,
-    color: DESIGN.COLORS.TEXT_SECONDARY,
-    fontFamily: 'monospace',
-  },
-  button: {
-    backgroundColor: DESIGN.COLORS.PRIMARY,
-    paddingHorizontal: DESIGN.SPACING.XL,
-    paddingVertical: DESIGN.SPACING.M,
-    borderRadius: DESIGN.RADIUS.M,
-    minHeight: DESIGN.TOUCH_TARGETS.MIN_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: DESIGN.FONTS.SIZE.M,
-    fontWeight: DESIGN.FONTS.WEIGHT.BOLD,
-  },
-});
 
 export default ErrorBoundary;
 

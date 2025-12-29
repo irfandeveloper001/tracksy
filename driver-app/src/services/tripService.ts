@@ -110,14 +110,33 @@ class TripService {
     endDate?: string;
     limit?: number;
     page?: number;
-  }): Promise<{ trips: Trip[]; total: number; current_page: number }> {
+  }): Promise<{ trips: Trip[]; total: number; current_page: number } | Trip[]> {
     try {
       const response = await api.get('/driver/trips', { params });
       const data = response.data.data || response.data;
+      
+      // Handle paginated response
+      if (data.data && Array.isArray(data.data)) {
+        return {
+          trips: data.data,
+          total: data.total || data.data.length,
+          current_page: data.current_page || 1,
+        };
+      }
+      
+      // Handle array response (non-paginated)
+      if (Array.isArray(data)) {
+        return {
+          trips: data,
+          total: data.length,
+          current_page: 1,
+        };
+      }
+      
       return {
-        trips: data.data || data,
-        total: data.total || 0,
-        current_page: data.current_page || 1,
+        trips: [],
+        total: 0,
+        current_page: 1,
       };
     } catch (error: any) {
       // If backend unavailable, return empty data gracefully

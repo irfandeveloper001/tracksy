@@ -1,7 +1,8 @@
-import { supabase } from '../config/supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+// RealtimeService - Laravel API only
+// Note: Laravel doesn't have built-in real-time subscriptions like Supabase
+// This service now provides polling-based updates or can be removed if not needed
 
-// Real-time event types
+// Real-time event types (kept for compatibility)
 export type RealtimeEvent = 
   | 'bus_location_update'
   | 'bus_status_change'
@@ -15,10 +16,10 @@ export type RealtimeEvent =
 export type RealtimeEventHandler = (payload: any) => void;
 
 class RealtimeService {
-  private channels: Map<string, RealtimeChannel> = new Map();
+  private pollingIntervals: Map<string, NodeJS.Timeout> = new Map();
   private subscriptions: Map<string, Set<RealtimeEventHandler>> = new Map();
 
-  // Subscribe to a real-time channel
+  // Subscribe to a real-time channel (now uses polling)
   subscribe(channel: string, event: RealtimeEvent, handler: RealtimeEventHandler): () => void {
     // Create subscription key
     const subscriptionKey = `${channel}:${event}`;
@@ -29,27 +30,19 @@ class RealtimeService {
     }
     this.subscriptions.get(subscriptionKey)!.add(handler);
 
-    // Get or create channel
-    let realtimeChannel = this.channels.get(channel);
-    if (!realtimeChannel) {
-      realtimeChannel = supabase.channel(channel);
-      this.channels.set(channel, realtimeChannel);
-    }
-
-    // Subscribe to event
-    realtimeChannel
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: channel,
-      }, (payload) => {
-        // Notify all handlers for this event
+    // For Laravel API, we use polling instead of real-time subscriptions
+    // Poll every 30 seconds for updates
+    if (!this.pollingIntervals.has(subscriptionKey)) {
+      const interval = setInterval(() => {
+        // Notify all handlers (they can trigger refetch in their components)
         const handlers = this.subscriptions.get(subscriptionKey);
         if (handlers) {
-          handlers.forEach((h) => h(payload));
+          handlers.forEach((h) => h({ event, channel, timestamp: new Date().toISOString() }));
         }
-      })
-      .subscribe();
+      }, 30000); // Poll every 30 seconds
+      
+      this.pollingIntervals.set(subscriptionKey, interval);
+    }
 
     // Return unsubscribe function
     return () => {
@@ -58,6 +51,12 @@ class RealtimeService {
         handlers.delete(handler);
         if (handlers.size === 0) {
           this.subscriptions.delete(subscriptionKey);
+          // Clear polling interval if no more handlers
+          const interval = this.pollingIntervals.get(subscriptionKey);
+          if (interval) {
+            clearInterval(interval);
+            this.pollingIntervals.delete(subscriptionKey);
+          }
         }
       }
     };
@@ -90,10 +89,10 @@ class RealtimeService {
 
   // Unsubscribe from all channels
   unsubscribeAll(): void {
-    this.channels.forEach((channel) => {
-      supabase.removeChannel(channel);
+    this.pollingIntervals.forEach((interval) => {
+      clearInterval(interval);
     });
-    this.channels.clear();
+    this.pollingIntervals.clear();
     this.subscriptions.clear();
   }
 

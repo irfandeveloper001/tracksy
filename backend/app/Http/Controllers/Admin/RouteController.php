@@ -8,35 +8,81 @@ use Illuminate\Http\Request;
 
 class RouteController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // List all routes
-        $routes = Route::with('stops')->active()->get();
+        // List all routes with filters and pagination
+        $query = Route::with('stops')
+            ->withCount([
+                'stops',
+                'buses as active_buses_count',
+                'students as student_count',
+            ]);
+        
+        // Apply status filter
+        if ($request->has('status')) {
+            if ($request->status === 'active') {
+                $query->where(function($q) {
+                    $q->where('status', 'active')->orWhere('is_active', true);
+                });
+            } elseif ($request->status === 'inactive') {
+                $query->where(function($q) {
+                    $q->where('status', 'inactive')->orWhere('is_active', false);
+                });
+            }
+        }
+        
+        // Apply search filter
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('start_point', 'like', "%{$search}%")
+                  ->orWhere('end_point', 'like', "%{$search}%")
+                  ->orWhere('origin', 'like', "%{$search}%")
+                  ->orWhere('destination', 'like', "%{$search}%");
+            });
+        }
+        
+        // Paginate if limit is provided, otherwise return all
+        if ($request->has('limit') || $request->has('page')) {
+            $perPage = $request->limit ?? 20;
+            $routes = $query->paginate($perPage);
+        } else {
+            $routes = $query->get();
+        }
         
         return $this->successResponse($routes);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'name' => 'required|string|max:255',
             'start_point' => 'required|string',
             'end_point' => 'required|string',
             'distance' => 'nullable|numeric|min:0',
             'estimated_duration' => 'nullable|integer|min:0',
+            'status' => 'nullable|in:active,inactive',
+            'is_active' => 'nullable|boolean',
             'stops' => 'nullable|array',
             'stops.*.stop_id' => 'required|exists:stops,id',
             'stops.*.order' => 'required|integer|min:1',
             'stops.*.estimated_time' => 'nullable|integer|min:0',
         ]);
 
-        $route = Route::create($request->only([
-            'name',
-            'start_point',
-            'end_point',
-            'distance',
-            'estimated_duration',
-        ]));
+        // Determine status
+        $status = $request->input('status', $request->input('is_active', true) ? 'active' : 'inactive');
+        $isActive = $request->has('is_active') ? $request->input('is_active') : ($status === 'active');
+
+        $route = Route::create([
+            'name' => $request->input('name'),
+            'start_point' => $request->input('start_point'),
+            'end_point' => $request->input('end_point'),
+            'distance' => $request->input('distance'),
+            'estimated_duration' => $request->input('estimated_duration'),
+            'status' => $status,
+            'is_active' => $isActive,
+        ]);
 
         // Attach stops if provided
         if ($request->has('stops')) {
@@ -54,7 +100,13 @@ class RouteController extends Controller
     public function show($id)
     {
         // Get route details
-        $route = Route::with('stops')->findOrFail($id);
+        $route = Route::with('stops')
+            ->withCount([
+                'stops',
+                'buses as active_buses_count',
+                'students as student_count',
+            ])
+            ->findOrFail($id);
         
         return $this->successResponse($route);
     }
@@ -63,12 +115,13 @@ class RouteController extends Controller
     {
         $route = Route::findOrFail($id);
 
-        $request->validate([
+        $this->validate($request, [
             'name' => 'sometimes|string|max:255',
             'start_point' => 'sometimes|string',
             'end_point' => 'sometimes|string',
             'distance' => 'nullable|numeric|min:0',
             'estimated_duration' => 'nullable|integer|min:0',
+            'status' => 'nullable|in:active,inactive',
             'is_active' => 'sometimes|boolean',
             'stops' => 'nullable|array',
             'stops.*.stop_id' => 'required|exists:stops,id',
@@ -76,14 +129,24 @@ class RouteController extends Controller
             'stops.*.estimated_time' => 'nullable|integer|min:0',
         ]);
 
-        $route->update($request->only([
-            'name',
-            'start_point',
-            'end_point',
-            'distance',
-            'estimated_duration',
-            'is_active',
-        ]));
+        // Determine status
+        $updateData = [
+            'name' => $request->has('name') ? $request->input('name') : $route->name,
+            'start_point' => $request->has('start_point') ? $request->input('start_point') : $route->start_point,
+            'end_point' => $request->has('end_point') ? $request->input('end_point') : $route->end_point,
+            'distance' => $request->has('distance') ? $request->input('distance') : $route->distance,
+            'estimated_duration' => $request->has('estimated_duration') ? $request->input('estimated_duration') : $route->estimated_duration,
+        ];
+
+        if ($request->has('status')) {
+            $updateData['status'] = $request->input('status');
+            $updateData['is_active'] = $request->input('status') === 'active';
+        } elseif ($request->has('is_active')) {
+            $updateData['is_active'] = $request->input('is_active');
+            $updateData['status'] = $request->input('is_active') ? 'active' : 'inactive';
+        }
+
+        $route->update($updateData);
 
         // Update stops if provided
         if ($request->has('stops')) {
@@ -116,4 +179,3 @@ class RouteController extends Controller
         return $this->successResponse($stops);
     }
 }
-

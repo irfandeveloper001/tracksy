@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
@@ -36,17 +38,17 @@ class BookingController extends Controller
         // Create booking (for students)
         $student = auth()->user();
         
-        $request->validate([
+        $this->validate($request, [
             'bus_id' => 'required|exists:buses,id',
             'seat_number' => 'required|string',
             'trip_date' => 'required|date|after_or_equal:today',
         ]);
 
-        // Check seat availability
+        // Check seat availability (only check confirmed bookings, not pending)
         $existingBooking = Booking::where('bus_id', $request->bus_id)
             ->where('seat_number', $request->seat_number)
             ->where('trip_date', $request->trip_date)
-            ->where('status', '!=', 'cancelled')
+            ->whereIn('status', ['confirmed', 'completed'])
             ->first();
 
         if ($existingBooking) {
@@ -56,26 +58,47 @@ class BookingController extends Controller
         // Generate booking reference
         $bookingReference = 'BK-' . strtoupper(uniqid());
 
-        // Create booking
+        // Create booking with pending status (requires admin approval)
         $booking = Booking::create([
             'student_id' => $student->id,
             'bus_id' => $request->bus_id,
             'seat_number' => $request->seat_number,
             'trip_date' => $request->trip_date,
             'booking_reference' => $bookingReference,
-            'status' => 'confirmed',
+            'status' => 'pending', // Changed to pending - requires admin approval
         ]);
 
-        // Create seat assignment
-        \App\Models\SeatAssignment::create([
-            'booking_id' => $booking->id,
-            'bus_id' => $request->bus_id,
-            'seat_number' => $request->seat_number,
-            'trip_date' => $request->trip_date,
-            'status' => 'reserved',
-        ]);
+        // Don't create seat assignment yet - wait for admin approval
+        // Seat assignment will be created when admin approves the booking
+        $adminIds = User::whereIn('role', ['admin', 'manager', 'super_admin'])->pluck('id');
+        if ($adminIds->isNotEmpty()) {
+            $booking->load('bus');
+            $tripDate = $booking->trip_date ? $booking->trip_date->format('M d, Y') : 'N/A';
+            $busLabel = $booking->bus ? ($booking->bus->name . ' (' . $booking->bus->number . ')') : 'N/A';
 
-        return $this->successResponse($booking, 'Booking created successfully', 201);
+            foreach ($adminIds as $adminId) {
+                Notification::create([
+                    'user_id' => $adminId,
+                    'type' => 'general',
+                    'notification_type' => 'info',
+                    'title' => 'New Booking Request',
+                    'message' => $student->name . ' requested seat ' . $booking->seat_number . ' on ' . $tripDate . ' (' . $busLabel . ').',
+                    'data' => [
+                        'booking_id' => $booking->id,
+                        'booking_reference' => $booking->booking_reference,
+                        'student_id' => $student->id,
+                        'action_url' => '/bookings/' . $booking->id,
+                    ],
+                    'audience_type' => 'custom',
+                    'audience_ids' => [$adminId],
+                    'status' => 'sent',
+                    'sent_at' => now(),
+                    'read' => false,
+                ]);
+            }
+        }
+
+        return $this->successResponse($booking, 'Booking request submitted successfully. Waiting for admin approval.', 201);
     }
 
     public function show($id)
@@ -301,4 +324,3 @@ class BookingController extends Controller
         return $this->successResponse($statistics);
     }
 }
-

@@ -20,11 +20,17 @@ class Booking extends Model
         'status',
         'cancelled_at',
         'cancelled_by',
+        'rejection_reason',
+        'admin_approved_by',
+        'approved_at',
+        'rejected_at',
     ];
 
     protected $casts = [
         'trip_date' => 'date',
         'cancelled_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
     ];
 
     // Relationships
@@ -46,6 +52,11 @@ class Booking extends Model
     public function seatAssignment()
     {
         return $this->hasOne(SeatAssignment::class);
+    }
+
+    public function adminApprovedBy()
+    {
+        return $this->belongsTo(User::class, 'admin_approved_by');
     }
 
     // Methods

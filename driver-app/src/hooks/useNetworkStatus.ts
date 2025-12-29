@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
 
 // Hook to monitor network status and trigger sync
 export const useNetworkStatus = () => {
@@ -9,7 +7,6 @@ export const useNetworkStatus = () => {
 
   useEffect(() => {
     // Web: Use navigator.onLine
-    if (Platform.OS === 'web') {
       const handleOnline = () => setIsOnline(true);
       const handleOffline = () => setIsOnline(false);
       
@@ -22,20 +19,6 @@ export const useNetworkStatus = () => {
         window.removeEventListener('online', handleOnline);
         window.removeEventListener('offline', handleOffline);
       };
-    } else {
-      // Native: Use NetInfo
-      const unsubscribe = NetInfo.addEventListener((state) => {
-        const online = state.isConnected ?? false;
-        setIsOnline(online);
-
-        if (online && !isSyncing) {
-          // Trigger sync when connection is restored (optional)
-          // handleSync();
-        }
-      });
-
-      return () => unsubscribe();
-    }
   }, [isSyncing]);
 
   const handleSync = async () => {

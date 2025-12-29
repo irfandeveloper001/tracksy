@@ -1,4 +1,5 @@
 import api from './client';
+import { supabase } from '../config/supabase';
 
 export interface Student {
   id: string;
@@ -74,7 +75,67 @@ class UserService {
       };
 
       const response = await api.get('/admin/students', { params });
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data;
+
+      if (payload && Array.isArray(payload.data)) {
+        const students = payload.data.map((student: any) => ({
+          id: student.id?.toString() || '',
+          email: student.email || '',
+          name: student.name || '',
+          student_id: student.student_id || student.studentId || '',
+          phone: student.phone || '',
+          institution: student.institution || '',
+          route_id: student.route_id?.toString() || '',
+          route_name: student.route_name || '',
+          status: student.status || 'active',
+          created_at: student.created_at || '',
+          updated_at: student.updated_at || '',
+        }));
+
+        return {
+          users: students,
+          total: payload.total || 0,
+          current_page: payload.current_page || page,
+          per_page: payload.per_page || perPage,
+          last_page: payload.last_page || 1,
+        };
+      }
+
+      if (Array.isArray(payload)) {
+        const students = payload.map((student: any) => ({
+          id: student.id?.toString() || '',
+          email: student.email || '',
+          name: student.name || '',
+          student_id: student.student_id || student.studentId || '',
+          phone: student.phone || '',
+          institution: student.institution || '',
+          route_id: student.route_id?.toString() || '',
+          route_name: student.route_name || '',
+          status: student.status || 'active',
+          created_at: student.created_at || '',
+          updated_at: student.updated_at || '',
+        }));
+
+        return {
+          users: students,
+          total: students.length,
+          current_page: page,
+          per_page: perPage,
+          last_page: Math.ceil(students.length / perPage) || 1,
+        };
+      }
+
+      if (payload && Array.isArray(payload.users)) {
+        return payload;
+      }
+
+      return {
+        users: [],
+        total: 0,
+        current_page: page,
+        per_page: perPage,
+        last_page: 1,
+      };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         console.warn('⚠️ Backend unavailable, returning empty students list');
@@ -94,7 +155,29 @@ class UserService {
   async getStudentById(studentId: string): Promise<Student> {
     try {
       const response = await api.get(`/admin/students/${studentId}`);
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data;
+      const student = payload?.data ?? payload;
+
+      return {
+        id: student?.id?.toString() || '',
+        email: student?.email || '',
+        name: student?.name || '',
+        student_id: student?.student_id || student?.studentId || '',
+        phone: student?.phone || '',
+        institution: student?.institution || '',
+        route_id:
+          student?.route_id?.toString() ||
+          student?.assigned_route_id?.toString() ||
+          '',
+        route_name:
+          student?.route_name ||
+          student?.assignedRoute?.name ||
+          student?.assigned_route?.name ||
+          '',
+        status: student?.status || 'active',
+        created_at: student?.created_at || '',
+        updated_at: student?.updated_at || '',
+      };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         throw new Error('Backend unavailable');
@@ -164,7 +247,50 @@ class UserService {
       const response = await api.get(`/admin/students/${studentId}/bookings`, {
         params: { page, per_page: perPage },
       });
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data;
+
+      if (payload && Array.isArray(payload.data)) {
+        const bookings = payload.data.map((booking: any) => ({
+          id: booking.id?.toString() || '',
+          route_name:
+            booking.bus?.currentRoute?.name ||
+            booking.bus?.current_route?.name ||
+            booking.route_name ||
+            '',
+          bus_number: booking.bus?.number || booking.bus_number || '',
+          start_time: booking.trip?.start_time || booking.start_time || '',
+          end_time: booking.trip?.end_time || booking.end_time || '',
+          status: booking.status || '',
+          trip_date: booking.trip_date || '',
+          created_at: booking.created_at || '',
+          pickup_location: booking.pickup_location || '',
+          dropoff_location: booking.dropoff_location || '',
+        }));
+
+        return { bookings, total: payload.total || bookings.length };
+      }
+
+      if (Array.isArray(payload)) {
+        const bookings = payload.map((booking: any) => ({
+          id: booking.id?.toString() || '',
+          route_name:
+            booking.bus?.currentRoute?.name ||
+            booking.bus?.current_route?.name ||
+            booking.route_name ||
+            '',
+          bus_number: booking.bus?.number || booking.bus_number || '',
+          start_time: booking.trip?.start_time || booking.start_time || '',
+          end_time: booking.trip?.end_time || booking.end_time || '',
+          status: booking.status || '',
+          trip_date: booking.trip_date || '',
+          created_at: booking.created_at || '',
+          pickup_location: booking.pickup_location || '',
+          dropoff_location: booking.dropoff_location || '',
+        }));
+        return { bookings, total: bookings.length };
+      }
+
+      return { bookings: [], total: 0 };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         return { bookings: [], total: 0 };
@@ -175,12 +301,13 @@ class UserService {
 
   // ========== DRIVER METHODS ==========
 
-  // Get all drivers
+  // Get all drivers - Use Laravel backend API (primary source)
   async getDrivers(
     page: number = 1,
     perPage: number = 20,
     filters?: UserFilters
   ): Promise<UserListResponse<Driver>> {
+    // Use Laravel backend API (primary source)
     try {
       const params: any = {
         page,
@@ -189,7 +316,86 @@ class UserService {
       };
 
       const response = await api.get('/admin/drivers', { params });
-      return response.data.data || response.data;
+      const backendData = response.data.data || response.data;
+      
+      // Handle Laravel pagination response format
+      if (backendData.data && Array.isArray(backendData.data)) {
+        // Laravel paginated response
+        const drivers = backendData.data.map((driver: any) => ({
+          id: driver.id?.toString() || '',
+          email: driver.email || '',
+          name: driver.name || '',
+          driver_id: driver.driver_id || '',
+          phone: driver.phone || '',
+          license_number: driver.license_number || '',
+          license_expiry: driver.license_expiry || '',
+          status: driver.status || 'active',
+          bus_id: driver.assigned_bus_id?.toString() || '',
+          bus_number:
+            driver.assignedBus?.number ||
+            driver.assigned_bus?.number ||
+            driver.bus?.number ||
+            '',
+          route_id: driver.assigned_route_id?.toString() || '',
+          route_name:
+            driver.assignedRoute?.name ||
+            driver.assigned_route?.name ||
+            driver.route?.name ||
+            '',
+          created_at: driver.created_at || '',
+          updated_at: driver.updated_at || '',
+        }));
+        
+        return {
+          users: drivers,
+          total: backendData.total || 0,
+          current_page: backendData.current_page || page,
+          per_page: backendData.per_page || perPage,
+          last_page: backendData.last_page || 1,
+        };
+      } else if (Array.isArray(backendData)) {
+        // Simple array response
+        const drivers = backendData.map((driver: any) => ({
+          id: driver.id?.toString() || '',
+          email: driver.email || '',
+          name: driver.name || '',
+          driver_id: driver.driver_id || '',
+          phone: driver.phone || '',
+          license_number: driver.license_number || '',
+          license_expiry: driver.license_expiry || '',
+          status: driver.status || 'active',
+          bus_id: driver.assigned_bus_id?.toString() || '',
+          bus_number:
+            driver.assignedBus?.number ||
+            driver.assigned_bus?.number ||
+            driver.bus?.number ||
+            '',
+          route_id: driver.assigned_route_id?.toString() || '',
+          route_name:
+            driver.assignedRoute?.name ||
+            driver.assigned_route?.name ||
+            driver.route?.name ||
+            '',
+          created_at: driver.created_at || '',
+          updated_at: driver.updated_at || '',
+        }));
+        
+        return {
+          users: drivers,
+          total: drivers.length,
+          current_page: page,
+          per_page: perPage,
+          last_page: Math.ceil(drivers.length / perPage) || 1,
+        };
+      }
+      
+      return {
+        users: [],
+        total: 0,
+        current_page: page,
+        per_page: perPage,
+        last_page: 1,
+      };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         console.warn('⚠️ Backend unavailable, returning empty drivers list');
@@ -205,11 +411,85 @@ class UserService {
     }
   }
 
+  // Get drivers directly from Supabase
+  async getDriversFromSupabase(filters?: UserFilters): Promise<Driver[]> {
+    try {
+      // Query drivers table directly without join (user_profiles relationship may not exist)
+      let driversQuery = supabase
+        .from('drivers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Apply filters
+      if (filters?.status) {
+        driversQuery = driversQuery.eq('status', filters.status);
+      }
+
+      const { data: driversData, error: driversError } = await driversQuery;
+
+      if (driversError) {
+        console.error('❌ Supabase error fetching drivers:', driversError);
+        // Return empty array if query fails
+        return [];
+      }
+
+      // Map Supabase data to Driver interface
+      return (driversData || []).map((driver: any) => ({
+        id: driver.id,
+        email: driver.email || driver.user_id || '',
+        name: driver.name || driver.full_name || 'Unknown Driver',
+        driver_id: driver.license_number || driver.driver_id || driver.id,
+        phone: driver.phone || driver.phone_number,
+        license_number: driver.license_number || driver.driver_license,
+        status: (driver.status || 'active') as 'active' | 'inactive' | 'on_leave',
+        created_at: driver.created_at,
+        updated_at: driver.updated_at,
+      }));
+    } catch (error) {
+      console.error('❌ Failed to fetch drivers from Supabase:', error);
+      return [];
+    }
+  }
+
   // Get single driver
   async getDriverById(driverId: string): Promise<Driver> {
     try {
       const response = await api.get(`/admin/drivers/${driverId}`);
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data;
+      const driver = payload?.data ?? payload;
+
+      return {
+        id: driver?.id?.toString() || '',
+        email: driver?.email || '',
+        name: driver?.name || '',
+        driver_id: driver?.driver_id || driver?.license_number || '',
+        phone: driver?.phone || '',
+        license_number: driver?.license_number || '',
+        license_expiry: driver?.license_expiry || '',
+        status: driver?.status || 'active',
+        bus_id:
+          driver?.assigned_bus_id?.toString() ||
+          driver?.assignedBus?.id?.toString() ||
+          driver?.assigned_bus?.id?.toString() ||
+          '',
+        bus_number:
+          driver?.assignedBus?.number ||
+          driver?.assigned_bus?.number ||
+          driver?.bus?.number ||
+          '',
+        route_id:
+          driver?.assigned_route_id?.toString() ||
+          driver?.assignedRoute?.id?.toString() ||
+          driver?.assigned_route?.id?.toString() ||
+          '',
+        route_name:
+          driver?.assignedRoute?.name ||
+          driver?.assigned_route?.name ||
+          driver?.route?.name ||
+          '',
+        created_at: driver?.created_at || '',
+        updated_at: driver?.updated_at || '',
+      };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         throw new Error('Backend unavailable');
@@ -280,7 +560,34 @@ class UserService {
       const response = await api.get(`/admin/drivers/${driverId}/trips`, {
         params: { page, per_page: perPage },
       });
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data;
+
+      if (payload && Array.isArray(payload.data)) {
+        const trips = payload.data.map((trip: any) => ({
+          id: trip.id?.toString() || '',
+          route_name: trip.route?.name || trip.route_name || '',
+          start_time: trip.start_time || '',
+          end_time: trip.end_time || '',
+          status: trip.status || '',
+          driver_name: trip.driver?.name || '',
+        }));
+
+        return { trips, total: payload.total || trips.length };
+      }
+
+      if (Array.isArray(payload)) {
+        const trips = payload.map((trip: any) => ({
+          id: trip.id?.toString() || '',
+          route_name: trip.route?.name || trip.route_name || '',
+          start_time: trip.start_time || '',
+          end_time: trip.end_time || '',
+          status: trip.status || '',
+          driver_name: trip.driver?.name || '',
+        }));
+        return { trips, total: trips.length };
+      }
+
+      return { trips: [], total: 0 };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         return { trips: [], total: 0 };
@@ -305,7 +612,61 @@ class UserService {
       };
 
       const response = await api.get('/admin/admins', { params });
-      return response.data.data || response.data;
+      const payload = response.data?.data ?? response.data;
+
+      if (payload && Array.isArray(payload.data)) {
+        const admins = payload.data.map((admin: any) => ({
+          id: admin.id?.toString() || '',
+          email: admin.email || '',
+          name: admin.name || '',
+          role: admin.role || 'viewer',
+          status: admin.status || 'active',
+          permissions: admin.permissions || [],
+          created_at: admin.created_at || '',
+          updated_at: admin.updated_at || '',
+        }));
+
+        return {
+          users: admins,
+          total: payload.total || 0,
+          current_page: payload.current_page || page,
+          per_page: payload.per_page || perPage,
+          last_page: payload.last_page || 1,
+        };
+      }
+
+      if (Array.isArray(payload)) {
+        const admins = payload.map((admin: any) => ({
+          id: admin.id?.toString() || '',
+          email: admin.email || '',
+          name: admin.name || '',
+          role: admin.role || 'viewer',
+          status: admin.status || 'active',
+          permissions: admin.permissions || [],
+          created_at: admin.created_at || '',
+          updated_at: admin.updated_at || '',
+        }));
+
+        return {
+          users: admins,
+          total: admins.length,
+          current_page: page,
+          per_page: perPage,
+          last_page: Math.ceil(admins.length / perPage) || 1,
+        };
+      }
+
+      if (payload && Array.isArray(payload.users)) {
+        return payload;
+      }
+
+      return {
+        users: [],
+        total: 0,
+        current_page: page,
+        per_page: perPage,
+        last_page: 1,
+      };
     } catch (error: any) {
       if (!error.response || error.response.status === 500) {
         console.warn('⚠️ Backend unavailable, returning empty admins list');

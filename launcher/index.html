@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tracksy Launchpad</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="launchpad">
+      <header class="launchpad__header">
+        <p class="eyebrow">Tracksy Platform</p>
+        <h1>Choose the workspace you need</h1>
+        <p class="lead">
+          Use this launchpad to start the Admin dashboard, Student portal, or Driver portal.
+          Each tile opens the live dashboard in a new browser tab.
+        </p>
+        <div class="meta">
+          <span class="status-dot status-dot--green"></span>
+          <span>Frontend servers run together via <code>npm run web</code>.</span>
+        </div>
+      </header>
+
+      <section class="grid" aria-label="Available dashboards">
+        <article class="card" data-role="admin">
+          <div class="card__header">
+            <div class="avatar">A</div>
+            <div>
+              <p class="eyebrow">Operations</p>
+              <h2>Admin Dashboard</h2>
+            </div>
+          </div>
+          <p class="card__body">
+            Monitor routes, fleet activity, attendance, and live alerts in one place.
+          </p>
+          <dl class="card__meta">
+            <div>
+              <dt>URL</dt>
+              <dd>http://localhost:5173</dd>
+            </div>
+            <div>
+              <dt>Command</dt>
+              <dd>npm run admin:web</dd>
+            </div>
+          </dl>
+          <button class="card__cta" data-target="admin">Open dashboard</button>
+        </article>
+
+        <article class="card" data-role="student">
+          <div class="card__header">
+            <div class="avatar">S</div>
+            <div>
+              <p class="eyebrow">Students & Parents</p>
+              <h2>Student Portal</h2>
+            </div>
+          </div>
+          <p class="card__body">
+            Share live bus tracking, ETA notifications, and attendance with students.
+          </p>
+          <dl class="card__meta">
+            <div>
+              <dt>URL</dt>
+              <dd>http://localhost:19007</dd>
+            </div>
+            <div>
+              <dt>Command</dt>
+              <dd>npm run student:web</dd>
+            </div>
+          </dl>
+          <button class="card__cta" data-target="student">Open portal</button>
+        </article>
+
+        <article class="card" data-role="driver">
+          <div class="card__header">
+            <div class="avatar">D</div>
+            <div>
+              <p class="eyebrow">Drivers</p>
+              <h2>Driver App</h2>
+            </div>
+          </div>
+          <p class="card__body">
+            Provide live routing, passenger manifests, and incident reporting for drivers.
+          </p>
+          <dl class="card__meta">
+            <div>
+              <dt>URL</dt>
+              <dd>http://localhost:19008</dd>
+            </div>
+            <div>
+              <dt>Command</dt>
+              <dd>npm run driver:web</dd>
+            </div>
+          </dl>
+          <button class="card__cta" data-target="driver">Open app</button>
+        </article>
+      </section>
+    </main>
+
+    <footer class="launchpad__footer">
+      <p>
+        Start the Laravel API separately with
+        <code>cd backend && php artisan serve</code>.
+      </p>
+    </footer>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
+

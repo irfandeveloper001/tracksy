@@ -18,7 +18,7 @@ class StopController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $this->validate($request, [
             'name' => 'required|string|max:255',
             'address' => 'required|string',
             'latitude' => 'required|numeric|between:-90,90',
@@ -47,7 +47,7 @@ class StopController extends Controller
     {
         $stop = Stop::findOrFail($id);
 
-        $request->validate([
+        $this->validate($request, [
             'name' => 'sometimes|string|max:255',
             'address' => 'sometimes|string',
             'latitude' => 'sometimes|numeric|between:-90,90',

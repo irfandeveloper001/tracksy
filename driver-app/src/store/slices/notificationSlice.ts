@@ -103,25 +103,58 @@ const notificationSlice = createSlice({
         }
       });
 
-    // Mark as read
+    // Mark as read - Optimistic update
     builder
-      .addCase(markNotificationAsRead.fulfilled, (state, action) => {
-        const index = state.notifications.findIndex(
-          (n) => n.id === action.payload
-        );
+      .addCase(markNotificationAsRead.pending, (state, action) => {
+        // Optimistically mark as read
+        const notificationId = action.meta.arg;
+        const index = state.notifications.findIndex((n) => n.id === notificationId);
         if (index !== -1 && !state.notifications[index].read) {
           state.notifications[index].read = true;
           state.unreadCount = Math.max(0, state.unreadCount - 1);
         }
+      })
+      .addCase(markNotificationAsRead.fulfilled, (state, action) => {
+        // Already updated optimistically, just ensure consistency
+        const notificationId = action.payload;
+        const index = state.notifications.findIndex((n) => n.id === notificationId);
+        if (index !== -1) {
+          state.notifications[index].read = true;
+        }
+      })
+      .addCase(markNotificationAsRead.rejected, (state, action) => {
+        // Revert optimistic update on error
+        const notificationId = action.meta.arg;
+        const index = state.notifications.findIndex((n) => n.id === notificationId);
+        if (index !== -1) {
+          state.notifications[index].read = false;
+          state.unreadCount += 1;
+        }
       });
 
-    // Mark all as read
+    // Mark all as read - Optimistic update
     builder
-      .addCase(markAllAsRead.fulfilled, (state) => {
+      .addCase(markAllAsRead.pending, (state) => {
+        // Optimistically mark all as read
         state.notifications.forEach((n) => {
           n.read = true;
         });
         state.unreadCount = 0;
+      })
+      .addCase(markAllAsRead.fulfilled, (state) => {
+        // Already updated optimistically
+        state.notifications.forEach((n) => {
+          n.read = true;
+        });
+        state.unreadCount = 0;
+      })
+      .addCase(markAllAsRead.rejected, (state) => {
+        // Revert optimistic update on error
+        state.notifications.forEach((n) => {
+          if (!n.read) {
+            state.unreadCount += 1;
+          }
+        });
       });
 
     // Get unread count

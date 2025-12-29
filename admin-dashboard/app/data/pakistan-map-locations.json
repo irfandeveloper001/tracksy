@@ -1,0 +1,185 @@
+{
+  "cities": [
+    {
+      "name": "Islamabad",
+      "city": "Islamabad",
+      "province": "Islamabad Capital Territory",
+      "lat": 33.72148,
+      "lng": 73.04329,
+      "details": "Capital city"
+    },
+    {
+      "name": "Karachi",
+      "city": "Karachi",
+      "province": "Sindh",
+      "lat": 24.8608,
+      "lng": 67.0104,
+      "details": "Coastal metro"
+    },
+    {
+      "name": "Lahore",
+      "city": "Lahore",
+      "province": "Punjab",
+      "lat": 31.558,
+      "lng": 74.35071,
+      "details": "Cultural hub"
+    },
+    {
+      "name": "Peshawar",
+      "city": "Peshawar",
+      "province": "Khyber Pakhtunkhwa",
+      "lat": 34.008,
+      "lng": 71.57849,
+      "details": "Provincial capital"
+    },
+    {
+      "name": "Quetta",
+      "city": "Quetta",
+      "province": "Balochistan",
+      "lat": 30.18414,
+      "lng": 67.00141,
+      "details": "Provincial capital"
+    },
+    {
+      "name": "Faisalabad",
+      "city": "Faisalabad",
+      "province": "Punjab",
+      "lat": 31.41554,
+      "lng": 73.08969,
+      "details": "Industrial city"
+    },
+    {
+      "name": "Multan",
+      "city": "Multan",
+      "province": "Punjab",
+      "lat": 30.19679,
+      "lng": 71.47824,
+      "details": "Regional hub"
+    },
+    {
+      "name": "Rawalpindi",
+      "city": "Rawalpindi",
+      "province": "Punjab",
+      "lat": 33.59733,
+      "lng": 73.0479,
+      "details": "Twin city"
+    },
+    {
+      "name": "Gujranwala",
+      "city": "Gujranwala",
+      "province": "Punjab",
+      "lat": 32.15567,
+      "lng": 74.18705,
+      "details": "Commercial city"
+    },
+    {
+      "name": "Hyderabad",
+      "city": "Hyderabad",
+      "province": "Sindh",
+      "lat": 25.39242,
+      "lng": 68.37366,
+      "details": "Historic city"
+    },
+    {
+      "name": "Sialkot",
+      "city": "Sialkot",
+      "province": "Punjab",
+      "lat": 32.49268,
+      "lng": 74.53134,
+      "details": "Export city"
+    }
+  ],
+  "universities": [
+    {
+      "name": "Information Technology University, Lahore",
+      "city": "Lahore",
+      "province": "Punjab",
+      "lat": 31.558,
+      "lng": 74.35071
+    },
+    {
+      "name": "University of the Punjab",
+      "city": "Lahore",
+      "province": "Punjab",
+      "lat": 31.558,
+      "lng": 74.35071
+    },
+    {
+      "name": "Bahauddin Zakariya University, Multan",
+      "city": "Multan",
+      "province": "Punjab",
+      "lat": 30.19679,
+      "lng": 71.47824
+    },
+    {
+      "name": "Aga Khan University",
+      "city": "Karachi",
+      "province": "Sindh",
+      "lat": 24.8608,
+      "lng": 67.0104
+    },
+    {
+      "name": "Baqai Medical University",
+      "city": "Karachi",
+      "province": "Sindh",
+      "lat": 24.8608,
+      "lng": 67.0104
+    },
+    {
+      "name": "College of Business Management (CBM)",
+      "city": "Karachi",
+      "province": "Sindh",
+      "lat": 24.8608,
+      "lng": 67.0104
+    },
+    {
+      "name": "Abasyn University Peshawar",
+      "city": "Peshawar",
+      "province": "Khyber Pakhtunkhwa",
+      "lat": 34.008,
+      "lng": 71.57849
+    },
+    {
+      "name": "The University of Agriculture, Peshawar",
+      "city": "Peshawar",
+      "province": "Khyber Pakhtunkhwa",
+      "lat": 34.008,
+      "lng": 71.57849
+    },
+    {
+      "name": "COMSATS Institute of Information Technology, Abbottabad",
+      "city": "Abbottabad",
+      "province": "Khyber Pakhtunkhwa",
+      "lat": 34.1463,
+      "lng": 73.21168
+    },
+    {
+      "name": "Balochistan University of Engineering and Technology Khuzdar",
+      "city": "Khuzdar",
+      "province": "Balochistan",
+      "lat": 27.81193,
+      "lng": 66.61096
+    },
+    {
+      "name": "Balochistan University of Information Technology & Management Sciences",
+      "city": "Quetta",
+      "province": "Balochistan",
+      "lat": 30.18414,
+      "lng": 67.00141
+    },
+    {
+      "name": "Capital University of Science & Technology",
+      "city": "Islamabad",
+      "province": "Islamabad",
+      "lat": 33.72148,
+      "lng": 73.04329
+    },
+    {
+      "name": "City University of Science and Information Technology",
+      "city": "Peshawar",
+      "province": "Khyber Pakhtunkhwa",
+      "lat": 34.008,
+      "lng": 71.57849
+    }
+  ]
+}
