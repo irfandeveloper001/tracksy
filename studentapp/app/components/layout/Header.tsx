@@ -12,6 +12,7 @@ import authService from '../../lib/api/authService';
 import toast from 'react-hot-toast';
 import notificationService, { type StudentNotification } from '../../lib/api/notificationService';
 import { useLanguage } from '../../lib/i18n/LanguageProvider';
+import systemSettingsService, { getStoredSystemSettings } from '../../lib/api/systemSettingsService';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -25,6 +26,7 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<StudentNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [appLogo, setAppLogo] = useState<string | null>(null);
   const { t } = useLanguage();
 
   const handleLogout = async () => {
@@ -50,6 +52,23 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
       return () => document.removeEventListener('click', handleClickOutside);
     }
   }, [showUserMenu, showNotifications]);
+
+  useEffect(() => {
+    const loadLogo = () => {
+      const settings = getStoredSystemSettings();
+      setAppLogo(settings?.app_logo || null);
+    };
+    loadLogo();
+    if (!getStoredSystemSettings()?.app_logo) {
+      systemSettingsService.getSystemSettings().catch(() => {});
+    }
+    window.addEventListener('storage', loadLogo);
+    window.addEventListener('tracksy:settings-updated', loadLogo);
+    return () => {
+      window.removeEventListener('storage', loadLogo);
+      window.removeEventListener('tracksy:settings-updated', loadLogo);
+    };
+  }, []);
 
   useEffect(() => {
     const loadUnreadCount = async () => {
@@ -102,8 +121,18 @@ export default function Header({ onMenuToggle, isSidebarOpen, user }: HeaderProp
 
             {/* Logo */}
             <div className="flex items-center space-x-3">
-              <div className="h-9 w-9 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">T</span>
+              <div className="h-9 w-9 rounded-xl bg-white shadow-lg border border-gray-200 flex items-center justify-center overflow-hidden">
+                {appLogo ? (
+                  <img
+                    src={appLogo}
+                    alt="Tracksy Logo"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">T</span>
+                  </div>
+                )}
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold text-gray-900">{t('appName')}</h1>

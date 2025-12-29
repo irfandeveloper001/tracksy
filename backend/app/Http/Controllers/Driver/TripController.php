@@ -110,6 +110,7 @@ class TripController extends Controller
         $driver = auth()->user();
         
         $trips = Trip::where('driver_id', $driver->id)
+            ->with(['route', 'bus'])
             ->when($request->startDate, function ($query, $date) {
                 return $query->whereDate('start_time', '>=', $date);
             })
@@ -131,4 +132,3 @@ class TripController extends Controller
         return $this->successResponse($trip);
     }
 }
-

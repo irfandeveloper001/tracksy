@@ -23,7 +23,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { currentTrip, tripHistory, isLoading } = useSelector(
+  const { currentTrip, tripHistory, totalTrips, isLoading } = useSelector(
     (state: RootState) => state.trip
   );
   const { unreadCount } = useSelector(
@@ -60,7 +60,7 @@ export default function Dashboard() {
       await Promise.allSettled([
         dispatch(getCurrentUser()),
         dispatch(getCurrentTrip()),
-        dispatch(getTripHistory({ limit: 5 })),
+        dispatch(getTripHistory({ limit: 50, page: 1 })),
         dispatch(getUnreadCount()),
       ]);
     } catch (error) {
@@ -75,7 +75,13 @@ export default function Dashboard() {
   };
 
   const hasActiveTrip = currentTrip && typeof currentTrip === 'object' ? true : currentTrip ? true : false;
-  const tripCount = tripHistory && Array.isArray(tripHistory) ? tripHistory.length : 0;
+  const totalTripCount = typeof totalTrips === 'number' ? totalTrips : 0;
+  const completedTripCount = Array.isArray(tripHistory)
+    ? tripHistory.filter((trip) => trip.status === 'completed').length
+    : 0;
+  const inProgressTripCount = Array.isArray(tripHistory)
+    ? tripHistory.filter((trip) => trip.status === 'in_progress').length
+    : 0;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -101,7 +107,7 @@ export default function Dashboard() {
               </div>
 
               {/* Metrics Grid */}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                 {/* Current Trip Card */}
                 <MetricCard
                   title="Current Trip"
@@ -129,9 +135,23 @@ export default function Dashboard() {
                 {/* Trip History Card */}
                 <MetricCard
                   title="Total Trips"
-                  value={tripCount}
+                  value={totalTripCount}
                   icon={<ClockIcon />}
                   color="purple"
+                />
+
+                <MetricCard
+                  title="Completed"
+                  value={completedTripCount}
+                  icon={<ClockIcon />}
+                  color="green"
+                />
+
+                <MetricCard
+                  title="In Progress"
+                  value={inProgressTripCount}
+                  icon={<MapIcon />}
+                  color="blue"
                 />
 
                 {/* Assigned Bus Card */}
@@ -195,5 +215,4 @@ export default function Dashboard() {
     </div>
   );
 }
-
 

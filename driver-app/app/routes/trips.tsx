@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../../src/store/store";
-import { getCurrentTrip, endTrip } from "../../src/store/slices/tripSlice";
+import { getCurrentTrip, getTripHistory, endTrip } from "../../src/store/slices/tripSlice";
+import { getCurrentUser } from "../../src/store/slices/authSlice";
 import Header from "../../src/components/layouts/Header";
 import Sidebar from "../../src/components/layouts/Sidebar";
 import {
@@ -20,23 +21,27 @@ import toast from "react-hot-toast";
 export default function TripsPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { currentTrip, isLoading } = useSelector((state: RootState) => state.trip);
+  const { currentTrip, tripHistory, isLoading } = useSelector((state: RootState) => state.trip);
   const { user } = useSelector((state: RootState) => state.auth);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [endingTrip, setEndingTrip] = useState(false);
 
   useEffect(() => {
-    loadCurrentTrip();
+    loadTripData();
     // Auto-refresh every 30 seconds
-    const interval = setInterval(loadCurrentTrip, 30000);
+    const interval = setInterval(loadTripData, 30000);
     return () => clearInterval(interval);
   }, [dispatch]);
 
-  const loadCurrentTrip = async () => {
+  const loadTripData = async () => {
     try {
-      await dispatch(getCurrentTrip());
+      await Promise.allSettled([
+        dispatch(getCurrentUser()),
+        dispatch(getCurrentTrip()),
+        dispatch(getTripHistory({ limit: 5, page: 1 })),
+      ]);
     } catch (error) {
-      console.warn('⚠️ Error loading current trip:', error);
+      console.warn('⚠️ Error loading trip data:', error);
     }
   };
 
@@ -237,20 +242,73 @@ export default function TripsPage() {
                   </div>
                 </>
               ) : (
-                <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-12 text-center">
-                  <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-6">
-                    <MapIcon className="h-10 w-10 text-gray-400" />
+                <div className="space-y-6">
+                  <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-12 text-center">
+                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-6">
+                      <MapIcon className="h-10 w-10 text-gray-400" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">No Active Trip</h3>
+                    <p className="text-gray-500 mb-8">
+                      You don't have an active trip at the moment. Start a new trip from the dashboard.
+                    </p>
+                    <button
+                      onClick={() => navigate('/dashboard')}
+                      className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+                    >
+                      Go to Dashboard
+                    </button>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">No Active Trip</h3>
-                  <p className="text-gray-500 mb-8">
-                    You don't have an active trip at the moment. Start a new trip from the dashboard.
-                  </p>
-                  <button
-                    onClick={() => navigate('/dashboard')}
-                    className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105"
-                  >
-                    Go to Dashboard
-                  </button>
+
+                  <div className="bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">Recent Trips</h3>
+                        <p className="text-sm text-gray-500">Latest activity from your assigned routes</p>
+                      </div>
+                      <button
+                        onClick={() => navigate('/trip/history')}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                      >
+                        View all
+                        <CheckCircleIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {tripHistory.length === 0 ? (
+                      <div className="text-center py-10">
+                        <div className="inline-flex items-center justify-center w-14 h-14 bg-gray-100 rounded-full mb-4">
+                          <ClockIcon className="h-7 w-7 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500">Trip history will appear once trips are completed.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {tripHistory.slice(0, 5).map((trip) => (
+                          <div
+                            key={trip.id}
+                            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 hover:border-indigo-200 hover:shadow-md transition"
+                          >
+                            <div>
+                              <p className="text-sm text-gray-500">Trip #{trip.id}</p>
+                              <p className="text-base font-semibold text-gray-900">
+                                {trip.route?.name || 'N/A'}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                Bus #{trip.bus?.bus_number || 'N/A'}
+                              </p>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {formatDate(trip.start_time)}
+                            </div>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700">
+                              <CheckCircleIcon className="h-4 w-4 text-indigo-500" />
+                              {trip.status?.replace('_', ' ') || 'unknown'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -260,9 +318,6 @@ export default function TripsPage() {
     </div>
   );
 }
-
-
-
 
 
 

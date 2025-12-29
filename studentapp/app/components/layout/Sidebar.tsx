@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router";
+import { useEffect, useState } from "react";
 import { 
   HomeIcon, 
   MapIcon, 
@@ -20,6 +21,7 @@ import {
   UserCircleIcon as UserCircleIconSolid
 } from "@heroicons/react/24/solid";
 import { useLanguage } from "../../lib/i18n/LanguageProvider";
+import systemSettingsService, { getStoredSystemSettings } from "../../lib/api/systemSettingsService";
 
 interface NavItem {
   name: string;
@@ -39,6 +41,24 @@ interface SidebarProps {
 export default function Sidebar({ onLogout, isOpen = false, onClose, user }: SidebarProps) {
   const location = useLocation();
   const { t } = useLanguage();
+  const [appLogo, setAppLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadLogo = () => {
+      const settings = getStoredSystemSettings();
+      setAppLogo(settings?.app_logo || null);
+    };
+    loadLogo();
+    if (!getStoredSystemSettings()?.app_logo) {
+      systemSettingsService.getSystemSettings().catch(() => {});
+    }
+    window.addEventListener('storage', loadLogo);
+    window.addEventListener('tracksy:settings-updated', loadLogo);
+    return () => {
+      window.removeEventListener('storage', loadLogo);
+      window.removeEventListener('tracksy:settings-updated', loadLogo);
+    };
+  }, []);
 
   const navigation: NavItem[] = [
     { name: t('dashboard'), path: '/dashboard', icon: HomeIcon, iconSolid: HomeIconSolid },
@@ -96,8 +116,18 @@ export default function Sidebar({ onLogout, isOpen = false, onClose, user }: Sid
           <div className="relative border-b border-white/10 bg-white/5 px-4 py-4 backdrop-blur-xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3 min-w-0">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                  {(user?.name || 'S').charAt(0).toUpperCase()}
+                <div className="h-10 w-10 rounded-xl bg-white/90 flex items-center justify-center shadow-lg ring-1 ring-white/20 overflow-hidden">
+                  {appLogo ? (
+                    <img
+                      src={appLogo}
+                      alt="Tracksy Logo"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg">
+                      {(user?.name || 'S').charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white truncate">

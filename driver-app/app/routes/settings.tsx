@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 import { useLanguage } from "../../src/lib/i18n/LanguageProvider";
 import { SUPPORTED_LANGUAGE_CODES } from "../../src/lib/i18n/languages";
 import LanguageSelect from "../../src/components/ui/LanguageSelect";
+import systemSettingsService, { getStoredSystemSettings } from "../../src/services/systemSettingsService";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -35,6 +36,9 @@ export default function SettingsPage() {
     language: 'en',
     autoRefresh: true,
   });
+  const [appLogo, setAppLogo] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -48,6 +52,11 @@ export default function SettingsPage() {
   const loadSettings = async () => {
     try {
       await dispatch(getCurrentUser());
+      const stored = getStoredSystemSettings();
+      if (stored?.app_logo) {
+        setAppLogo(stored.app_logo);
+      }
+      systemSettingsService.getSystemSettings().catch(() => {});
       // Load settings from localStorage
       const savedSettings = localStorage.getItem('driver_settings');
       if (savedSettings) {
@@ -65,6 +74,12 @@ export default function SettingsPage() {
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
+      if (logoFile) {
+        setLogoUploading(true);
+        const url = await systemSettingsService.uploadLogo(logoFile);
+        setAppLogo(url);
+        setLogoFile(null);
+      }
       // Save to localStorage (in real app, this would be saved to backend)
       localStorage.setItem('driver_settings', JSON.stringify(settings));
       await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
@@ -72,6 +87,7 @@ export default function SettingsPage() {
     } catch (error) {
       toast.error('Failed to save settings');
     } finally {
+      setLogoUploading(false);
       setSaving(false);
     }
   };
@@ -82,6 +98,17 @@ export default function SettingsPage() {
 
   const handleLanguageChange = (language: string) => {
     setSettings(prev => ({ ...prev, language }));
+  };
+
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAppLogo(typeof reader.result === 'string' ? reader.result : null);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -174,6 +201,36 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-6">
+                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="h-12 w-12 rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden flex items-center justify-center">
+                          {appLogo ? (
+                            <img
+                              src={appLogo}
+                              alt="App logo preview"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-gray-400 text-xs font-semibold">Logo</span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">App Logo</p>
+                          <p className="text-sm text-gray-500">Upload a logo to replace the header icon.</p>
+                        </div>
+                      </div>
+                      <label className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                        <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                        Choose File
+                      </label>
+                    </div>
+                    {logoFile && (
+                      <p className="mt-3 text-xs text-gray-500">
+                        Selected: {logoFile.name}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
                     <div className="flex items-center space-x-4">
                       {settings.darkMode ? (
@@ -284,10 +341,10 @@ export default function SettingsPage() {
               <div className="flex justify-end">
                 <button
                   onClick={handleSaveSettings}
-                  disabled={saving}
+                  disabled={saving || logoUploading}
                   className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center space-x-2"
                 >
-                  {saving ? (
+                  {saving || logoUploading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                       <span>Saving...</span>
@@ -307,10 +364,6 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-
-
-
 
 
 

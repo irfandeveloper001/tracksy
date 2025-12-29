@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   HomeIcon,
   TruckIcon,
@@ -39,6 +40,7 @@ import {
 import { useAuthStore } from '../../lib/store/authStore';
 import { hasPermission, PERMISSIONS } from '../../lib/utils/permissions';
 import { useLanguage } from '../../lib/i18n/LanguageProvider';
+import settingsService from '../../lib/api/settingsService';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -49,6 +51,7 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const { t } = useLanguage();
+  const [logoError, setLogoError] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     main: true,
@@ -59,6 +62,16 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     insights: false,
     system: false,
   });
+
+  const { data: systemSettings } = useQuery({
+    queryKey: ['system-settings'],
+    queryFn: () => settingsService.getSystemSettings(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const appName = systemSettings?.app_name || t('appName');
+  const appLogo = systemSettings?.app_logo;
+  const showLogo = Boolean(appLogo) && !logoError;
 
   const navigation = [
     {
@@ -284,14 +297,25 @@ export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           <div className="relative flex items-center justify-between px-4 py-4 border-b border-white/10 bg-white/5 backdrop-blur-xl">
             <div className="flex items-center space-x-3 min-w-0">
               <div className="relative">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                  {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+                <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg ring-1 ring-white/20 overflow-hidden">
+                  {showLogo ? (
+                    <img
+                      src={appLogo}
+                      alt={appName}
+                      className="h-8 w-8 object-contain"
+                      onError={() => setLogoError(true)}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-fuchsia-500 flex items-center justify-center text-white font-bold text-lg">
+                      {(appName || 'T').charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-slate-900"></div>
               </div>
               {!isCollapsed && (
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{user?.name || 'Admin User'}</p>
+                  <p className="text-sm font-semibold text-white truncate">{appName}</p>
                   <p className="text-xs text-indigo-200 truncate">{user?.role || 'admin'}</p>
                 </div>
               )}

@@ -56,6 +56,15 @@ Route::prefix('auth')->group(function () {
 });
 
 // ============================================
+// SHARED SETTINGS (All authenticated users)
+// ============================================
+Route::middleware(\App\Http\Middleware\ApiAuth::class)->group(function () {
+    Route::get('/settings/system', [SettingsController::class, 'getSystemSettings']);
+    Route::put('/settings/system', [SettingsController::class, 'updateSystemSettings']);
+    Route::post('/settings/upload-logo', [SettingsController::class, 'uploadLogo']);
+});
+
+// ============================================
 // DRIVER ROUTES
 // ============================================
 Route::prefix('driver')->group(function () {

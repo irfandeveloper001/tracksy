@@ -12,11 +12,15 @@ import {
 import { useLanguage } from "../lib/i18n/LanguageProvider";
 import { SUPPORTED_LANGUAGE_CODES } from "../lib/i18n/languages";
 import LanguageSelect from "../components/ui/LanguageSelect";
+import systemSettingsService, { getStoredSystemSettings } from "../lib/api/systemSettingsService";
 
 export default function Settings() {
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("profile");
   const { language, setLanguage, t } = useLanguage();
+  const [appLogo, setAppLogo] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -26,8 +30,36 @@ export default function Settings() {
     try {
       const userData = await authService.me();
       setUser(userData);
+      const stored = getStoredSystemSettings();
+      if (stored?.app_logo) {
+        setAppLogo(stored.app_logo);
+      }
+      systemSettingsService.getSystemSettings().catch(() => {});
     } catch (error) {
       console.error("Failed to load user:", error);
+    }
+  };
+
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAppLogo(typeof reader.result === 'string' ? reader.result : null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoUpload = async () => {
+    if (!logoFile) return;
+    setLogoUploading(true);
+    try {
+      const url = await systemSettingsService.uploadLogo(logoFile);
+      setAppLogo(url);
+      setLogoFile(null);
+    } finally {
+      setLogoUploading(false);
     }
   };
 
@@ -195,6 +227,44 @@ export default function Settings() {
                     {t('preferences')}
                   </h2>
                   <div className="space-y-4">
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center space-x-4">
+                          <div className="h-12 w-12 rounded-xl bg-white border border-gray-200 shadow-sm overflow-hidden flex items-center justify-center">
+                            {appLogo ? (
+                              <img
+                                src={appLogo}
+                                alt="App logo preview"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-gray-400 text-xs font-semibold">Logo</span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">App Logo</p>
+                            <p className="text-sm text-gray-500">Upload a logo to replace the header icon.</p>
+                          </div>
+                        </div>
+                        <label className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                          <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                          Choose File
+                        </label>
+                      </div>
+                      {logoFile && (
+                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                          <span className="text-xs text-gray-500">Selected: {logoFile.name}</span>
+                          <button
+                            type="button"
+                            onClick={handleLogoUpload}
+                            disabled={logoUploading}
+                            className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-md hover:bg-indigo-700 disabled:opacity-60"
+                          >
+                            {logoUploading ? 'Uploading...' : 'Upload'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         {t('language')}

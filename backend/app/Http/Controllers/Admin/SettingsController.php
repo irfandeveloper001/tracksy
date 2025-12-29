@@ -24,6 +24,7 @@ class SettingsController extends Controller
     {
         $defaults = [
             'app_name' => 'Tracksy Admin',
+            'app_logo' => '',
             'timezone' => 'UTC',
             'date_format' => 'YYYY-MM-DD',
             'time_format' => 'HH:mm',
@@ -61,6 +62,7 @@ class SettingsController extends Controller
 
         $validated = $this->validate($request, [
             'app_name' => 'sometimes|string|max:255',
+            'app_logo' => 'sometimes|string|max:2048',
             'timezone' => 'sometimes|string|max:50',
             'date_format' => 'sometimes|string|max:20',
             'time_format' => 'sometimes|string|max:20',

@@ -50,6 +50,7 @@ class DemoDataSeeder extends Seeder
     {
         $settings = [
             ['key' => 'app_name', 'category' => 'system', 'value' => 'Tracksy'],
+            ['key' => 'app_logo', 'category' => 'system', 'value' => ''],
             ['key' => 'timezone', 'category' => 'system', 'value' => 'Asia/Karachi'],
             ['key' => 'date_format', 'category' => 'system', 'value' => 'YYYY-MM-DD'],
             ['key' => 'time_format', 'category' => 'system', 'value' => 'HH:mm'],
